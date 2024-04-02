@@ -2,8 +2,10 @@ import { Controller } from '@nestjs/common';
 import { NotificationEventsService } from './notification_events.service';
 import { NotificationEvents } from './entity/notification_events.entity';
 import { Get, Post, Put, Delete, Body, Param } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 
 @Controller('notification-events')
+@ApiTags('Event-type')
 export class NotificationEventsController {
   constructor(private notificationeventsService: NotificationEventsService) { }
 

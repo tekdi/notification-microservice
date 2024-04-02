@@ -4,8 +4,10 @@ import { Notification } from './entity/notification.entity';
 import { NotificationPush } from './entity/notificationPush.entity';
 import { NotificationWhatsapp } from './entity/notificationWhatsapp.entity';
 import { NotificationTelegram } from './entity/notificationTelegram.entity';
+import { ApiTags } from '@nestjs/swagger';
 
 @Controller('notification')
+@ApiTags('Email-Send')
 export class NotificationController {
   constructor(private notificationService: NotificationService) { }
 

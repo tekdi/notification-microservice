@@ -3,8 +3,10 @@ import { Get, Post, Put, Delete, Body, Param } from '@nestjs/common';
 import { identity } from 'rxjs';
 import { Notification_Template_Config } from './entity/notification_template_config.entity';
 import { NotificationTemplateConfigService } from './notification_template_config.service';
+import { ApiTags } from '@nestjs/swagger';
 
 @Controller('notification-template-config')
+@ApiTags('Event-template-config')
 export class NotificationTemplateConfigController {
 
   constructor(private notificationTemplateConfigService: NotificationTemplateConfigService) { }
