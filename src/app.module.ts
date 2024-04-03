@@ -9,13 +9,14 @@ import { NotificationModule } from './modules/notification/notification.module';
 import { DatabaseModule } from './common/database-modules';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { LoggerModule } from './logger/logger.module';
+import { NotificationQueue } from './modules/notification-queue/entities/notificationQueue.entity';
 
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     DatabaseModule,
-    NotificationEventsModule, NotificationTemplateConfigModule, NotificationModule, LoggerModule],
+    NotificationEventsModule, NotificationTemplateConfigModule, NotificationModule, LoggerModule, NotificationQueue],
 
   controllers: [AppController],
   providers: [AppService, ConfigService],
