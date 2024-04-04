@@ -4,8 +4,7 @@ import { Response } from 'express';
 import { NotificationQueueService } from './notificationQueue.service';
 import { NotificationQueueDTO } from './dto/notificationQueue.dto';
 
-
-@Controller('notification-queue')
+@Controller('queue')
 @ApiTags('notification-queue')
 export class NotificationQueueController {
 

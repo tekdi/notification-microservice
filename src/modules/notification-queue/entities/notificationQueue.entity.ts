@@ -11,8 +11,8 @@ export class NotificationQueue {
     @Column({ type: 'varchar', nullable: true })
     context: string;
 
-    @Column({ type: 'uuid', nullable: true })
-    context_id: string;
+    @Column({ nullable: true })
+    context_id: number;
 
     @Column({ type: 'varchar', nullable: true })
     subject: string;
@@ -26,7 +26,7 @@ export class NotificationQueue {
     @CreateDateColumn({ type: 'timestamp' })
     createdOn: string;
 
-    @Column({ type: 'timestamp', nullable: true })
+    @CreateDateColumn({ type: 'timestamp', nullable: true })
     expiry: Date;
 
     @Column({ type: 'int', nullable: true })
