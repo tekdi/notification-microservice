@@ -1,4 +1,4 @@
-import { IsBoolean, IsInt, IsOptional, IsString, IsDateString, IsNotEmpty } from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, IsString, IsDateString, IsNotEmpty, IsEnum } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -7,6 +7,10 @@ export class NotificationQueueDTO {
     id: string;
 
     @ApiProperty({ example: 'Email', description: 'Channel through which the notification is sent.' })
+    @IsEnum(['Email', 'sms', 'push', 'web', 'whatsapp'], {
+        message: 'Channel Type must be one of: Email, sms, push, web, whatsapp'
+    }
+    )
     @IsString()
     channel: string;
 
@@ -30,19 +34,8 @@ export class NotificationQueueDTO {
     @IsString()
     recipient?: string;
 
-    // @ApiProperty({ example: '2024-04-10T12:00:00Z', description: 'Timestamp when the notification expires.' })
-    // @IsDateString()
-    // expiry?: Date;
+    @ApiProperty({ example: '2024-04-10T12:00:00Z', description: 'Timestamp when the notification expires.' })
+    @IsDateString()
+    expiry?: Date;
 
-    @ApiProperty({ example: 3, description: 'Number of retries attempted.' })
-    @IsInt()
-    retries?: number;
-
-    // @ApiProperty({ example: '2024-04-02T10:00:00Z', description: 'Timestamp of the last attempted notification.' })
-    // @IsString()
-    // last_attempted: Date;
-
-    @ApiProperty({ example: true, description: 'Status of the notification.' })
-    @IsBoolean()
-    status?: boolean;
 }
