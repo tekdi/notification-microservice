@@ -1,5 +1,5 @@
 // NotificationTemplateConfig.entity.ts
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { NotificationTemplates } from './notificationTemplate.entity';
 
 @Entity('NotificationTemplateConfig')
@@ -16,10 +16,10 @@ export class NotificationTemplateConfig {
     @Column()
     body: string;
 
-    @Column({ default: () => 'now()' })
+    @CreateDateColumn({ type: 'timestamp' })
     createdOn: Date;
 
-    @Column({ default: () => 'now()' })
+    @UpdateDateColumn({ type: 'timestamp' })
     updatedOn: Date;
 
     @Column()
