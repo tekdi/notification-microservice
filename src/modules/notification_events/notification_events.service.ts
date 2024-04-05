@@ -1,12 +1,12 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
+import { BadRequestException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { NotificationTemplates } from './entity/notificationTemplate.entity';
-import { UpdateResult, DeleteResult } from 'typeorm';
 import { SearchFilterDto } from './dto/searchTemplateType.dto';
 import APIResponse from 'src/common/utils/response';
 import { Response } from 'express';
-
+import { CreateEventDto } from './dto/createTemplate.dto';
+import { NotificationTemplateConfig } from './entity/notificationTemplateConfig.entity';
 
 @Injectable()
 export class NotificationEventsService {
@@ -14,7 +14,67 @@ export class NotificationEventsService {
     constructor(
         @InjectRepository(NotificationTemplates)
         private notificationTemplatesRepository: Repository<NotificationTemplates>,
+        @InjectRepository(NotificationTemplateConfig)
+        private notificationTemplateConfigRepository: Repository<NotificationTemplateConfig>
     ) { }
+
+    async createTemplate(userId: string, data: CreateEventDto, response: Response): Promise<Response> {
+        const apiId = "api.create.notificationTemplate";
+        try {
+            const existingTemplate =
+                await this.notificationTemplatesRepository.findOne({
+                    where: { context: data.context },
+                });
+            if (existingTemplate) {
+                throw new BadRequestException('Already existing template');
+            }
+            const notificationTemplate = new NotificationTemplates();
+            notificationTemplate.title = data.title;
+            notificationTemplate.key = data.key;
+            notificationTemplate.status = data.status;
+            notificationTemplate.context = data.context;
+            notificationTemplate.replacementTags = data.replacementTags;
+            notificationTemplate.createdBy = userId;
+            const notificationTemplateResult = await this.notificationTemplatesRepository.save(notificationTemplate);
+            // create config details
+            const createConfig = async (type: string, configData: any) => {
+                const templateConfig = new NotificationTemplateConfig();
+                Object.assign(templateConfig, {
+                    subject: configData.subject,
+                    body: configData.body,
+                    status: data.status,
+                    type: type,
+                    language: 'en',
+                    template_id: notificationTemplateResult.id,
+                    createdBy: userId,
+                });
+                return await this.notificationTemplateConfigRepository.save(templateConfig);
+            };
+
+            if (data.email && Object.keys(data.email).length > 0) {
+                await createConfig('email', data.email);
+            }
+
+            if (data.push && Object.keys(data.push).length > 0) {
+                await createConfig('push', data.push);
+            }
+            return response
+                .status(HttpStatus.CREATED)
+                .send(APIResponse.success(apiId, { id: notificationTemplateResult.id }, "Created"));
+        } catch (e) {
+            console.log(e);
+            return response
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .send(
+                    APIResponse.error(
+                        apiId,
+                        "Something went wrong in template creation",
+                        JSON.stringify(e),
+                        "INTERNAL_SERVER_ERROR"
+                    )
+                );
+        }
+    }
 
     // async findAll(): Promise<NotificationTemplates[]> {
     //     return await this.notificationEventsRepository.find();

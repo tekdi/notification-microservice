@@ -1,5 +1,5 @@
 // NotificationTemplates.entity.ts
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { NotificationTemplateConfig } from './notificationTemplateConfig.entity';
 
 @Entity('NotificationTemplates')
@@ -10,10 +10,10 @@ export class NotificationTemplates {
     @Column()
     title: string;
 
-    @Column({ default: () => 'now()' })
+    @CreateDateColumn({ type: 'timestamp' })
     createdOn: Date;
 
-    @Column({ default: () => 'now()' })
+    @UpdateDateColumn({ type: 'timestamp' })
     updatedOn: Date;
 
     @Column()
@@ -22,17 +22,17 @@ export class NotificationTemplates {
     @Column()
     status: string;
 
-    @Column()
+    @Column({ type: 'uuid', nullable: true })
     createdBy: string;
 
-    @Column()
+    @Column({ type: 'uuid', nullable: true })
     updatedBy: string;
 
     @Column()
     context: string;
 
-    @Column('jsonb')
-    replacement: Record<string, any>;
+    @Column({ type: 'jsonb', nullable: true })
+    replacementTags: any
 
     @OneToMany(() => NotificationTemplateConfig, templateconfig => templateconfig.template)
     templateconfig: NotificationTemplateConfig[];
