@@ -25,10 +25,10 @@ export class NotificationTemplateConfig {
     @Column()
     status: string;
 
-    @Column()
+    @Column({ type: 'uuid' })
     createdBy: string;
 
-    @Column()
+    @Column({ type: 'uuid', nullable: true })
     updatedBy: string;
 
     @Column()

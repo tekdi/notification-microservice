@@ -22,7 +22,7 @@ export class NotificationTemplates {
     @Column()
     status: string;
 
-    @Column({ type: 'uuid', nullable: true })
+    @Column({ type: 'uuid' })
     createdBy: string;
 
     @Column({ type: 'uuid', nullable: true })
