@@ -7,7 +7,7 @@ export class EmailDTO {
     @ApiProperty({ type: [String], example: ['email1@example.com'] })
     @IsEmail()
     @IsArray()
-    recipients: string[];
+    receipients: string[];
 }
 
 export class SMSDTO {
@@ -15,7 +15,7 @@ export class SMSDTO {
     @ApiProperty({ type: [String], example: ['1234567890'] })
     @IsArray()
     @IsString({ each: true })
-    recipients: string[];
+    receipients: string[];
 }
 
 export class PushDTO {
@@ -44,15 +44,10 @@ export class NotificationDto {
     @IsString()
     context: string;
 
-    @ApiProperty({
-        example: { attendee: 'John Doe', event: 'How to use UI tools' },
-        description: 'Replacements for placeholders in the notification context',
-    })
-    @IsObject()
-    replacements: {
-        attendee: string;
-        event: string;
-    };
+    @ApiProperty({ example: ['John Doe', 'How to use UI tools'] })
+    @IsArray()
+    @IsString({ each: true })
+    replacements: string[];
 
     @ApiProperty({ type: EmailDTO, description: 'Email notification details' })
     @ValidateNested()
