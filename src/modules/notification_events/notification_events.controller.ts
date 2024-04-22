@@ -1,15 +1,27 @@
-import { BadRequestException, Controller, Res, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Controller, Param, Patch, Res, UsePipes, ValidationPipe } from '@nestjs/common';
 import { NotificationEventsService } from './notification_events.service';
-import { NotificationTemplates } from './entity/notificationTemplate.entity';
-import { Get, Post, Put, Delete, Body, Param } from '@nestjs/common';
-import { ApiBadRequestResponse, ApiBody, ApiInternalServerErrorResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import { Post, Body } from '@nestjs/common';
+import { ApiBadRequestResponse, ApiBody, ApiCreatedResponse, ApiInternalServerErrorResponse, ApiOkResponse, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { SearchFilterDto } from './dto/searchTemplateType.dto';
 import { Response } from 'express';
+import { CreateEventDto } from './dto/createTemplate.dto';
+import { UpdateEventDto } from './dto/updateEventTemplate.dto';
 
 @Controller('notification-events')
 @ApiTags('Event-type')
 export class NotificationEventsController {
   constructor(private notificationeventsService: NotificationEventsService) { }
+
+  @Post()
+  @ApiCreatedResponse({ description: "created" })
+  @ApiInternalServerErrorResponse({ description: "internal server error" })
+  @ApiBadRequestResponse({ description: "Invalid request" })
+  @UsePipes(new ValidationPipe({ transform: true }))
+  @ApiBody({ type: CreateEventDto })
+  async create(@Body() createEventDto: CreateEventDto, @Res() response: Response) {
+    const userId = '016badad-22b0-4566-88e9-aab1b35b1dfc';
+    return this.notificationeventsService.createTemplate(userId, createEventDto, response)
+  }
 
   @Post('/list')
   @ApiBody({ type: SearchFilterDto })
@@ -19,6 +31,25 @@ export class NotificationEventsController {
   @ApiOkResponse({ description: 'Get Template List' })
   async getTemplates(@Body() searchFilterDto: SearchFilterDto, @Res() response: Response) {
     return this.notificationeventsService.getTemplatesTypesForEvent(searchFilterDto, response)
+  }
+
+  @Patch("/:id")
+  @ApiBody({ type: UpdateEventDto })
+  @ApiResponse({ status: 200, description: "Event updated successfully" })
+  @ApiResponse({ status: 400, description: "Bad request" })
+  @UsePipes(new ValidationPipe({ transform: true }))
+  updateEvent(
+    @Param("id") id: number,
+    @Body() updateEventDto: UpdateEventDto,
+    @Res() response: Response
+  ) {
+    const userId = '016badad-22b0-4566-88e9-aab1b35b1dfc';
+    return this.notificationeventsService.updateNotificationTemplate(
+      id,
+      updateEventDto,
+      userId,
+      response
+    );
   }
 
 
