@@ -1,12 +1,12 @@
-import { IsString, IsEmail, IsArray, ValidateNested, IsObject } from 'class-validator';
+import { IsString, IsEmail, IsArray, ValidateNested, IsObject, IsNotEmpty } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class EmailDTO {
 
-    @ApiProperty({ type: [String], example: ['email1@example.com'] })
-    @IsEmail()
+    @ApiProperty({ example: ['email1@example.com'] })
     @IsArray()
+    @IsNotEmpty()
     receipients: string[];
 }
 
@@ -15,36 +15,49 @@ export class SMSDTO {
     @ApiProperty({ type: [String], example: ['1234567890'] })
     @IsArray()
     @IsString({ each: true })
+    @IsNotEmpty()
     receipients: string[];
 }
 
 export class PushDTO {
 
-    @ApiProperty({ example: 'AAAAfzfFOMg:APA91bExdish2-dqVvVfcZetfpCqjVpOYv7-26J-dW9m1dKvMOIXlNhsx9_Guuxni_D9ppFiNVnxYd9hYBvyY94jLOlPwhlmyAlU9A-mUi3N3Sp35wjY6uRMJB8VNRJ7x-kxCzsZKrr2' })
+    @ApiProperty({ example: 'd2ihU3WpBFeoeXWhXe03F5:APA91bFNTnRzqffOGjKWHMypfjHxH-H1tSO7-7V-eajz0YsomuA-mMDni4l9GAgR-ybrMh-g1fy6hVOknr0ThOBb7ttb_qnciS5hdsTQ8oPHjZLsa66kOLdzM9hiZJf1Iav9b0EvXTt4' })
+    @IsNotEmpty()
     @IsString()
-    sender_id: string;
-
-    @ApiProperty({ example: 'eU6DfepmHcRyqBv4Bp2Izn:APA91bEzZrBsLta2LX9F732VH5vCs2TYnJBPnx755y1H5aiiS4bx1UxjuXxldF0YpbnRIF0rBW6SaygNaHyJ68-dZ8IO1hwqVmSiZKwng3OGmHblRSAuQP0vIXWdkrwf0b7Qz105EA3m' })
-    @IsString()
-    token: string;
+    to: string;
 
     @ApiProperty({ example: 'Hi...', description: 'Push notification title' })
+    @IsNotEmpty()
     @IsString()
     title: string;
 
     @ApiProperty({ example: 'First Demo Push....', description: 'Push notification body' })
+    @IsNotEmpty()
     @IsString()
     body: string;
+
+    @ApiProperty({ example: 'https://picsum.photos/200', description: 'image' })
+    @IsNotEmpty()
+    @IsString()
+    image: string;
+
+    @ApiProperty({ example: 'https://google.com/', description: 'navigation link' })
+    @IsNotEmpty()
+    @IsString()
+    navigate_to: string;
+
 }
 
 
 export class NotificationDto {
 
     @ApiProperty({ example: 'EVENT', description: 'Context of the notification' })
+    @IsNotEmpty()
     @IsString()
     context: string;
 
     @ApiProperty({ example: ['John Doe', 'How to use UI tools'] })
+    @IsNotEmpty()
     @IsArray()
     @IsString({ each: true })
     replacements: string[];

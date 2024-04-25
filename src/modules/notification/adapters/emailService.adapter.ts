@@ -58,6 +58,7 @@ export class EmailAdapter implements NotificationService {
                         html: bodyText,
                     },
                 });
+                return 'Email notification sent successfully';
             } catch (error) {
                 throw new BadRequestException('Failed to send email');
             }
