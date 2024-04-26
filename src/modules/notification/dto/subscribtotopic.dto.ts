@@ -3,8 +3,8 @@ import { ArrayMinSize, IsArray, IsNotEmpty, IsString } from 'class-validator';
 
 export class SubscribeToDeviceTopicDto {
     @ApiProperty({
-        example: ['ftDBnZrEThexwyEIEHmOt5:APA91bFbQvEfIQrEJUT8pNKizLAvj2OLBqXz2W9hNuS8SRm222otM7k1RYHCYG-UQN8MIIYKKco4X62hTmzL2ZDeerEabLNdsVARMGuGTYyfuD5MQyV6iR0Hucq5FIViVxyFurKAbjBL',
-            'cjKYKKZ2Q-KSSXCIFNPlC3:APA91bGc6Gb6YU9btjWtpgeLmPzoPoYDbY70m803enHmA_sRouSUEvjJGvdiQWk3KYOv_m1UVnl414MKqKi6PSJxTFH0jFFcRw3897JFJV76jxMftv-GqM1Q7gUtUoR9yGsdS8vEOeCf']
+        example: ['ftDBnZrETM7k1RYHCYG-UQN8MIIYKKco4X62hAbjBL',
+            'fbudfjdjv48478cnxvcnvbjvffv-ddvv4']
     })
     @IsArray()
     @ArrayMinSize(1)
