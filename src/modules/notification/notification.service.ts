@@ -3,8 +3,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Notification } from './entity/notification.entity';
 import NotifmeSdk from 'notifme-sdk';
-import { NotificationEventsService } from '../notification_events/notification_events.service';
-import { NotificationTemplateConfigService } from '../notification_template_config/notification_template_config.service';
 import { NotificationPush } from './entity/notificationPush.entity';
 import { createLogger, transports, format } from 'winston';
 import { NotificationWhatsapp } from './entity/notificationWhatsapp.entity';
@@ -13,14 +11,24 @@ import axios from 'axios';
 import { NotificationDto } from './dto/notificationDto.dto';
 import { NotificationAdapterFactory } from './notificationadapters';
 import APIResponse from 'src/common/utils/response';
+import * as FCM from 'fcm-node';
+import { SubscribeToDeviceTopicDto } from './dto/subscribtotopic.dto';
+import { ConfigService } from '@nestjs/config';
+
 @Injectable()
 export class NotificationService {
   @InjectRepository(Notification)
-  private notificationRepository: Repository<Notification>;
+  private notificationRepository: Repository<Notification>
+  private readonly fcm: FCM;
+  private readonly fcmkey;
 
   constructor(
-    private readonly adapterFactory: NotificationAdapterFactory
-  ) { }
+    private readonly adapterFactory: NotificationAdapterFactory,
+    private readonly configService: ConfigService
+  ) {
+    this.fcmkey = this.configService.get('FCM_KEY');
+    this.fcm = new FCM(this.fcmkey);
+  }
 
 
   async sendNotification(notificationDto: NotificationDto): Promise<APIResponse> {
@@ -73,6 +81,37 @@ export class NotificationService {
           'INTERNAL_SERVER_ERROR'
         ),
       ];
+    }
+  }
+
+  async subscribeToDeviceTopicFromDB(requestBody: SubscribeToDeviceTopicDto) {
+    try {
+      const { deviceId, topicName } = requestBody;
+      await this.fcm.subscribeToTopic(deviceId, topicName, (err, response) => {
+        if (err) {
+          console.error('Error subscribing to topic:', err);
+          throw err;
+        }
+      });
+    } catch (error) {
+      throw error;
+    }
+
+  }
+
+  async unsubscribeFromTopic(requestBody: SubscribeToDeviceTopicDto) {
+    try {
+      const { deviceId, topicName } = requestBody;
+      if (deviceId.length > 0) {
+        await this.fcm.unsubscribeToTopic(deviceId, topicName, (err, response) => {
+          if (err) {
+            throw err; // Handle the error as needed
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error unsubscribing from topic:', error);
+      throw error;
     }
   }
 
