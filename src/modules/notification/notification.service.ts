@@ -14,6 +14,7 @@ import APIResponse from 'src/common/utils/response';
 import * as FCM from 'fcm-node';
 import { SubscribeToDeviceTopicDto } from './dto/subscribtotopic.dto';
 import { ConfigService } from '@nestjs/config';
+import { TopicNotification } from './dto/topicnotification .dto';
 
 @Injectable()
 export class NotificationService {
@@ -21,15 +22,16 @@ export class NotificationService {
   private notificationRepository: Repository<Notification>
   private readonly fcm: FCM;
   private readonly fcmkey;
+  private readonly fcmurl;
 
   constructor(
     private readonly adapterFactory: NotificationAdapterFactory,
     private readonly configService: ConfigService
   ) {
     this.fcmkey = this.configService.get('FCM_KEY');
+    this.fcmurl = this.configService.get('FCM_URL')
     this.fcm = new FCM(this.fcmkey);
   }
-
 
   async sendNotification(notificationDto: NotificationDto): Promise<APIResponse> {
     const apiId = 'api.send.notification'
@@ -115,6 +117,34 @@ export class NotificationService {
     }
   }
 
+  async sendTopicNotification(requestBody: TopicNotification) {
+    try {
+      const topic_name = requestBody;
+      const fcmUrl = this.fcmurl;
+      const fcmKey = this.fcmkey;
+
+      const notificationData = {
+        notification: {
+          title: requestBody.title,
+          body: requestBody.body,
+          image: requestBody.image,
+          navigate_to: requestBody.navigate_to,
+        },
+        to: `/topics/${topic_name}`,
+      };
+      const response = await axios.post(fcmUrl, notificationData, {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `key=${fcmKey}`,
+        },
+      });
+
+      return `topic notification sent successfully'${response.status}`;
+    }
+    catch (e) {
+      return 'Failed to send topic notification';
+    }
+  }
 
   async findAll(): Promise<Notification[]> {
     return await this.notificationRepository.find();
