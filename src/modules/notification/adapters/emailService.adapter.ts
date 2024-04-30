@@ -41,6 +41,12 @@ export class EmailAdapter implements NotificationService {
         if (!receipients || receipients.length === 0) {
             throw new BadRequestException('Receipients cannot be empty');
         }
+
+        // Check for empty strings in recipients
+        if (receipients.some(recipient => recipient.trim() === '')) {
+            throw new BadRequestException('Empty string found in recipients');
+        }
+
         for (const recipient of receipients) {
             if (!recipient || !this.isValidEmail(recipient)) {
                 throw new BadRequestException('Invalid Email ID or Request Format');

@@ -44,16 +44,16 @@ export class NotificationService {
         promises.push(emailAdapter.sendNotification(notificationDto));
       }
 
-      // Send push notification if push channel is specified
-      if (push && Object.keys(push).length > 0) {
-        const pushAdapter = this.adapterFactory.getAdapter('push');
-        promises.push(pushAdapter.sendNotification(notificationDto));
-      }
-
       // Send SMS notification if SMS channel is specified
       if (sms && sms.receipients.length > 0 && Object.keys(sms).length > 0) {
         const smsAdapter = this.adapterFactory.getAdapter('sms');
         promises.push(smsAdapter.sendNotification(notificationDto));
+      }
+
+      // Send push notification if push channel is specified
+      if (push && Object.keys(push).length > 0) {
+        const pushAdapter = this.adapterFactory.getAdapter('push');
+        promises.push(pushAdapter.sendNotification(notificationDto));
       }
 
       const results = await Promise.allSettled(promises);

@@ -1,4 +1,4 @@
-import { IsString, IsEmail, IsArray, ValidateNested, IsObject, IsNotEmpty } from 'class-validator';
+import { IsString, IsEmail, IsArray, ValidateNested, IsObject, IsNotEmpty, ArrayMinSize } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -7,6 +7,7 @@ export class EmailDTO {
     @ApiProperty({ example: ['email1@example.com'] })
     @IsArray()
     @IsNotEmpty()
+    @ArrayMinSize(1)
     receipients: string[];
 }
 
@@ -15,6 +16,7 @@ export class SMSDTO {
     @ApiProperty({ type: [String], example: ['1234567890'] })
     @IsArray()
     @IsString({ each: true })
+    @ArrayMinSize(1)
     @IsNotEmpty()
     receipients: string[];
 }
