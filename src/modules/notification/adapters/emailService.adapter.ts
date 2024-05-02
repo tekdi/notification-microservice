@@ -56,7 +56,7 @@ export class EmailAdapter implements NotificationService {
             const notifmeSdk = new NotifmeSdk(emailConfig);
 
             try {
-                await notifmeSdk.send({
+                const result = await notifmeSdk.send({
                     email: {
                         from: emailConfig.email.from,
                         to: recipient,
@@ -66,7 +66,7 @@ export class EmailAdapter implements NotificationService {
                 });
                 return 'Email notification sent successfully';
             } catch (error) {
-                throw new BadRequestException('Failed to send email');
+                throw new BadRequestException('Failed to send email notification' + error);
             }
         }
     }

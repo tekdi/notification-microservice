@@ -5,7 +5,6 @@ import { NotificationTemplates } from "src/modules/notification_events/entity/no
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { NotificationTemplateConfig } from "src/modules/notification_events/entity/notificationTemplateConfig.entity";
-import NotifmeSdk from 'notifme-sdk';
 import { ConfigService } from "@nestjs/config";
 @Injectable()
 export class SmsAdapter implements NotificationService {
@@ -68,11 +67,12 @@ export class SmsAdapter implements NotificationService {
                     to: `+91` + notificationDto.sms.receipients,
                     body: bodyText,
                 });
+
                 return "SMS notification sent sucessfully";
             }
             catch (error) {
                 console.error('Error sending message:', error.message);
-                return 'Failed to send sms notification';
+                return 'Failed to send sms notification' + error;
             }
         }
     }
