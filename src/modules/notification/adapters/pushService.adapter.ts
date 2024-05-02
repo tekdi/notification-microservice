@@ -1,15 +1,17 @@
-import { BadRequestException, Injectable } from "@nestjs/common";
-import { NotificationService } from "../interface/notificationService";
+import { BadRequestException, Inject, Injectable, forwardRef } from "@nestjs/common";
+import { NotificationServiceInterface } from "../interface/notificationService";
 import { NotificationDto } from "../dto/notificationDto.dto";
 import axios from "axios";
 import { ConfigService } from "@nestjs/config";
-
+import { NotificationLog } from "../entity/notificationLogs.entity";
+import { NotificationService } from "../notification.service";
 
 @Injectable()
-export class PushAdapter implements NotificationService {
+export class PushAdapter implements NotificationServiceInterface {
     private fcmkey: string;
     private fcmurl: string
     constructor(
+        @Inject(forwardRef(() => NotificationService)) private readonly notificationServices: NotificationService,
         private readonly configService: ConfigService
     ) {
         this.fcmkey = this.configService.get('FCM_KEY');
@@ -28,7 +30,7 @@ export class PushAdapter implements NotificationService {
             },
             to: notificationDto.push.to
         };
-
+        const notificationLogs = this.createNotificationLog(notificationDto);
         try {
             const result = await axios.post(fcmUrl, notificationData, {
                 headers: {
@@ -37,13 +39,29 @@ export class PushAdapter implements NotificationService {
                 },
             });
             if (result.data.success === 1) {
+                notificationLogs.status = true;
+                await this.notificationServices.saveNotificationLogs(notificationLogs);
                 return 'Push notification sent successfully';
             }
             if (result.data.failure === 1) {
                 throw new BadRequestException('Invalid token');
             }
         } catch (error) {
-            throw new BadRequestException('Failed to send push notification' + error)
+            notificationLogs.status = false;
+            notificationLogs.error = error.toString();
+            await this.notificationServices.saveNotificationLogs(notificationLogs);
+            throw new Error('Failed to send push notification' + error)
         }
     }
+
+    private createNotificationLog(notificationDto): NotificationLog {
+        const notificationLogs = new NotificationLog();
+        notificationLogs.context = notificationDto.context;
+        notificationLogs.subject = notificationDto.push.title;
+        notificationLogs.body = notificationDto.push.body;
+        notificationLogs.type = 'push';
+        notificationLogs.recipient = notificationDto.push.to;
+        return notificationLogs;
+    }
+
 }

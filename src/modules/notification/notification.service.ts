@@ -15,11 +15,14 @@ import * as FCM from 'fcm-node';
 import { SubscribeToDeviceTopicDto } from './dto/subscribtotopic.dto';
 import { ConfigService } from '@nestjs/config';
 import { TopicNotification } from './dto/topicnotification .dto';
+import { NotificationLog } from './entity/notificationLogs.entity';
 
 @Injectable()
 export class NotificationService {
   @InjectRepository(Notification)
   private notificationRepository: Repository<Notification>
+  @InjectRepository(NotificationLog)
+  private notificationLogRepository: Repository<NotificationLog>
   private readonly fcm: FCM;
   private readonly fcmkey;
   private readonly fcmurl;
@@ -143,6 +146,15 @@ export class NotificationService {
     }
     catch (e) {
       return 'Failed to send topic notification';
+    }
+  }
+
+  async saveNotificationLogs(notificationLogs: NotificationLog) {
+    try {
+      const result = await this.notificationLogRepository.save(notificationLogs);
+    }
+    catch (e) {
+      throw new Error('Failed to save notification logs');
     }
   }
 

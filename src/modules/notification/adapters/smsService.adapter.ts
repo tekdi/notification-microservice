@@ -1,18 +1,21 @@
-import { BadRequestException, Injectable } from "@nestjs/common";
-import { NotificationService } from "../interface/notificationService";
+import { BadRequestException, Inject, Injectable, forwardRef } from "@nestjs/common";
+import { NotificationServiceInterface } from "../interface/notificationService";
 import { NotificationDto } from "../dto/notificationDto.dto";
 import { NotificationTemplates } from "src/modules/notification_events/entity/notificationTemplate.entity";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { NotificationTemplateConfig } from "src/modules/notification_events/entity/notificationTemplateConfig.entity";
 import { ConfigService } from "@nestjs/config";
+import { NotificationLog } from "../entity/notificationLogs.entity";
+import { NotificationService } from "../notification.service";
 @Injectable()
-export class SmsAdapter implements NotificationService {
+export class SmsAdapter implements NotificationServiceInterface {
 
     private readonly accountSid;
     private readonly authToken;
 
     constructor(
+        @Inject(forwardRef(() => NotificationService)) private readonly notificationServices: NotificationService,
         private readonly configService: ConfigService,
         @InjectRepository(NotificationTemplates)
         private notificationEventsRepo: Repository<NotificationTemplates>,
@@ -39,16 +42,12 @@ export class SmsAdapter implements NotificationService {
         }
         let bodyText = notification_details[0].body;
         //used for replscement tag 
-        if (replacements != null && replacements.length > 0) {
-            for (var i = 0; i < replacements.length; i++) {
-                bodyText = bodyText.replace(
-                    '{#var' + i + '#}',
-                    replacements[i],
-                );
-            }
+        if (replacements && replacements.length > 0) {
+            replacements.forEach((replacement, index) => {
+                bodyText = bodyText.replace(`{#var${index}#}`, replacement);
+            });
         }
         if (!receipients || receipients.length === 0) {
-            console.log(receipients.length);
             throw new BadRequestException('Recipients cannot be empty');
         }
 
@@ -56,23 +55,28 @@ export class SmsAdapter implements NotificationService {
         if (receipients.some(recipient => recipient.trim() === '')) {
             throw new BadRequestException('Empty string found in recipients');
         }
-
+        const notificationLogs = this.createNotificationLog(notificationDto, notification_details, bodyText, receipients[0]);
         for (const recipient of receipients) {
-            if (!this.isValidMobileNumber(recipient)) {
-                throw new BadRequestException('Invalid Mobile Number');
-            }
             try {
+                if (!this.isValidMobileNumber(recipient)) {
+                    throw new BadRequestException('Invalid Mobile Number');
+                }
+
                 const message = await client.messages.create({
                     from: '+12563056567',
                     to: `+91` + notificationDto.sms.receipients,
                     body: bodyText,
                 });
-
+                notificationLogs.status = true;
+                await this.notificationServices.saveNotificationLogs(notificationLogs);
                 return "SMS notification sent sucessfully";
             }
             catch (error) {
-                console.error('Error sending message:', error.message);
-                return 'Failed to send sms notification' + error;
+                notificationLogs.status = false;
+                notificationLogs.error = error.toString();
+                await this.notificationServices.saveNotificationLogs(notificationLogs);
+                // return 'Failed to send sms notification' + error;
+                throw new Error('Failed to send sms notification' + error)
             }
         }
     }
@@ -80,4 +84,14 @@ export class SmsAdapter implements NotificationService {
         const regexExpForMobileNumber = /^[6-9]\d{9}$/gi;
         return regexExpForMobileNumber.test(mobileNumber);
     }
+    private createNotificationLog(notificationDto: NotificationDto, notificationDetail, bodyText: string, receipients: string): NotificationLog {
+        const notificationLogs = new NotificationLog()
+        notificationLogs.context = notificationDto.context;
+        notificationLogs.subject = notificationDetail[0].subject;
+        notificationLogs.body = bodyText;
+        notificationLogs.type = 'sms';
+        notificationLogs.recipient = receipients;
+        return notificationLogs;
+    }
+
 }
