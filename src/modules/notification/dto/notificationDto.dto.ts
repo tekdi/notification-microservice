@@ -27,27 +27,6 @@ export class PushDTO {
     @IsNotEmpty()
     @IsString()
     to: string;
-
-    @ApiProperty({ example: 'Hi...', description: 'Push notification title' })
-    @IsNotEmpty()
-    @IsString()
-    title: string;
-
-    @ApiProperty({ example: 'First Demo Push....', description: 'Push notification body' })
-    @IsNotEmpty()
-    @IsString()
-    body: string;
-
-    @ApiProperty({ example: 'https://picsum.photos/200', description: 'image' })
-    @IsNotEmpty()
-    @IsString()
-    image: string;
-
-    @ApiProperty({ example: 'https://google.com/', description: 'navigation link' })
-    @IsNotEmpty()
-    @IsString()
-    navigate_to: string;
-
 }
 
 

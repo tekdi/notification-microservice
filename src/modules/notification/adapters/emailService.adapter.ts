@@ -53,7 +53,7 @@ export class EmailAdapter implements NotificationServiceInterface {
             }
             const emailConfig = this.getEmailConfig(context);
             const notifmeSdk = new NotifmeSdk(emailConfig);
-            const notificationLogs = this.createNotificationLog(notificationDto, notification_details, bodyText, recipient);
+            const notificationLogs = this.createNotificationLog(notificationDto, notification_details, notification_event, bodyText, recipient);
             try {
                 const result = await notifmeSdk.send({
                     email: {
@@ -76,11 +76,12 @@ export class EmailAdapter implements NotificationServiceInterface {
         }
     }
 
-    private createNotificationLog(notificationDto: NotificationDto, notificationDetail, bodyText: string, recipient: string): NotificationLog {
+    private createNotificationLog(notificationDto: NotificationDto, notificationDetail, notification_event, bodyText: string, recipient: string): NotificationLog {
         const notificationLogs = new NotificationLog();
         notificationLogs.context = notificationDto.context;
         notificationLogs.subject = notificationDetail[0].subject;
         notificationLogs.body = bodyText;
+        notificationLogs.action = notification_event.key
         notificationLogs.type = 'email';
         notificationLogs.recipient = recipient;
         return notificationLogs;

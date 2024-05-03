@@ -55,13 +55,14 @@ export class SmsAdapter implements NotificationServiceInterface {
         if (receipients.some(recipient => recipient.trim() === '')) {
             throw new BadRequestException('Empty string found in recipients');
         }
-        const notificationLogs = this.createNotificationLog(notificationDto, notification_details, bodyText, receipients[0]);
-        for (const recipient of receipients) {
-            try {
-                if (!this.isValidMobileNumber(recipient)) {
-                    throw new BadRequestException('Invalid Mobile Number');
-                }
 
+        for (const recipient of receipients) {
+
+            if (!this.isValidMobileNumber(recipient)) {
+                throw new BadRequestException('Invalid Mobile Number');
+            }
+            const notificationLogs = this.createNotificationLog(notificationDto, notification_details, notification_event, bodyText, recipient);
+            try {
                 const message = await client.messages.create({
                     from: '+12563056567',
                     to: `+91` + notificationDto.sms.receipients,
@@ -84,11 +85,12 @@ export class SmsAdapter implements NotificationServiceInterface {
         const regexExpForMobileNumber = /^[6-9]\d{9}$/gi;
         return regexExpForMobileNumber.test(mobileNumber);
     }
-    private createNotificationLog(notificationDto: NotificationDto, notificationDetail, bodyText: string, receipients: string): NotificationLog {
+    private createNotificationLog(notificationDto: NotificationDto, notificationDetail, notification_event, bodyText: string, receipients: string): NotificationLog {
         const notificationLogs = new NotificationLog()
         notificationLogs.context = notificationDto.context;
         notificationLogs.subject = notificationDetail[0].subject;
         notificationLogs.body = bodyText;
+        notificationLogs.action = notification_event.key
         notificationLogs.type = 'sms';
         notificationLogs.recipient = receipients;
         return notificationLogs;
