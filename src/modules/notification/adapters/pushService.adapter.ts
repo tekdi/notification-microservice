@@ -5,6 +5,9 @@ import axios from "axios";
 import { ConfigService } from "@nestjs/config";
 import { NotificationLog } from "../entity/notificationLogs.entity";
 import { NotificationService } from "../notification.service";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { NotificationTemplates } from "src/modules/notification_events/entity/notificationTemplate.entity";
 
 @Injectable()
 export class PushAdapter implements NotificationServiceInterface {
@@ -12,12 +15,21 @@ export class PushAdapter implements NotificationServiceInterface {
     private fcmurl: string
     constructor(
         @Inject(forwardRef(() => NotificationService)) private readonly notificationServices: NotificationService,
-        private readonly configService: ConfigService
+        private readonly configService: ConfigService,
+        @InjectRepository(NotificationTemplates)
+        private notificationEventsRepo: Repository<NotificationTemplates>,
     ) {
         this.fcmkey = this.configService.get('FCM_KEY');
         this.fcmurl = this.configService.get('FCM_URL')
     }
     async sendNotification(notificationDto: NotificationDto) {
+        const { context } = notificationDto;
+        const notification_event = await this.notificationEventsRepo.findOne({ where: { context } })
+        if (!notification_event) {
+            console.log("event details", notification_event);
+            throw new BadRequestException('Template not found')
+        }
+
         const fcmUrl = this.fcmurl;
         const fcmKey = this.fcmkey;
 
