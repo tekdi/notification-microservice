@@ -8,6 +8,7 @@ import { NotificationTemplateConfig } from "src/modules/notification_events/enti
 import NotifmeSdk from 'notifme-sdk';
 import { NotificationLog } from "../entity/notificationLogs.entity";
 import { NotificationService } from "../notification.service";
+import { LoggerService } from "src/common/logger/logger.service";
 
 
 @Injectable()
@@ -18,6 +19,7 @@ export class EmailAdapter implements NotificationServiceInterface {
         private notificationEventsRepo: Repository<NotificationTemplates>,
         @InjectRepository(NotificationTemplateConfig)
         private notificationTemplateConfigRepository: Repository<NotificationTemplateConfig>,
+        private logger: LoggerService
     ) { }
     async sendNotification(notificationDto: NotificationDto) {
         const { context, email, replacements } = notificationDto;
@@ -26,12 +28,14 @@ export class EmailAdapter implements NotificationServiceInterface {
         // Fetching template id by context from template events
         const notification_event = await this.notificationEventsRepo.findOne({ where: { context } });
         if (!notification_event) {
+            this.logger.error('/Send Email Notification', 'Template not found', context)
             throw new BadRequestException('Template not found');
         }
 
         // Fetching template configuration details from template id
         const notification_details = await this.notificationTemplateConfigRepository.find({ where: { template_id: notification_event.id, type: 'email' } });
         if (notification_details.length === 0) {
+            this.logger.error('/Send Email Notification', `Template Config not found for this context : ${context}`, 'Not Found')
             throw new BadRequestException('Notification template config not defined');
         }
 
@@ -44,17 +48,17 @@ export class EmailAdapter implements NotificationServiceInterface {
         }
 
         if (!receipients || receipients.length === 0 || receipients.some(recipient => recipient.trim() === '')) {
-            throw new BadRequestException('Invalid recipients');
+            throw new BadRequestException('Invalid or empty recipient list: Please provide valid recipient information.');
         }
 
         for (const recipient of receipients) {
-            if (!recipient || !this.isValidEmail(recipient)) {
-                throw new BadRequestException('Invalid Email ID or Request Format');
-            }
-            const emailConfig = this.getEmailConfig(context);
-            const notifmeSdk = new NotifmeSdk(emailConfig);
             const notificationLogs = this.createNotificationLog(notificationDto, notification_details, notification_event, bodyText, recipient);
             try {
+                if (!recipient || !this.isValidEmail(recipient)) {
+                    throw new BadRequestException('Invalid Email ID or Request Format');
+                }
+                const emailConfig = this.getEmailConfig(context);
+                const notifmeSdk = new NotifmeSdk(emailConfig);
                 const result = await notifmeSdk.send({
                     email: {
                         from: emailConfig.email.from,
@@ -63,14 +67,24 @@ export class EmailAdapter implements NotificationServiceInterface {
                         html: bodyText,
                     },
                 });
-                notificationLogs.status = true;
-                await this.notificationServices.saveNotificationLogs(notificationLogs);
-                return 'Email notification sent successfully';
+                if (result.status === 'success') {
+                    notificationLogs.status = true;
+                    await this.notificationServices.saveNotificationLogs(notificationLogs);
+                    this.logger.log('Email notification sent successfully')
+                    return 'Email notification sent successfully';
+                }
+                else {
+                    throw new Error(`Email not send ${JSON.stringify(result.errors)}`)
+                }
             } catch (error) {
+                this.logger.error(
+                    `Failed to Send Email Notification for ${context}`,
+                    error,
+                    '/Not able to send Notification',
+                );
                 notificationLogs.status = false;
                 notificationLogs.error = error.toString();
                 await this.notificationServices.saveNotificationLogs(notificationLogs);
-
                 throw new Error('Failed to send email notification' + error);
             }
         }

@@ -12,6 +12,7 @@ import { NotificationTemplates } from '../notification_events/entity/notificatio
 import { NotificationTemplateConfig } from '../notification_events/entity/notificationTemplateConfig.entity';
 import { NotificationLog } from './entity/notificationLogs.entity';
 import { NotificationService } from './notification.service';
+import { LoggerService } from 'src/common/logger/logger.service';
 
 @Module({
   imports: [
@@ -19,7 +20,7 @@ import { NotificationService } from './notification.service';
     NotificationEventsModule,
     NotificationTemplateConfigModule,
   ],
-  providers: [NotificationAdapterFactory, PushAdapter, SmsAdapter, EmailAdapter, NotificationService],
+  providers: [NotificationAdapterFactory, PushAdapter, SmsAdapter, EmailAdapter, NotificationService, LoggerService],
   controllers: [NotificationController],
   exports: [NotificationService]
 })
