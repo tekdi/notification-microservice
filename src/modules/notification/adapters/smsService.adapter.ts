@@ -67,10 +67,11 @@ export class SmsAdapter implements NotificationServiceInterface {
                     throw new BadRequestException('Invalid Mobile Number');
                 }
                 const message = await client.messages.create({
-                    from: '+1256305656',
+                    from: '+12563056567',
                     to: `+91` + notificationDto.sms.receipients,
                     body: bodyText,
                 });
+                this.logger.log('SMS notification sent successfully')
                 notificationLogs.status = true;
                 await this.notificationServices.saveNotificationLogs(notificationLogs);
                 return "SMS notification sent sucessfully";

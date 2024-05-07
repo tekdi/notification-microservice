@@ -71,6 +71,7 @@ export class PushAdapter implements NotificationServiceInterface {
                 },
             });
             if (result.data.success === 1) {
+                this.logger.log('Push notification sent successfully')
                 notificationLogs.status = true;
                 await this.notificationServices.saveNotificationLogs(notificationLogs);
                 return 'Push notification sent successfully';
