@@ -1,4 +1,4 @@
-import { Controller, Param, Patch, Res, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Controller, Delete, Param, ParseUUIDPipe, Patch, Res, UsePipes, ValidationPipe } from '@nestjs/common';
 import { NotificationEventsService } from './notification_events.service';
 import { Post, Body } from '@nestjs/common';
 import { ApiBadRequestResponse, ApiBody, ApiCreatedResponse, ApiInternalServerErrorResponse, ApiOkResponse, ApiResponse, ApiTags } from '@nestjs/swagger';
@@ -52,37 +52,11 @@ export class NotificationEventsController {
     );
   }
 
-
-  // @Get()
-  // index(): Promise<NotificationTemplates[]> {
-  //   return this.notificationeventsService.findAll();
-  // }
-
-  // @Post('create')
-  // async create(@Body() NotificatioEventData: NotificationTemplates): Promise<any> {
-  //   return this.notificationeventsService.create(NotificatioEventData);
-  // }
-
-  // @Put(':id/update')
-  // async update(@Param('id') id, @Body() NotificatioEventData: NotificationTemplates): Promise<any> {
-  //   NotificatioEventData.id = Number(id);
-  //   console.log('Update #' + NotificatioEventData.id)
-  //   return this.notificationeventsService.update(NotificatioEventData);
-  // }
-
-  // @Delete(':id/delete')
-  // async delete(@Param('id') id): Promise<any> {
-  //   return this.notificationeventsService.delete(id);
-  // }
-
-  // @Get(':action')
-  // public getNotificationEventByAction(@Param('action') action: string): Promise<NotificationTemplates> {
-  //   return this.notificationeventsService.getNotificationEventByAction(action);
-  // }
-
-  //   async findOneByAction(action: string): Promise<Notification_Events> {
-  //     return await this.notificationeventsService.findOne<Notification_Events>({ where: { action } });
-  // }
-
+  @Delete('/:id')
+  @ApiResponse({ status: 200, description: 'Template deleted successfully' })
+  @ApiResponse({ status: 404, description: 'Template not found' })
+  deleteTemplate(@Param('id') id: number, @Res() response: Response) {
+    return this.notificationeventsService.deleteTemplate(id, response)
+  }
 
 }

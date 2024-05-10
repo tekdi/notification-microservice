@@ -29,7 +29,7 @@ export class NotificationEventsService {
                 });
             if (existingTemplate) {
                 this.logger.log(
-                    `${apiId}`,
+                    apiId,
                     '/create Template for Notification',
                     'Alredy Template Exist',
                 );
@@ -175,45 +175,13 @@ export class NotificationEventsService {
                 .send(
                     APIResponse.error(
                         apiId,
-                        "Something went wrong in event updation",
+                        "Something went wrong in Template updation",
                         JSON.stringify(e),
                         "INTERNAL_SERVER_ERROR"
                     )
                 );
         }
     }
-
-    // async findAll(): Promise<NotificationTemplates[]> {
-    //     return await this.notificationEventsRepository.find();
-    // }
-
-    // async create(notification_event: NotificationTemplates): Promise<NotificationTemplates> {
-    //     return await this.notificationEventsRepository.save(notification_event);
-    // }
-
-    // async update(notification_event: NotificationTemplates): Promise<UpdateResult> {
-    //     return await this.notificationEventsRepository.update(notification_event.id, notification_event);
-    // }
-
-    // async delete(id): Promise<DeleteResult> {
-    //     return await this.notificationEventsRepository.delete(id);
-    // }
-
-    // // async findOne(action): Promise<Notification_Events[]> {
-    // //     return await this.notificationEventsRepository.find(action);
-    // // }
-
-    // //check nototification aleardy present or not for this action
-    // async getNotificationEventByAction(action): Promise<NotificationTemplates> {
-    //     const Notification_Events = await this.notificationEventsRepository.findOne(
-    //         {
-    //             where:
-    //                 { action: action }
-    //         }
-    //     );
-    //     return Notification_Events;
-    //     // return await this.notificationEventsRepository.findOne({Notification_Events.action:action});
-    // }
 
     async getTemplatesTypesForEvent(searchFilterDto: SearchFilterDto, response: Response) {
         const apiId = 'api.get.TemplateTypeOfEvent';
@@ -230,7 +198,7 @@ export class NotificationEventsService {
                     .send(
                         APIResponse.error(
                             apiId,
-                            `No temnplates found`,
+                            `No templates found`,
                             'No records found.',
                             'NOT_FOUND',
                         ),
@@ -259,11 +227,57 @@ export class NotificationEventsService {
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .send(APIResponse.error(
                     apiId,
-                    'Something went wrong in event creation',
+                    'Something went wrong in get Template',
                     JSON.stringify(e),
                     'INTERNAL_SERVER_ERROR',
                 ))
         }
+    }
+
+    async deleteTemplate(id: number, response: Response) {
+        const apiId = 'api.delete.template'
+        try {
+            const templateId = await this.notificationTemplatesRepository.find({ where: { id } });
+            if (!templateId) {
+                return response.status(HttpStatus.NOT_FOUND).send(
+                    APIResponse.error(
+                        apiId,
+                        `No event id found: ${id}`,
+                        'records not found.',
+                        'NOT_FOUND',
+                    ),
+                );
+            }
+            const deleteTemplate = await this.notificationTemplatesRepository.delete({ id });
+            if (deleteTemplate.affected !== 1) {
+                throw new BadRequestException('Template not deleted');
+            }
+            return response
+                .status(HttpStatus.OK)
+                .send(
+                    APIResponse.success(
+                        apiId,
+                        { status: `Template with ID ${id} deleted successfully.` },
+                        'OK',
+                    ),
+                );
+        }
+        catch (e) {
+            this.logger.error(
+                `/Delete Template`,
+                e,
+                '/Failed',
+            );
+            return response
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .send(APIResponse.error(
+                    apiId,
+                    'Something went wrong to delete Template by id',
+                    `Failure Retrieving event. Error is: ${e}`,
+                    'INTERNAL_SERVER_ERROR',
+                ))
+        }
+
     }
 
 }
