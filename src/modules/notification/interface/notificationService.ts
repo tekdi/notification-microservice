@@ -1,5 +1,5 @@
 import { NotificationDto } from "../dto/notificationDto.dto";
 
-export interface NotificationService {
+export interface NotificationServiceInterface {
     sendNotification(notificationDto: NotificationDto);
 }

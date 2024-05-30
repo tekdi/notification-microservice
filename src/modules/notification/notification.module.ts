@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { NotificationService } from './notification.service';
 import { NotificationController } from './notification.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Notification } from './entity/notification.entity';
@@ -11,15 +10,16 @@ import { SmsAdapter } from './adapters/smsService.adapter';
 import { PushAdapter } from './adapters/pushService.adapter';
 import { NotificationTemplates } from '../notification_events/entity/notificationTemplate.entity';
 import { NotificationTemplateConfig } from '../notification_events/entity/notificationTemplateConfig.entity';
-
+import { NotificationLog } from './entity/notificationLogs.entity';
+import { NotificationService } from './notification.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Notification, NotificationTemplates, NotificationTemplateConfig]), // import entity here
+    TypeOrmModule.forFeature([Notification, NotificationTemplates, NotificationTemplateConfig, NotificationLog]), // import entity here
     NotificationEventsModule,
-    NotificationTemplateConfigModule
+    NotificationTemplateConfigModule,
   ],
-  providers: [NotificationService, NotificationAdapterFactory, PushAdapter, SmsAdapter, EmailAdapter],
+  providers: [NotificationAdapterFactory, PushAdapter, SmsAdapter, EmailAdapter, NotificationService],
   controllers: [NotificationController],
   exports: [NotificationService]
 })

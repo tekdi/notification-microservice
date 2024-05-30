@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { NotificationService } from './interface/notificationService';
+import { NotificationServiceInterface } from './interface/notificationService';
 import { EmailAdapter } from './adapters/emailService.adapter';
 import { PushAdapter } from './adapters/pushService.adapter';
 import { SmsAdapter } from './adapters/smsService.adapter';
@@ -12,7 +12,7 @@ export class NotificationAdapterFactory {
         private readonly smsAdapter: SmsAdapter,
     ) { }
 
-    getAdapter(notificationType: string): NotificationService {
+    getAdapter(notificationType: string): NotificationServiceInterface {
         switch (notificationType) {
             case 'email':
                 return this.emailAdapter;
