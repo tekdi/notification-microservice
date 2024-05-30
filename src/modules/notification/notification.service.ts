@@ -3,317 +3,79 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Notification } from './entity/notification.entity';
 import NotifmeSdk from 'notifme-sdk';
-import { isInt16Array } from 'util/types';
 import { NotificationEventsService } from '../notification_events/notification_events.service';
 import { NotificationTemplateConfigService } from '../notification_template_config/notification_template_config.service';
-import { Notification_Template_Config } from '../notification_template_config/entity/notification_template_config.entity';
-import { NotificationEvents } from '../notification_events/entity/notification_events.entity';
 import { NotificationPush } from './entity/notificationPush.entity';
-import { Body, Controller, Post, Get } from '@nestjs/common';
 import { createLogger, transports, format } from 'winston';
-import { combineLatest } from 'rxjs';
 import { NotificationWhatsapp } from './entity/notificationWhatsapp.entity';
 import { NotificationTelegram } from './entity/notificationTelegram.entity';
 import axios from 'axios';
-
+import { NotificationDto } from './dto/notificationDto.dto';
+import { NotificationAdapterFactory } from './notificationadapters';
+import APIResponse from 'src/common/utils/response';
 @Injectable()
 export class NotificationService {
   @InjectRepository(Notification)
   private notificationRepository: Repository<Notification>;
 
   constructor(
-    private notificationeventsService: NotificationEventsService,
-    private notificatiotempConfigService: NotificationTemplateConfigService,
+    private readonly adapterFactory: NotificationAdapterFactory
   ) { }
 
-  async send(notification: Notification): Promise<string> {
+
+  async sendNotification(notificationDto: NotificationDto): Promise<APIResponse> {
+    const apiId = 'api.send.notification'
     try {
-      // this.logger.info('Notification api called...')
-      // this.logger.info('Checking if Notification is not null...');
-      if (notification != null) {
-        const channel = notification.channel;
-        const language = notification.language;
-        const action = notification.action;
-        const receipients = notification.receipients;
-        const replacements = notification.replacements;
-        notification.createdOn = new Date();
-        // this.logger.info(
-        //   'fetching template id by action(request body) from template events tbl',
-        // );
-        console.log('notification', notification);
-        const notification_event =
-          this.notificationeventsService.getNotificationEventByAction(action);
-        if (notification_event != null) {
-          var notification_event_id = (await notification_event).id;
-          this.logger.info(notification_event_id);
-          // this.logger.info(
-          //   'fetched template id by action(request body) from template events tbl',
-          // );
-          // this.logger.info(
-          //   'fetching template configuration details from template id...',
-          // );
-          var notification_details =
-            this.notificatiotempConfigService.getNotificationConfigByIDandLanguage(
-              notification_event_id,
-              language,
-            );
-          console.log('notification_details', notification_details);
-          // this.logger.info(notification_details);
-          if (notification_details != null) {
-            // this.logger.info((await notification_details).id);
-            // this.logger.info(
-            //   'fetched template configuration details from template id...',
-            // );
-            // this.logger.info('replacing string with replacement parameter in body');
-            var bodyText = (await notification_details).body;
-            this.logger.info(bodyText);
-
-            if (replacements != null && replacements.length > 0) {
-              for (var i = 0; i < replacements.length; i++) {
-                bodyText = bodyText.replace(
-                  '{#var' + i + '#}',
-                  replacements[i],
-                );
-              }
-            }
-
-            console.log('Msg Text:', bodyText);
-            // this.logger.info(bodyTextWithReplacement);
-            // this.logger.info('replaced string with replacement parameter in body');
-            // this.logger.info(receipients.length);
-            if (receipients != null && receipients.length > 0) {
-              for (var i = 0; i < receipients.length; i++) {
-                this.logger.info('Entered in loop for multiple receipients...');
-                let singleRecipient = receipients[i];
-                this.logger.info('reciepient' + i + ':' + receipients[i]);
-                if (singleRecipient != null) {
-                  switch (channel) {
-                    case 'SMS':
-                      const regexExpForMobileNumber = /^[6-9]\d{9}$/gi;
-                      this.logger.info('Checking if mobile number is valid..');
-                      if (regexExpForMobileNumber.test(singleRecipient)) {
-                        this.logger.info('Mobile number is valid...');
-                        this.logger.info('Calling Notifme SDK to send SMS...');
-                        const notifmeSdk = new NotifmeSdk({
-                          useNotificationCatcher: false,
-                          channels: {
-                            sms: {
-                              providers: [
-                                {
-                                  type: 'custom',
-                                  secure: true,
-                                  id: process.env.SMS_PROVIDER_ID,
-                                  send: async (request) => {
-                                    const https = require('https');
-                                    https
-                                      .get(
-                                        process.env.SMS_URL +
-                                        '&to=' +
-                                        singleRecipient +
-                                        '&msg=' +
-                                        bodyText,
-                                        (resp) => {
-                                          if (resp.statusCode == '200') {
-                                            notification.sentStatus = 'Success';
-                                            this.logger.info(
-                                              'SMS sent successfully to ' +
-                                              singleRecipient,
-                                            );
-                                            return 'OK';
-                                          } else {
-                                            var errorMsgSMS = '';
-                                            console.log(resp);
-                                            if (resp.statusMessage != undefined)
-                                              errorMsgSMS = resp.statusMessage;
-                                            notification.sentStatus = 'Failure';
-                                            this.logger.error(
-                                              'Error while sending SMS to ' +
-                                              singleRecipient +
-                                              ' Due to Reason // Status Code:' +
-                                              resp.statusCode +
-                                              ' and Details:' +
-                                              errorMsgSMS,
-                                            );
-                                            return (
-                                              'Error while sending SMS to ' +
-                                              singleRecipient +
-                                              ' Due to Reason // Status Code:' +
-                                              resp.statusCode +
-                                              ' and Details:' +
-                                              errorMsgSMS
-                                            );
-                                          }
-                                        },
-                                      )
-                                      .on('error', (err) => {
-                                        notification.sentStatus = 'Failure';
-                                        this.logger.error(
-                                          'Error while sending SMS to ' +
-                                          singleRecipient,
-                                        );
-                                      });
-                                  },
-                                },
-                              ],
-                            },
-                          },
-                        });
-                        notifmeSdk
-                          .send({
-                            sms: {},
-                          })
-                          .then(
-                            this.logger.info(
-                              'SMS Sent Successfully to ' + singleRecipient,
-                            ),
-                          );
-                      } else {
-                        this.logger.error('Invalid Mobile Number...');
-                        return 'Invalid Number';
-                      }
-                      break;
-                    case 'EMAIL':
-                      const emailRegexp =
-                        /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
-                      this.logger.info('Checking if email Id is valid..');
-                      if (emailRegexp.test(singleRecipient)) {
-                        this.logger.info('Email Id is valid..');
-                        this.logger.info(
-                          'Calling Notifme SDK to send Email...',
-                        );
-                        var notifmeSdk;
-                        if (action.startsWith('ITI')) {
-                          notifmeSdk = await this.sendEmail(
-                            notifmeSdk,
-                            singleRecipient,
-                            notification_details,
-                            bodyText,
-                            notification,
-                            process.env.ITI_EMAIL_TYPE,
-                            process.env.ITI_EMAIL_HOST,
-                            process.env.ITI_EMAIL_PORT,
-                            process.env.ITI_EMAIL_USER,
-                            process.env.ITI_EMAIL_PASS,
-                            process.env.ITI_EMAIL_FROM,
-                          );
-                        } else {
-                          notifmeSdk = await this.sendEmail(
-                            notifmeSdk,
-                            singleRecipient,
-                            notification_details,
-                            bodyText,
-                            notification,
-                            process.env.EMAIL_TYPE,
-                            process.env.EMAIL_HOST,
-                            process.env.EMAIL_PORT,
-                            process.env.EMAIL_USER,
-                            process.env.EMAIL_PASS,
-                            process.env.EMAIL_FROM,
-                          );
-                        }
-                      } else {
-                        this.logger.error('Invalid Email Id..');
-                        return 'Invalid Email Id';
-                      }
-                      break;
-                    default:
-                      return 'Invalid Channel Name..';
-                  }
-                } else {
-                  this.logger.error('Invalid Receipient in request...');
-                  return 'Invalid Request Format';
-                }
-              }
-            } else {
-              this.logger.error('No receipient data found in request...');
-              return 'Receipients cannot be empty..';
-            }
-          } else {
-            this.logger.error(
-              'Notification Details not found for given request...',
-            );
-            return 'Notification Details not found for given request...Invalid Request Format';
-          }
-        } else {
-          this.logger.error(
-            'Notification Details not found for given request..',
-          );
-          return 'Notification Details not found for given request...Invalid Request Format';
-        }
-      } else {
-        this.logger.error(
-          'Notification Details not found for given request...',
-        );
-        return 'Notification Details not found for given request...Invalid Request Format';
+      const { email, push, sms } = notificationDto;
+      const promises = [];
+      // Send email notification if email channel is specified
+      if (email && email.receipients.length > 0) {
+        const emailAdapter = this.adapterFactory.getAdapter('email');
+        promises.push(emailAdapter.sendNotification(notificationDto));
       }
-    } catch (error) {
-      console.log('in catch');
-      this.logger.error('Notification Details not found for given request...');
-      return 'Notification Details not found for given request...Invalid Request Format';
-    }
-  }
 
-  private async sendEmail(
-    notifmeSdk: any,
-    singleRecipient: string,
-    notification_details: Promise<Notification_Template_Config>,
-    bodyText: string,
-    notification: Notification,
-    email_type: string,
-    email_host: string,
-    email_port: string,
-    email_user: string,
-    email_pass: string,
-    email_from: string,
-  ) {
-    notifmeSdk = new NotifmeSdk({
-      useNotificationCatcher: false,
-      channels: {
-        email: {
-          providers: [
-            {
-              type: email_type,
-              host: email_host,
-              port: email_port,
-              secure: false,
-              auth: {
-                user: email_user,
-                pass: email_pass,
-              },
-            },
-          ],
-        },
-      },
-    });
-    notifmeSdk
-      .send({
-        email: {
-          from: email_from,
-          to: singleRecipient,
-          subject: (await notification_details).subject,
-          html: bodyText,
-        },
-      })
-      .then((result) => {
-        if (result.status == 'success') {
-          notification.sentStatus = 'Success';
-          this.logger.info('Email Sent Successfully to ' + singleRecipient);
+      // Send push notification if push channel is specified
+      if (push) {
+        const pushAdapter = this.adapterFactory.getAdapter('push');
+        promises.push(pushAdapter.sendNotification(notificationDto));
+      }
+
+      // Send SMS notification if SMS channel is specified
+      if (sms && sms.receipients.length > 0) {
+        const smsAdapter = this.adapterFactory.getAdapter('sms');
+        promises.push(smsAdapter.sendNotification(notificationDto));
+      }
+
+      const results = await Promise.allSettled(promises);
+      const serverResponses: APIResponse[] = results.map((result) => {
+        if (result.status === 'fulfilled') {
+          return APIResponse.success(
+            apiId,
+            result.value,
+            'Notification send sucessfully'
+          );
         } else {
-          var errorMsg = 'Data Not Available';
-          if (result.errors.email != undefined) errorMsg = result.errors.email;
-          notification.sentStatus = 'Failure';
-          this.logger.error(
-            'Error while Sending Email to ' +
-            singleRecipient +
-            ' Due to Reason // Status:' +
-            result.status +
-            ' and Details:' +
-            errorMsg,
+          return APIResponse.error(
+            apiId,
+            'Something went wrong',
+            result.reason?.message,
+            result.reason.status
           );
         }
       });
-    return notifmeSdk;
+      return serverResponses;
+    } catch (e) {
+      return [
+        APIResponse.error(
+          apiId,
+          'Something went wrong',
+          e,
+          'INTERNAL_SERVER_ERROR'
+        ),
+      ];
+    }
   }
+
 
   async findAll(): Promise<Notification[]> {
     return await this.notificationRepository.find();
