@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import { NotificationService } from "../interface/notificationService";
 import { NotificationDto } from "../dto/notificationDto.dto";
 import axios from "axios";
@@ -30,16 +30,20 @@ export class PushAdapter implements NotificationService {
         };
 
         try {
-            await axios.post(fcmUrl, notificationData, {
+            const result = await axios.post(fcmUrl, notificationData, {
                 headers: {
                     'Content-Type': 'application/json',
                     Authorization: `key=${fcmKey}`,
                 },
             });
-            return 'Push notification sent successfully';
+            if (result.data.success === 1) {
+                return 'Push notification sent successfully';
+            }
+            if (result.data.failure === 1) {
+                throw new BadRequestException('Invalid token');
+            }
         } catch (error) {
-            console.error('Error sending notification:', error);
-            return 'Failed to send push notification';
+            throw new BadRequestException('Failed to send push notification' + error)
         }
     }
 }
