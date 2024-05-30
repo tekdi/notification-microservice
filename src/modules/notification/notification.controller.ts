@@ -4,8 +4,9 @@ import { Notification } from './entity/notification.entity';
 import { NotificationPush } from './entity/notificationPush.entity';
 import { NotificationWhatsapp } from './entity/notificationWhatsapp.entity';
 import { NotificationTelegram } from './entity/notificationTelegram.entity';
-import { ApiBadRequestResponse, ApiBody, ApiInternalServerErrorResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBadRequestResponse, ApiBody, ApiInternalServerErrorResponse, ApiOkResponse, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { NotificationDto } from './dto/notificationDto.dto';
+import { SubscribeToDeviceTopicDto } from './dto/subscribtotopic.dto';
 
 @Controller('notification')
 @ApiTags('Email-Send')
@@ -30,6 +31,28 @@ export class NotificationController {
     }
     return this.notificationService.sendNotification(notificationDto);
   }
+
+  @Post('subscribetotopic')
+  @ApiInternalServerErrorResponse({ description: 'Server Error' })
+  @ApiBadRequestResponse({ description: 'Invalid Request' })
+  @UsePipes(new ValidationPipe({ transform: true }))
+  @ApiResponse({ description: 'Sunscribed the topic' })
+  @ApiBody({ type: SubscribeToDeviceTopicDto })
+  async subscribeToDeviceTopic(@Body() requestBody: SubscribeToDeviceTopicDto) {
+    return await this.notificationService.subscribeToDeviceTopicFromDB(requestBody);
+  }
+
+  @Post('unsubscribetotopic')
+  @ApiInternalServerErrorResponse({ description: 'Server Error' })
+  @ApiBadRequestResponse({ description: 'Invalid Request' })
+  @UsePipes(new ValidationPipe({ transform: true }))
+  @ApiResponse({ description: 'Sunscribed the topic' })
+  @ApiBody({ type: SubscribeToDeviceTopicDto })
+  async subscribeToDeviceTopicFromDB(@Body() requestBody: SubscribeToDeviceTopicDto) {
+    return await this.notificationService.unsubscribeFromTopic(requestBody);
+  }
+
+
 
   // @Post('send')
   // async send(@Body() notificationData: Notification): Promise<any> {
