@@ -24,18 +24,18 @@ export class NotificationQueue {
     recipient: string;
 
     @CreateDateColumn({ type: 'timestamp' })
-    createdOn: string;
+    createdOn: Date;
 
-    @CreateDateColumn({ type: 'timestamp', nullable: true })
+    @Column({ type: 'timestamp', nullable: true })
     expiry: Date;
 
-    @Column({ type: 'int', nullable: true })
+    @Column({ type: 'int', default: 0 })
     retries: number;
 
     @UpdateDateColumn({ type: 'timestamp' })
     last_attempted: Date;
 
-    @Column({ type: 'boolean', nullable: true })
+    @Column({ type: 'boolean', default: false })
     status: boolean;
 
 }
