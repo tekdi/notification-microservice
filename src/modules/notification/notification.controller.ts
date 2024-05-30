@@ -1,9 +1,5 @@
 import { Body, Controller, Post, Get, UsePipes, ValidationPipe, BadRequestException } from '@nestjs/common';
 import { NotificationService } from './notification.service';
-import { Notification } from './entity/notification.entity';
-import { NotificationPush } from './entity/notificationPush.entity';
-import { NotificationWhatsapp } from './entity/notificationWhatsapp.entity';
-import { NotificationTelegram } from './entity/notificationTelegram.entity';
 import { ApiBadRequestResponse, ApiBody, ApiCreatedResponse, ApiInternalServerErrorResponse, ApiOkResponse, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { NotificationDto } from './dto/notificationDto.dto';
 import { SubscribeToDeviceTopicDto } from './dto/subscribtotopic.dto';

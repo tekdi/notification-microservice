@@ -8,6 +8,7 @@ import { Response } from 'express';
 import { CreateEventDto } from './dto/createTemplate.dto';
 import { NotificationTemplateConfig } from './entity/notificationTemplateConfig.entity';
 import { UpdateEventDto } from './dto/updateEventTemplate.dto';
+import { LoggerService } from 'src/common/logger/logger.service';
 @Injectable()
 export class NotificationEventsService {
 
@@ -15,7 +16,8 @@ export class NotificationEventsService {
         @InjectRepository(NotificationTemplates)
         private notificationTemplatesRepository: Repository<NotificationTemplates>,
         @InjectRepository(NotificationTemplateConfig)
-        private notificationTemplateConfigRepository: Repository<NotificationTemplateConfig>
+        private notificationTemplateConfigRepository: Repository<NotificationTemplateConfig>,
+        private readonly logger: LoggerService
     ) { }
 
     async createTemplate(userId: string, data: CreateEventDto, response: Response): Promise<Response> {
@@ -26,7 +28,12 @@ export class NotificationEventsService {
                     where: { context: data.context },
                 });
             if (existingTemplate) {
-                throw new BadRequestException('Already existing template');
+                this.logger.log(
+                    `${apiId}`,
+                    '/create Template for Notification',
+                    'Alredy Template Exist',
+                );
+                throw new BadRequestException('Template Already exist');
             }
             const notificationTemplate = new NotificationTemplates();
             notificationTemplate.title = data.title;
@@ -66,7 +73,11 @@ export class NotificationEventsService {
                 .status(HttpStatus.CREATED)
                 .send(APIResponse.success(apiId, { id: notificationTemplateResult.id }, "Created"));
         } catch (e) {
-            console.log(e);
+            this.logger.error(
+                `/Create Template for Notification`,
+                e,
+                '/Failed',
+            );
             return response
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .send(
@@ -86,12 +97,17 @@ export class NotificationEventsService {
         userId: string,
         response: Response
     ) {
-        const apiId = "update.notification.notificationtemplate";
+        const apiId = "api.update.notification.notificationtemplate";
         try {
             const existingTemplate = await this.notificationTemplatesRepository.findOne({
                 where: { id: id },
             });
             if (!existingTemplate) {
+                this.logger.log(
+                    `${apiId}`,
+                    '/Update Template for Notification',
+                    'Template Not Exist',
+                );
                 throw new BadRequestException('Template not existing');
             }
             Object.assign(existingTemplate, updateEventDto);
@@ -149,6 +165,11 @@ export class NotificationEventsService {
                 .status(HttpStatus.OK)
                 .send(APIResponse.success(apiId, { id: id, status: "Updated Sccessfully" }, "Updated"));
         } catch (e) {
+            this.logger.error(
+                `/Update Template for Notification`,
+                e,
+                '/Failed',
+            );
             return response
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .send(
@@ -229,6 +250,11 @@ export class NotificationEventsService {
                 .send(APIResponse.success(apiId, finalResult, 'OK'));
         }
         catch (e) {
+            this.logger.error(
+                `/Get Template `,
+                e,
+                '/Failed',
+            );
             return response
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .send(APIResponse.error(

@@ -8,7 +8,8 @@ import { NotificationService } from "../notification.service";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { NotificationTemplates } from "src/modules/notification_events/entity/notificationTemplate.entity";
-
+import { NotificationTemplateConfig } from "src/modules/notification_events/entity/notificationTemplateConfig.entity";
+import { LoggerService } from "src/common/logger/logger.service";
 @Injectable()
 export class PushAdapter implements NotificationServiceInterface {
     private fcmkey: string;
@@ -18,31 +19,50 @@ export class PushAdapter implements NotificationServiceInterface {
         private readonly configService: ConfigService,
         @InjectRepository(NotificationTemplates)
         private notificationEventsRepo: Repository<NotificationTemplates>,
+        @InjectRepository(NotificationTemplateConfig)
+        private notificationTemplateConfigRepository: Repository<NotificationTemplateConfig>,
+        private logger: LoggerService
     ) {
         this.fcmkey = this.configService.get('FCM_KEY');
         this.fcmurl = this.configService.get('FCM_URL')
     }
     async sendNotification(notificationDto: NotificationDto) {
-        const { context } = notificationDto;
+        const { context, replacements } = notificationDto;
         const notification_event = await this.notificationEventsRepo.findOne({ where: { context } })
         if (!notification_event) {
-            console.log("event details", notification_event);
+            this.logger.error('/Send Push Notification', 'Template not found', context)
             throw new BadRequestException('Template not found')
         }
+
+        // Fetching template configuration details from template id
+        const notification_details = await this.notificationTemplateConfigRepository.find({ where: { template_id: notification_event.id, type: 'push' } });
+        if (notification_details.length === 0) {
+            this.logger.error('/Send Email Notification', `Template Config not found for this context : ${context}`, 'Not Found')
+            throw new BadRequestException('Notification template config not defined');
+        }
+
+        let bodyText = notification_details[0].body;
+        // Used for replacement tags
+        if (replacements && replacements.length > 0) {
+            replacements.forEach((replacement, index) => {
+                bodyText = bodyText.replace(`{#var${index}#}`, replacement);
+            });
+        }
+
 
         const fcmUrl = this.fcmurl;
         const fcmKey = this.fcmkey;
 
         const notificationData = {
             notification: {
-                title: notificationDto.push.title,
-                body: notificationDto.push.body,
-                image: notificationDto.push.image,
-                navigate_to: notificationDto.push.navigate_to,
+                title: notification_details[0].subject,
+                body: bodyText,
+                // image: notification_details[0].image,
+                // navigate_to: notification_details[0].navigate_to,
             },
             to: notificationDto.push.to
         };
-        const notificationLogs = this.createNotificationLog(notificationDto);
+        const notificationLogs = this.createNotificationLog(notificationDto, notification_details, notification_event, bodyText);
         try {
             const result = await axios.post(fcmUrl, notificationData, {
                 headers: {
@@ -51,14 +71,20 @@ export class PushAdapter implements NotificationServiceInterface {
                 },
             });
             if (result.data.success === 1) {
+                this.logger.log('Push notification sent successfully')
                 notificationLogs.status = true;
                 await this.notificationServices.saveNotificationLogs(notificationLogs);
                 return 'Push notification sent successfully';
             }
             if (result.data.failure === 1) {
-                throw new BadRequestException('Invalid token');
+                throw new Error('Invalid token');
             }
         } catch (error) {
+            this.logger.error(
+                `Failed to Send Push Notification for ${context}`,
+                error,
+                '/Not able to send Notification',
+            );
             notificationLogs.status = false;
             notificationLogs.error = error.toString();
             await this.notificationServices.saveNotificationLogs(notificationLogs);
@@ -66,11 +92,12 @@ export class PushAdapter implements NotificationServiceInterface {
         }
     }
 
-    private createNotificationLog(notificationDto): NotificationLog {
+    private createNotificationLog(notificationDto, notification_details, notification_event, bodyText): NotificationLog {
         const notificationLogs = new NotificationLog();
         notificationLogs.context = notificationDto.context;
-        notificationLogs.subject = notificationDto.push.title;
-        notificationLogs.body = notificationDto.push.body;
+        notificationLogs.subject = notification_details[0].subject;
+        notificationLogs.body = bodyText
+        notificationLogs.action = notification_event.key
         notificationLogs.type = 'push';
         notificationLogs.recipient = notificationDto.push.to;
         return notificationLogs;
