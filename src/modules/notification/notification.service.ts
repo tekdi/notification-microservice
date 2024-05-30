@@ -29,19 +29,19 @@ export class NotificationService {
       const { email, push, sms } = notificationDto;
       const promises = [];
       // Send email notification if email channel is specified
-      if (email && email.receipients.length > 0) {
+      if (email && email.receipients.length > 0 && Object.keys(email).length > 0) {
         const emailAdapter = this.adapterFactory.getAdapter('email');
         promises.push(emailAdapter.sendNotification(notificationDto));
       }
 
       // Send push notification if push channel is specified
-      if (push) {
+      if (push && Object.keys(push).length > 0) {
         const pushAdapter = this.adapterFactory.getAdapter('push');
         promises.push(pushAdapter.sendNotification(notificationDto));
       }
 
       // Send SMS notification if SMS channel is specified
-      if (sms && sms.receipients.length > 0) {
+      if (sms && sms.receipients.length > 0 && Object.keys(sms).length > 0) {
         const smsAdapter = this.adapterFactory.getAdapter('sms');
         promises.push(smsAdapter.sendNotification(notificationDto));
       }
