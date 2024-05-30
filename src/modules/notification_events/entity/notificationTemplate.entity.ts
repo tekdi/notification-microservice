@@ -34,6 +34,6 @@ export class NotificationTemplates {
     @Column({ type: 'jsonb', nullable: true })
     replacementTags: any
 
-    @OneToMany(() => NotificationTemplateConfig, templateconfig => templateconfig.template)
+    @OneToMany(() => NotificationTemplateConfig, templateconfig => templateconfig.template, { cascade: true })
     templateconfig: NotificationTemplateConfig[];
 }
