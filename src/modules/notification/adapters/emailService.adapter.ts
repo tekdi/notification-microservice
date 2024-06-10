@@ -1,10 +1,10 @@
 import { BadRequestException, Inject, Injectable, forwardRef } from "@nestjs/common";
 import { NotificationServiceInterface } from "../interface/notificationService";
 import { NotificationDto } from "../dto/notificationDto.dto";
-import { NotificationTemplates } from "src/modules/notification_events/entity/notificationTemplate.entity";
+import { NotificationActions } from "src/modules/notification_events/entity/notificationActions.entity";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { NotificationTemplateConfig } from "src/modules/notification_events/entity/notificationTemplateConfig.entity";
+import { NotificationActionTemplates } from "src/modules/notification_events/entity/notificationActionTemplates.entity";
 import NotifmeSdk from 'notifme-sdk';
 import { NotificationLog } from "../entity/notificationLogs.entity";
 import { NotificationService } from "../notification.service";
@@ -15,10 +15,10 @@ import { LoggerService } from "src/common/logger/logger.service";
 export class EmailAdapter implements NotificationServiceInterface {
     constructor(
         @Inject(forwardRef(() => NotificationService)) private readonly notificationServices: NotificationService,
-        @InjectRepository(NotificationTemplates)
-        private notificationEventsRepo: Repository<NotificationTemplates>,
-        @InjectRepository(NotificationTemplateConfig)
-        private notificationTemplateConfigRepository: Repository<NotificationTemplateConfig>,
+        @InjectRepository(NotificationActions)
+        private notificationEventsRepo: Repository<NotificationActions>,
+        @InjectRepository(NotificationActionTemplates)
+        private notificationTemplateConfigRepository: Repository<NotificationActionTemplates>,
         private logger: LoggerService
     ) { }
     async sendNotification(notificationDto: NotificationDto) {
@@ -33,7 +33,7 @@ export class EmailAdapter implements NotificationServiceInterface {
         }
 
         // Fetching template configuration details from template id
-        const notification_details = await this.notificationTemplateConfigRepository.find({ where: { template_id: notification_event.id, type: 'email' } });
+        const notification_details = await this.notificationTemplateConfigRepository.find({ where: { actionId: notification_event.actionId, type: 'email' } });
         if (notification_details.length === 0) {
             this.logger.error('/Send Email Notification', `Template Config not found for this context : ${context}`, 'Not Found')
             throw new BadRequestException('Notification template config not defined');
