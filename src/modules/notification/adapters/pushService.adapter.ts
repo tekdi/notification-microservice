@@ -71,10 +71,10 @@ export class PushAdapter implements NotificationServiceInterface {
                 },
             });
             if (result.data.success === 1) {
-                this.logger.log('Push notification sent successfully')
+                this.logger.log('Push notification sent successful')
                 notificationLogs.status = true;
                 await this.notificationServices.saveNotificationLogs(notificationLogs);
-                return 'Push notification sent successfully';
+                return 'Push notification sent successful';
             }
             if (result.data.failure === 1) {
                 throw new Error('Invalid token');

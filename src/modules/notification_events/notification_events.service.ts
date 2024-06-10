@@ -9,6 +9,7 @@ import { CreateEventDto } from './dto/createTemplate.dto';
 import { NotificationTemplateConfig } from './entity/notificationTemplateConfig.entity';
 import { UpdateEventDto } from './dto/updateEventTemplate.dto';
 import { LoggerService } from 'src/common/logger/logger.service';
+import { APIID } from 'src/common/utils/api-id.config';
 @Injectable()
 export class NotificationEventsService {
 
@@ -21,7 +22,7 @@ export class NotificationEventsService {
     ) { }
 
     async createTemplate(userId: string, data: CreateEventDto, response: Response): Promise<Response> {
-        const apiId = "api.create.notificationTemplate";
+        const apiId = APIID.TEMPLATE_CREATE;
         try {
             const existingTemplate =
                 await this.notificationTemplatesRepository.findOne({
@@ -69,25 +70,16 @@ export class NotificationEventsService {
             if (data.sms && Object.keys(data.sms).length > 0) {
                 await createConfig('sms', data.sms);
             }
-            return response
-                .status(HttpStatus.CREATED)
-                .send(APIResponse.success(apiId, { id: notificationTemplateResult.id }, "Created"));
+            return APIResponse.success(response, apiId, { id: notificationTemplateResult.id }, HttpStatus.CREATED, "Created");
         } catch (e) {
             this.logger.error(
                 `/Create Template for Notification`,
                 e,
                 '/Failed',
             );
-            return response
-                .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .send(
-                    APIResponse.error(
-                        apiId,
-                        "Something went wrong in template creation",
-                        JSON.stringify(e),
-                        "INTERNAL_SERVER_ERROR"
-                    )
-                );
+            const errorMessage = e.message || 'Internal server error';
+            return APIResponse.error(response, apiId, "Internal Server Error", errorMessage, HttpStatus.INTERNAL_SERVER_ERROR);
+
         }
     }
 
@@ -97,7 +89,7 @@ export class NotificationEventsService {
         userId: string,
         response: Response
     ) {
-        const apiId = "api.update.notification.notificationtemplate";
+        const apiId = APIID.TEMPLATE_UPDATE;
         try {
             const existingTemplate = await this.notificationTemplatesRepository.findOne({
                 where: { id: id },
@@ -161,30 +153,20 @@ export class NotificationEventsService {
                 });
 
             }
-            return response
-                .status(HttpStatus.OK)
-                .send(APIResponse.success(apiId, { id: id, status: "Updated Sccessfully" }, "Updated"));
+            return APIResponse.success(response, apiId, { id: id }, HttpStatus.OK, "Updated Sccessfully");
         } catch (e) {
             this.logger.error(
                 `/Update Template for Notification`,
                 e,
                 '/Failed',
             );
-            return response
-                .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .send(
-                    APIResponse.error(
-                        apiId,
-                        "Something went wrong in Template updation",
-                        JSON.stringify(e),
-                        "INTERNAL_SERVER_ERROR"
-                    )
-                );
+            const errorMessage = e.message || 'Internal server error';
+            return APIResponse.error(response, apiId, "Internal Server Error", errorMessage, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
     async getTemplatesTypesForEvent(searchFilterDto: SearchFilterDto, response: Response) {
-        const apiId = 'api.get.TemplateTypeOfEvent';
+        const apiId = APIID.TEMPLATE_LIST
         try {
             const context = searchFilterDto.filters.context;
             const result = await this.notificationTemplatesRepository.find({
@@ -193,16 +175,13 @@ export class NotificationEventsService {
             });
 
             if (result.length === 0) {
-                return response
-                    .status(HttpStatus.NOT_FOUND)
-                    .send(
-                        APIResponse.error(
-                            apiId,
-                            `No templates found`,
-                            'No records found.',
-                            'NOT_FOUND',
-                        ),
-                    );
+                return APIResponse.error(
+                    response,
+                    apiId,
+                    `No templates found`,
+                    'No records found.',
+                    HttpStatus.NOT_FOUND,
+                )
             }
             const finalResult = result.map(item => {
                 const { templateconfig, ...rest } = item;
@@ -213,9 +192,7 @@ export class NotificationEventsService {
                 }, {});
                 return { ...rest, templates: formattedTemplateConfig };
             });
-            return response
-                .status(HttpStatus.OK)
-                .send(APIResponse.success(apiId, finalResult, 'OK'));
+            return APIResponse.success(response, apiId, finalResult, HttpStatus.OK, 'fetched successfully');
         }
         catch (e) {
             this.logger.error(
@@ -223,44 +200,35 @@ export class NotificationEventsService {
                 e,
                 '/Failed',
             );
-            return response
-                .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .send(APIResponse.error(
-                    apiId,
-                    'Something went wrong in get Template',
-                    JSON.stringify(e),
-                    'INTERNAL_SERVER_ERROR',
-                ))
+            const errorMessage = e.message || 'Internal server error';
+            return APIResponse.error(response, apiId, "Internal Server Error", errorMessage, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
     async deleteTemplate(id: number, response: Response) {
-        const apiId = 'api.delete.template'
+        const apiId = APIID.TEMPLATE_DELETE
         try {
             const templateId = await this.notificationTemplatesRepository.find({ where: { id } });
             if (!templateId) {
-                return response.status(HttpStatus.NOT_FOUND).send(
-                    APIResponse.error(
-                        apiId,
-                        `No event id found: ${id}`,
-                        'records not found.',
-                        'NOT_FOUND',
-                    ),
-                );
+                return APIResponse.error(
+                    response,
+                    apiId,
+                    `No event id found: ${id}`,
+                    'records not found.',
+                    HttpStatus.NOT_FOUND
+                )
             }
             const deleteTemplate = await this.notificationTemplatesRepository.delete({ id });
             if (deleteTemplate.affected !== 1) {
                 throw new BadRequestException('Template not deleted');
             }
-            return response
-                .status(HttpStatus.OK)
-                .send(
-                    APIResponse.success(
-                        apiId,
-                        { status: `Template with ID ${id} deleted successfully.` },
-                        'OK',
-                    ),
-                );
+            return APIResponse.success(
+                response,
+                apiId,
+                `Template with ID ${id} deleted successfully.`,
+                HttpStatus.OK,
+                'deleted successfully',
+            )
         }
         catch (e) {
             this.logger.error(
@@ -268,14 +236,8 @@ export class NotificationEventsService {
                 e,
                 '/Failed',
             );
-            return response
-                .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .send(APIResponse.error(
-                    apiId,
-                    'Something went wrong to delete Template by id',
-                    `Failure Retrieving event. Error is: ${e}`,
-                    'INTERNAL_SERVER_ERROR',
-                ))
+            const errorMessage = e.message || 'Internal server error';
+            return APIResponse.error(response, apiId, "Internal Server Error", errorMessage, HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
     }

@@ -1,9 +1,10 @@
-import { Body, Controller, Post, Get, UsePipes, ValidationPipe, BadRequestException } from '@nestjs/common';
+import { Body, Controller, Post, Get, UsePipes, ValidationPipe, BadRequestException, Res } from '@nestjs/common';
 import { NotificationService } from './notification.service';
 import { ApiBadRequestResponse, ApiBody, ApiCreatedResponse, ApiInternalServerErrorResponse, ApiOkResponse, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { NotificationDto } from './dto/notificationDto.dto';
 import { SubscribeToDeviceTopicDto } from './dto/subscribtotopic.dto';
 import { TopicNotification } from './dto/topicnotification .dto';
+import { Response, response } from 'express';
 
 @Controller('notification')
 @ApiTags('Email-Send')
@@ -14,19 +15,19 @@ export class NotificationController {
 
 
   @Post('send')
-  @ApiOkResponse({ description: 'send notification suceesfully' })
+  @ApiOkResponse({ description: 'send notification successfully' })
   @ApiInternalServerErrorResponse({ description: "internal server error" })
   @UsePipes(new ValidationPipe({ transform: true }))
   @ApiInternalServerErrorResponse({ description: 'Server Error' })
   @ApiBadRequestResponse({ description: 'Invalid Request' })
   @ApiBody({ type: NotificationDto })
   async sendNotification(
-    @Body() notificationDto: NotificationDto
+    @Body() notificationDto: NotificationDto, @Res() response: Response
   ) {
     if (!notificationDto.email && !notificationDto.push && !notificationDto.sms) {
       throw new BadRequestException('At least one of email, push, or sms is required.');
     }
-    return this.notificationService.sendNotification(notificationDto);
+    return this.notificationService.sendNotification(notificationDto, response);
   }
 
   @Post('subscribetotopic')
@@ -59,30 +60,6 @@ export class NotificationController {
   async sendTopicNotification(@Body() requestBody: TopicNotification) {
     return await this.notificationService.sendTopicNotification(requestBody);
   }
-
-
-
-  // @Post('send')
-  // async send(@Body() notificationData: Notification): Promise<any> {
-  //   console.log('here');
-  //   return this.notificationService.send(notificationData);
-  // }
-
-  // @Post('send')
-  // async send(@Body() notificationData: Notification): Promise<any> {
-  //   console.log('here');
-  //   return this.notificationService.sendEmail(notificationData);
-  // }
-
-  // @Get()
-  // index(): Promise<Notification[]> {
-  //   return this.notificationService.findAll();
-  // }
-
-  // @Post('sendPush')
-  // async sendPush(@Body() notificationData: NotificationPush): Promise<any> {
-  //   return this.notificationService.sendPush(notificationData);
-  // }
 
   // @Post('sendMessage')
   // async sendWhatsappMessage(@Body() notificationData: NotificationWhatsapp) {
