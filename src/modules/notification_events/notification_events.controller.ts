@@ -1,4 +1,4 @@
-import { Controller, Delete, Param, ParseUUIDPipe, Patch, Res, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Controller, Delete, Param, ParseUUIDPipe, Patch, Res, UseFilters, UsePipes, ValidationPipe } from '@nestjs/common';
 import { NotificationEventsService } from './notification_events.service';
 import { Post, Body } from '@nestjs/common';
 import { ApiBadRequestResponse, ApiBody, ApiCreatedResponse, ApiInternalServerErrorResponse, ApiOkResponse, ApiResponse, ApiTags } from '@nestjs/swagger';
@@ -6,12 +6,15 @@ import { SearchFilterDto } from './dto/searchTemplateType.dto';
 import { Response } from 'express';
 import { CreateEventDto } from './dto/createTemplate.dto';
 import { UpdateEventDto } from './dto/updateEventTemplate.dto';
+import { AllExceptionsFilter } from 'src/common/filters/exception.filter';
+import { APIID } from 'src/common/utils/api-id.config';
 
 @Controller('notification-events')
-@ApiTags('Event-type')
+@ApiTags('Notification-Templates')
 export class NotificationEventsController {
   constructor(private notificationeventsService: NotificationEventsService) { }
 
+  @UseFilters(new AllExceptionsFilter(APIID.TEMPLATE_CREATE))
   @Post()
   @ApiCreatedResponse({ description: "created" })
   @ApiInternalServerErrorResponse({ description: "internal server error" })
@@ -23,6 +26,7 @@ export class NotificationEventsController {
     return this.notificationeventsService.createTemplate(userId, createEventDto, response)
   }
 
+  @UseFilters(new AllExceptionsFilter(APIID.TEMPLATE_LIST))
   @Post('/list')
   @ApiBody({ type: SearchFilterDto })
   @ApiInternalServerErrorResponse({ description: 'Server Error' })
@@ -33,6 +37,7 @@ export class NotificationEventsController {
     return this.notificationeventsService.getTemplatesTypesForEvent(searchFilterDto, response)
   }
 
+  @UseFilters(new AllExceptionsFilter(APIID.TEMPLATE_GET))
   @Patch("/:id")
   @ApiBody({ type: UpdateEventDto })
   @ApiResponse({ status: 200, description: "Event updated successfully" })
@@ -52,6 +57,8 @@ export class NotificationEventsController {
     );
   }
 
+
+  @UseFilters(new AllExceptionsFilter(APIID.TEMPLATE_DELETE))
   @Delete('/:id')
   @ApiResponse({ status: 200, description: 'Template deleted successfully' })
   @ApiResponse({ status: 404, description: 'Template not found' })

@@ -8,11 +8,9 @@ async function bootstrap() {
     .setTitle('Notification')
     .setDescription('The Notification API description')
     .setVersion('1.0')
-    .addServer('http://localhost:4000/', 'Local environment')
     .build();
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document);
-
+  SwaggerModule.setup('api/swagger-docs', app, document);
   await app.listen(4000);
 }
 bootstrap();

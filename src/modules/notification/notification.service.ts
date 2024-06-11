@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import axios from 'axios';
@@ -11,6 +11,7 @@ import { ConfigService } from '@nestjs/config';
 import { TopicNotification } from './dto/topicnotification .dto';
 import { NotificationLog } from './entity/notificationLogs.entity';
 import { LoggerService } from 'src/common/logger/logger.service';
+import { Response } from 'express';
 @Injectable()
 export class NotificationService {
   @InjectRepository(NotificationLog)
@@ -29,7 +30,7 @@ export class NotificationService {
     this.fcm = new FCM(this.fcmkey);
   }
 
-  async sendNotification(notificationDto: NotificationDto): Promise<APIResponse> {
+  async sendNotification(notificationDto: NotificationDto, response: Response): Promise<APIResponse> {
     const apiId = 'api.send.notification'
     try {
       const { email, push, sms } = notificationDto;
@@ -56,12 +57,15 @@ export class NotificationService {
       const serverResponses: APIResponse[] = results.map((result) => {
         if (result.status === 'fulfilled') {
           return APIResponse.success(
+            response,
             apiId,
             result.value,
-            'Notification send sucessfully'
+            HttpStatus.OK,
+            'Notification send successful'
           );
         } else {
           return APIResponse.error(
+            response,
             apiId,
             'Something went wrong',
             result.reason?.message,
@@ -76,12 +80,15 @@ export class NotificationService {
         e,
         '/Not able to send Notification',
       );
+      const errorMessage = e.message || 'Internal server error';
+      // return APIResponse.error(response, apiId, "Internal Server Error", errorMessage, HttpStatus.INTERNAL_SERVER_ERROR);
       return [
         APIResponse.error(
+          response,
           apiId,
           'Something went wrong',
           e,
-          'INTERNAL_SERVER_ERROR'
+          HttpStatus.INTERNAL_SERVER_ERROR
         ),
       ];
     }
@@ -129,10 +136,9 @@ export class NotificationService {
 
   async sendTopicNotification(requestBody: TopicNotification) {
     try {
-      const topic_name = requestBody;
+      const topic_name = requestBody.topic_name;
       const fcmUrl = this.fcmurl;
       const fcmKey = this.fcmkey;
-
       const notificationData = {
         notification: {
           title: requestBody.title,
@@ -142,13 +148,17 @@ export class NotificationService {
         },
         to: `/topics/${topic_name}`,
       };
+
       const response = await axios.post(fcmUrl, notificationData, {
         headers: {
           'Content-Type': 'application/json',
           Authorization: `key=${fcmKey}`,
         },
       });
-      return `topic notification sent successfully'${response.status}`;
+      return {
+        message: 'Notification sent successfully',
+        status: response.status
+      }
     }
     catch (e) {
       this.logger.error(
@@ -156,7 +166,10 @@ export class NotificationService {
         e,
         '/Not able to send topic Notification',
       );
-      return 'Failed to send topic notification';
+      return {
+        message: 'Failed to send topic notification',
+        status: e.response.status
+      }
     }
   }
 
@@ -178,40 +191,6 @@ export class NotificationService {
   //   return await this.notificationRepository.find();
   // }
 
-  // async sendPush(notificationPush: NotificationPush): Promise<any> {
-  //   if (notificationPush != null) {
-  //     this.logger.info('Notification is not null...');
-  //     const token = notificationPush.token;
-  //     const sender_id = notificationPush.sender_id;
-  //     const title = notificationPush.title;
-  //     const body = notificationPush.body;
-
-  //     // senderid :'AAAAfzfFOMg:APA91bExdish2-dqVvVfcZetfpCqjVpOYv7-26J-dW9m1dKvMOIXlNhsx9_Guuxni_D9ppFiNVnxYd9hYBvyY94jLOlPwhlmyAlU9A-mUi3N3Sp35wjY6uRMJB8VNRJ7x-kxCzsZKrr2'
-  //     const notifmeSdk = new NotifmeSdk({
-  //       useNotificationCatcher: false,
-  //       channels: {
-  //         push: {
-  //           providers: [
-  //             {
-  //               type: 'fcm',
-  //               id: sender_id,
-  //             },
-  //           ],
-  //         },
-  //       },
-  //     });
-  //     notifmeSdk
-  //       .send({
-  //         push: {
-  //           registrationToken: token,
-  //           title: title,
-  //           body: body,
-  //           icon: 'https://notifme.github.io/notifme-sdk/img/icon.png',
-  //         },
-  //       })
-  //       .then(this.logger.info('Push Sent Successfully'));
-  //   }
-  // }
   // // proper working function
   // async sendWhatsappMessage(
   //   notificationData: NotificationWhatsapp,

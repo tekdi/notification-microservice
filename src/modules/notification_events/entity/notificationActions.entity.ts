@@ -1,11 +1,11 @@
 // NotificationTemplates.entity.ts
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany, CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import { NotificationTemplateConfig } from './notificationTemplateConfig.entity';
+import { NotificationActionTemplates } from './notificationActionTemplates.entity';
 
-@Entity('NotificationTemplates')
-export class NotificationTemplates {
+@Entity('NotificationActions')
+export class NotificationActions {
     @PrimaryGeneratedColumn()
-    id: number;
+    actionId: number;
 
     @Column()
     title: string;
@@ -34,6 +34,6 @@ export class NotificationTemplates {
     @Column({ type: 'jsonb', nullable: true })
     replacementTags: any
 
-    @OneToMany(() => NotificationTemplateConfig, templateconfig => templateconfig.template, { cascade: true })
-    templateconfig: NotificationTemplateConfig[];
+    @OneToMany(() => NotificationActionTemplates, templateconfig => templateconfig.template, { cascade: true })
+    templateconfig: NotificationActionTemplates[];
 }
