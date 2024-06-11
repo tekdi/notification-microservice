@@ -7,7 +7,7 @@ import { TopicNotification } from './dto/topicnotification .dto';
 import { Response, response } from 'express';
 
 @Controller('notification')
-@ApiTags('Email-Send')
+@ApiTags('Notification-send')
 export class NotificationController {
   constructor(
     private notificationService: NotificationService,

@@ -9,7 +9,7 @@ import { APIID } from 'src/common/utils/api-id.config';
 import { AllExceptionsFilter } from 'src/common/filters/exception.filter';
 
 @Controller('queue')
-@ApiTags('notification-queue')
+@ApiTags('Notification-queue')
 export class NotificationQueueController {
 
     constructor(private readonly notificationQueueService: NotificationQueueService) { }

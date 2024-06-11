@@ -10,7 +10,7 @@ import { AllExceptionsFilter } from 'src/common/filters/exception.filter';
 import { APIID } from 'src/common/utils/api-id.config';
 
 @Controller('notification-events')
-@ApiTags('Event-type')
+@ApiTags('Notification-Templates')
 export class NotificationEventsController {
   constructor(private notificationeventsService: NotificationEventsService) { }
 
