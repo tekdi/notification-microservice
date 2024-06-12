@@ -103,4 +103,39 @@ export class PushAdapter implements NotificationServiceInterface {
         return notificationLogs;
     }
 
+    async sendPushNotification(notificationData): Promise<string> {
+        try {
+            console.log(notificationData, "notitifcatioData");
+
+            const notification = {
+                notification: {
+                    title: notificationData.subject,
+                    body: notificationData.body,
+                    // image: notification_details[0].image,
+                    // navigate_to: notification_details[0].navigate_to,
+                },
+                to: notificationData.recipient
+            };
+            console.log(notification, "data");
+
+            const result = await axios.post(this.fcmurl, notification, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `key=${this.fcmkey}`,
+                },
+            });
+            // console.log(result, "result");
+            if (result.data.success === 1) {
+                return 'Push notification sent successfully';
+            }
+
+            if (result.data.failure === 1) {
+                throw new Error('Invalid token');
+            }
+
+            throw new Error('Unknown response from FCM server');
+        } catch (error) {
+            throw new Error('Failed to send push notification: ' + error.toString());
+        }
+    }
 }

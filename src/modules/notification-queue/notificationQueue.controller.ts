@@ -42,6 +42,6 @@ export class NotificationQueueController {
     @ApiOkResponse({ description: 'Updated Sucessfully' })
     @ApiBody({ type: UpdateQueueDTO })
     async update(@Param('id', ParseUUIDPipe) id: string, @Body() updateQueueDTO: UpdateQueueDTO, @Res() response: Response) {
-        return this.notificationQueueService.updateQueue(id, updateQueueDTO, response)
+        return this.notificationQueueService.updateQueue(id, updateQueueDTO)
     }
 }
