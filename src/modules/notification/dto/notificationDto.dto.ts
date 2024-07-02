@@ -1,4 +1,4 @@
-import { IsString, IsEmail, IsArray, ValidateNested, IsObject, IsNotEmpty, ArrayMinSize } from 'class-validator';
+import { IsString, IsEmail, IsArray, ValidateNested, IsObject, IsNotEmpty, ArrayMinSize, IsBoolean } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -23,16 +23,23 @@ export class SMSDTO {
 
 export class PushDTO {
 
-    @ApiProperty({ example: 'd2ihU3WpBFeoeXWhXe03F5:APA91bFNTnRzqffOGjKWHMypfjHxH-H1tSO7-7V-eajz0YsomuA-mMDni4l9GAgR-ybrMh-g1fy6hVOknr0ThOBb7ttb_qnciS5hdsTQ8oPHjZLsa66kOLdzM9hiZJf1Iav9b0EvXTt4' })
+    @ApiProperty({ type: [String], example: ['d2ihU3WpBFeoeXWhXe03F5:APA91bFNTnRzqffOGjKWHMypfjHxH-H1tSO7-7V-eajz0YsomuA-mMDni4l9GAgR-ybrMh-g1fy6hVOknr0ThOBb7ttb_qnciS5hdsTQ8oPHjZLsa66kOLdzM9hiZJf1Iav9b0EvXTt4'] })
+    @IsArray()
+    @IsString({ each: true })
+    @ArrayMinSize(1)
     @IsNotEmpty()
-    @IsString()
-    to: string;
+    receipients: string[];
 }
 
 
 export class NotificationDto {
 
-    @ApiProperty({ example: 'EVENT', description: 'Context of the notification' })
+    @ApiProperty({ example: false, description: 'Define the way where we need to send notification ' })
+    @IsNotEmpty()
+    @IsBoolean()
+    isQueue: boolean;
+
+    @ApiProperty({ example: 'EVENT2', description: 'Context of the notification' })
     @IsNotEmpty()
     @IsString()
     context: string;
