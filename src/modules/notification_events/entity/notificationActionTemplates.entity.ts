@@ -1,11 +1,11 @@
 // NotificationTemplateConfig.entity.ts
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import { NotificationTemplates } from './notificationTemplate.entity';
+import { NotificationActions } from './notificationActions.entity';
 
-@Entity('NotificationTemplateConfig')
-export class NotificationTemplateConfig {
+@Entity('NotificationActionTemplates')
+export class NotificationActionTemplates {
     @PrimaryGeneratedColumn('uuid')
-    id: string;
+    templateId: string;
 
     @Column()
     language: string;
@@ -32,11 +32,11 @@ export class NotificationTemplateConfig {
     updatedBy: string;
 
     @Column()
-    template_id: number;
+    actionId: number;
 
-    @ManyToOne(() => NotificationTemplates, template => template.templateconfig)
-    @JoinColumn({ name: 'template_id' })
-    template: NotificationTemplates;
+    @ManyToOne(() => NotificationActions, template => template.templateconfig)
+    @JoinColumn({ name: 'actionId' })
+    template: NotificationActions;
 
     @Column()
     type: string;

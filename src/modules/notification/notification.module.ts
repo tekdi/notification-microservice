@@ -6,15 +6,15 @@ import { NotificationAdapterFactory } from './notificationadapters';
 import { EmailAdapter } from './adapters/emailService.adapter';
 import { SmsAdapter } from './adapters/smsService.adapter';
 import { PushAdapter } from './adapters/pushService.adapter';
-import { NotificationTemplates } from '../notification_events/entity/notificationTemplate.entity';
-import { NotificationTemplateConfig } from '../notification_events/entity/notificationTemplateConfig.entity';
+import { NotificationActions } from '../notification_events/entity/notificationActions.entity';
+import { NotificationActionTemplates } from '../notification_events/entity/notificationActionTemplates.entity';
 import { NotificationLog } from './entity/notificationLogs.entity';
 import { NotificationService } from './notification.service';
 import { LoggerService } from 'src/common/logger/logger.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([NotificationTemplates, NotificationTemplateConfig, NotificationLog]), // import entity here
+    TypeOrmModule.forFeature([NotificationActions, NotificationActionTemplates, NotificationLog]), // import entity here
     NotificationEventsModule,
   ],
   providers: [NotificationAdapterFactory, PushAdapter, SmsAdapter, EmailAdapter, NotificationService, LoggerService],

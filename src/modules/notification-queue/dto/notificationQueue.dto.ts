@@ -7,8 +7,8 @@ export class NotificationQueueDTO {
     id: string;
 
     @ApiProperty({ example: 'Email', description: 'Channel through which the notification is sent.' })
-    @IsEnum(['Email', 'sms', 'push', 'web', 'whatsapp'], {
-        message: 'Channel Type must be one of: Email, sms, push, web, whatsapp'
+    @IsEnum(['email', 'sms', 'push'], {
+        message: 'Channel Type must be one of: email, sms, push'
     }
     )
     @IsString()

@@ -7,8 +7,8 @@ import { NotificationLog } from "../entity/notificationLogs.entity";
 import { NotificationService } from "../notification.service";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { NotificationTemplates } from "src/modules/notification_events/entity/notificationTemplate.entity";
-import { NotificationTemplateConfig } from "src/modules/notification_events/entity/notificationTemplateConfig.entity";
+import { NotificationActions } from "src/modules/notification_events/entity/notificationActions.entity";
+import { NotificationActionTemplates } from "src/modules/notification_events/entity/notificationActionTemplates.entity";
 import { LoggerService } from "src/common/logger/logger.service";
 @Injectable()
 export class PushAdapter implements NotificationServiceInterface {
@@ -17,10 +17,10 @@ export class PushAdapter implements NotificationServiceInterface {
     constructor(
         @Inject(forwardRef(() => NotificationService)) private readonly notificationServices: NotificationService,
         private readonly configService: ConfigService,
-        @InjectRepository(NotificationTemplates)
-        private notificationEventsRepo: Repository<NotificationTemplates>,
-        @InjectRepository(NotificationTemplateConfig)
-        private notificationTemplateConfigRepository: Repository<NotificationTemplateConfig>,
+        @InjectRepository(NotificationActions)
+        private notificationEventsRepo: Repository<NotificationActions>,
+        @InjectRepository(NotificationActionTemplates)
+        private notificationTemplateConfigRepository: Repository<NotificationActionTemplates>,
         private logger: LoggerService
     ) {
         this.fcmkey = this.configService.get('FCM_KEY');
@@ -35,7 +35,7 @@ export class PushAdapter implements NotificationServiceInterface {
         }
 
         // Fetching template configuration details from template id
-        const notification_details = await this.notificationTemplateConfigRepository.find({ where: { template_id: notification_event.id, type: 'push' } });
+        const notification_details = await this.notificationTemplateConfigRepository.find({ where: { actionId: notification_event.actionId, type: 'push' } });
         if (notification_details.length === 0) {
             this.logger.error('/Send Email Notification', `Template Config not found for this context : ${context}`, 'Not Found')
             throw new BadRequestException('Notification template config not defined');
@@ -71,10 +71,10 @@ export class PushAdapter implements NotificationServiceInterface {
                 },
             });
             if (result.data.success === 1) {
-                this.logger.log('Push notification sent successfully')
+                this.logger.log('Push notification sent successful')
                 notificationLogs.status = true;
                 await this.notificationServices.saveNotificationLogs(notificationLogs);
-                return 'Push notification sent successfully';
+                return 'Push notification sent successful';
             }
             if (result.data.failure === 1) {
                 throw new Error('Invalid token');
