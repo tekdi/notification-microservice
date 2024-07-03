@@ -9,7 +9,7 @@ import { UpdateEventDto } from './dto/updateEventTemplate.dto';
 import { AllExceptionsFilter } from 'src/common/filters/exception.filter';
 import { APIID } from 'src/common/utils/api-id.config';
 
-@Controller('notification-events')
+@Controller('notification-templates')
 @ApiTags('Notification-Templates')
 export class NotificationEventsController {
   constructor(private notificationeventsService: NotificationEventsService) { }
