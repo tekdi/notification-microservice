@@ -21,7 +21,7 @@ export class NotificationQueueController {
     @ApiBadRequestResponse({ description: 'Invalid request' })
     @UsePipes(new ValidationPipe({ transform: true }))
     @ApiBody({ type: NotificationQueueDTO })
-    async create(@Body() notificationQueueDTO: NotificationQueueDTO, @Res() response: Response) {
+    async create(@Body() notificationQueueDTO, @Res() response: Response) {
         return this.notificationQueueService.create(notificationQueueDTO, response);
     }
 
@@ -41,7 +41,7 @@ export class NotificationQueueController {
     @ApiBadRequestResponse({ description: 'Invalid Request' })
     @ApiOkResponse({ description: 'Updated Sucessfully' })
     @ApiBody({ type: UpdateQueueDTO })
-    async update(@Param('id', ParseUUIDPipe) id: string, @Body() updateQueueDTO: UpdateQueueDTO, @Res() response: Response) {
-        return this.notificationQueueService.updateQueue(id, updateQueueDTO, response)
+    async update(@Param('id', ParseUUIDPipe) id: string, @Body() updateQueueDTO: UpdateQueueDTO) {
+        return this.notificationQueueService.updateQueue(id, updateQueueDTO)
     }
 }

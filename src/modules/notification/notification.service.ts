@@ -1,4 +1,4 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
+import { BadRequestException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import axios from 'axios';
@@ -12,18 +12,33 @@ import { TopicNotification } from './dto/topicnotification .dto';
 import { NotificationLog } from './entity/notificationLogs.entity';
 import { LoggerService } from 'src/common/logger/logger.service';
 import { Response } from 'express';
+import { NotificationActions } from '../notification_events/entity/notificationActions.entity';
+import { NotificationActionTemplates } from '../notification_events/entity/notificationActionTemplates.entity';
+import { NotificationQueue } from '../notification-queue/entities/notificationQueue.entity';
+import { AmqpConnection, RabbitSubscribe } from '@nestjs-plus/rabbitmq';
+import { NotificationQueueService } from '../notification-queue/notificationQueue.service';
+import { APIID } from 'src/common/utils/api-id.config';
 @Injectable()
 export class NotificationService {
-  @InjectRepository(NotificationLog)
-  private notificationLogRepository: Repository<NotificationLog>
+
   private readonly fcm: FCM;
   private readonly fcmkey;
   private readonly fcmurl;
 
   constructor(
+    @InjectRepository(NotificationLog)
+    private notificationLogRepository: Repository<NotificationLog>,
+    @InjectRepository(NotificationActions)
+    private notificationActions: Repository<NotificationActions>,
+    @InjectRepository(NotificationActionTemplates)
+    private notificationActionTemplates: Repository<NotificationActionTemplates>,
+    @InjectRepository(NotificationQueue)
+    private notificationQueue: Repository<NotificationQueue>,
+    private readonly notificationQueueService: NotificationQueueService,
     private readonly adapterFactory: NotificationAdapterFactory,
     private readonly configService: ConfigService,
-    private readonly logger: LoggerService
+    private readonly logger: LoggerService,
+    private readonly amqpConnection: AmqpConnection,
   ) {
     this.fcmkey = this.configService.get('FCM_KEY');
     this.fcmurl = this.configService.get('FCM_URL')
@@ -31,49 +46,54 @@ export class NotificationService {
   }
 
   async sendNotification(notificationDto: NotificationDto, response: Response): Promise<APIResponse> {
-    const apiId = 'api.send.notification'
+    const apiId = APIID.SEND_NOTIFICATION;
     try {
-      const { email, push, sms } = notificationDto;
+      const { email, push, sms, context, replacements } = notificationDto;
       const promises = [];
-      // Send email notification if email channel is specified
-      if (email && email.receipients.length > 0 && Object.keys(email).length > 0) {
-        const emailAdapter = this.adapterFactory.getAdapter('email');
-        promises.push(emailAdapter.sendNotification(notificationDto));
+      const notification_event = await this.notificationActions.findOne({ where: { context } });
+
+      if (!notification_event) {
+        this.logger.error('/Send Notification', 'Template not found', context);
+        throw new BadRequestException('Template not found');
       }
 
-      // Send SMS notification if SMS channel is specified
-      if (sms && sms.receipients.length > 0 && Object.keys(sms).length > 0) {
-        const smsAdapter = this.adapterFactory.getAdapter('sms');
-        promises.push(smsAdapter.sendNotification(notificationDto));
+      // Handle email notifications if specified
+      if (email && email.receipients && email.receipients.length > 0) {
+        promises.push(this.notificationHandler('email', email.receipients, 'email', replacements, notificationDto, notification_event));
       }
 
-      // Send push notification if push channel is specified
-      if (push && Object.keys(push).length > 0) {
-        const pushAdapter = this.adapterFactory.getAdapter('push');
-        promises.push(pushAdapter.sendNotification(notificationDto));
+      // Handle SMS notifications if specified
+      if (sms && sms.receipients && sms.receipients.length > 0) {
+        promises.push(this.notificationHandler('sms', sms.receipients, 'sms', replacements, notificationDto, notification_event));
+      }
+
+      // Handle push notifications if specified
+      if (push && push.receipients && push.receipients.length > 0) {
+        promises.push(this.notificationHandler('push', push.receipients, 'push', replacements, notificationDto, notification_event));
       }
 
       const results = await Promise.allSettled(promises);
-      const serverResponses: APIResponse[] = results.map((result) => {
+      const serverResponses = results.map((result) => {
         if (result.status === 'fulfilled') {
-          return APIResponse.success(
-            response,
-            apiId,
-            result.value,
-            HttpStatus.OK,
-            'Notification send successful'
-          );
+          return {
+            data: result.value
+          };
         } else {
-          return APIResponse.error(
-            response,
-            apiId,
-            'Something went wrong',
-            result.reason?.message,
-            result.reason.status
-          );
+          return {
+            error: result.reason?.message,
+            code: result.reason?.status
+          };
         }
       });
-      return serverResponses;
+
+      return APIResponse.success(
+        response,
+        apiId,
+        serverResponses,
+        HttpStatus.OK,
+        'Notification process completed'
+      );
+
     } catch (e) {
       this.logger.error(
         `Failed to Send Notification`,
@@ -81,16 +101,115 @@ export class NotificationService {
         '/Not able to send Notification',
       );
       const errorMessage = e.message || 'Internal server error';
-      // return APIResponse.error(response, apiId, "Internal Server Error", errorMessage, HttpStatus.INTERNAL_SERVER_ERROR);
-      return [
-        APIResponse.error(
-          response,
-          apiId,
-          'Something went wrong',
-          e,
-          HttpStatus.INTERNAL_SERVER_ERROR
-        ),
-      ];
+      return APIResponse.error(
+        response,
+        apiId,
+        'Something went wrong',
+        errorMessage,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  // Helper function to handle sending notifications for a specific channel
+  async notificationHandler(channel, recipients, type, replacements, notificationDto, notification_event) {
+    if (recipients && recipients.length > 0 && Object.keys(recipients).length > 0) {
+      const notification_details = await this.notificationActionTemplates.find({ where: { actionId: notification_event.actionId, type } });
+      if (notification_details.length === 0) {
+        this.logger.error(`/Send ${channel} Notification`, `Template Config not found for this context: ${notificationDto.context}`, 'Not Found');
+        throw new BadRequestException(`Notification template config not defined for ${type}`);
+      }
+
+      let bodyText = notification_details[0].body;
+      const placeholders = (bodyText.match(/\{#var\d+#\}/g) || []).length;
+      if (!Array.isArray(replacements)) {
+        replacements = []; // Assuming default behavior if replacements is not provided
+      }
+      if (placeholders !== replacements.length) {
+        throw new BadRequestException(`Mismatch between placeholders and replacements: ${placeholders} placeholders and ${replacements.length} replacements.`);
+      }
+
+      if (replacements && replacements.length > 0) {
+        replacements.forEach((replacement, index) => {
+          bodyText = bodyText.replace(`{#var${index}#}`, replacement);
+        });
+      }
+
+      const notificationDataArray = recipients.map(recipient => {
+        return {
+          subject: notification_details[0].subject,
+          body: bodyText,
+          recipient: recipient,
+          key: notification_event.key,
+          context: notificationDto.context,
+          channel: type,
+          context_id: notification_event.actionId
+        };
+      });
+
+      if (notificationDto.isQueue) {
+        try {
+          const saveQueue = await this.saveNotificationQueue(notificationDataArray);
+          if (saveQueue.length === 0) {
+            throw new Error('Failed to save notifications in  queue');
+          }
+          return { success: true, message: 'Notification saved in queued successfully' };
+        } catch (error) {
+          this.logger.error('Error to save notifications in queue', error);
+          throw new Error('Failed to save notifications in queue');
+        }
+      } else {
+        const adapter = this.adapterFactory.getAdapter(type);
+        return adapter.sendNotification(notificationDataArray);
+      }
+    }
+  };
+
+
+  //Provider which store in Queue 
+  async saveNotificationQueue(notificationDataArray) {
+    try {
+      const arrayofResult = await this.notificationQueue.save(notificationDataArray);
+      if (arrayofResult) {
+        if (this.amqpConnection && arrayofResult) {
+          try {
+            for (const result of arrayofResult) {
+              this.amqpConnection.publish('notification.exchange', 'notification.route', result, { persistent: true });
+            }
+          }
+          catch (e) {
+            throw e;
+          }
+        }
+        return arrayofResult;
+      }
+    }
+    catch (e) {
+      throw e;
+    }
+  }
+
+  @RabbitSubscribe({
+    exchange: 'notification.exchange',
+    routingKey: 'notification.route',
+    queue: 'notification.queue',
+  })
+  async handleNotification(notification, message: any, retryCount = 3) {
+    try {
+      const adapter = this.adapterFactory.getAdapter(notification.channel);
+      const result = await adapter.sendNotification([notification])
+      const updateQueueDTO = { status: true, retries: 3 - retryCount, last_attempted: new Date() };
+      await this.notificationQueueService.updateQueue(notification.id, updateQueueDTO)
+    }
+    catch (error) {
+      if (retryCount > 0) {
+        setTimeout(async () => {
+          await this.handleNotification(notification, message, retryCount - 1);
+        }, 2000);
+      } else {
+        const updateQueueDTO = { last_attempted: new Date(), retries: 3 };
+        await this.notificationQueueService.updateQueue(notification.id, updateQueueDTO)
+      }
     }
   }
 
@@ -187,9 +306,6 @@ export class NotificationService {
     }
   }
 
-  // async findAll(): Promise<Notification[]> {
-  //   return await this.notificationRepository.find();
-  // }
 
   // // proper working function
   // async sendWhatsappMessage(

@@ -8,5 +8,6 @@ export const APIID = {
     QUEUE_LIST: "api.queue.list",
     QUEUE_GET: "api.queue.get",
     QUEUE_DELETE: "api.queue.delete",
-    QUEUE_UPDATE: "api.queue.update"
+    QUEUE_UPDATE: "api.queue.update",
+    SEND_NOTIFICATION: "api.send.notification"
 }

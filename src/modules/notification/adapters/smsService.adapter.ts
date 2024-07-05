@@ -27,81 +27,74 @@ export class SmsAdapter implements NotificationServiceInterface {
         this.accountSid = this.configService.get('TWILIO_ACCOUNT_SID');
         this.authToken = this.configService.get('TWILIO_AUTH_TOKEN');
     }
-    async sendNotification(notificationDto: NotificationDto) {
-        const twilio = require('twilio');
-        const client = twilio(this.accountSid, this.authToken);
-        const { context, sms, replacements } = notificationDto;
-        const { receipients } = sms;
-        const notification_event = await this.notificationEventsRepo.findOne({ where: { context } })
-        if (!notification_event) {
-            this.logger.error('/Send SMS Notification', 'Template not found', context)
-            throw new BadRequestException('Template not found')
-        }
-
-        // fetching template configuration details from template id...,
-        const notification_details = await this.notificationTemplateConfigRepository.find({ where: { actionId: notification_event.actionId, type: 'sms' } });
-        if (notification_details.length === 0) {
-            this.logger.error('/Send Email Notification', `Template Config not found for this context : ${context}`, 'Not Found');
-            throw new BadRequestException('Notification template config not define')
-        }
-        let bodyText = notification_details[0].body;
-        //used for replscement tag 
-        if (replacements && replacements.length > 0) {
-            replacements.forEach((replacement, index) => {
-                bodyText = bodyText.replace(`{#var${index}#}`, replacement);
-            });
-        }
-        if (!receipients || receipients.length === 0) {
-            throw new BadRequestException('Recipients cannot be empty');
-        }
-
-        // Check for empty strings in recipients
-        if (receipients.some(recipient => recipient.trim() === '')) {
-            throw new BadRequestException('Empty string found in recipients');
-        }
-
-        for (const recipient of receipients) {
-            const notificationLogs = this.createNotificationLog(notificationDto, notification_details, notification_event, bodyText, recipient);
+    async sendNotification(notificationDataArray) {
+        const results = [];
+        for (const notificationData of notificationDataArray) {
             try {
+                const recipient = notificationData.recipient;
                 if (!this.isValidMobileNumber(recipient)) {
                     throw new BadRequestException('Invalid Mobile Number');
                 }
-                const message = await client.messages.create({
-                    from: '+12563056567',
-                    to: `+91` + notificationDto.sms.receipients,
-                    body: bodyText,
+                const smsNotificationDto = {
+                    body: notificationData.body,
+                    recipient: recipient,
+                    context: notificationData.context,
+                    key: notificationData.key,
+                    subject: notificationData.subject,
+                };
+                const result = await this.send(smsNotificationDto);
+                // return result;
+                results.push({
+                    recipient: recipient,
+                    status: 'success',
+                    result: "SMS notification sent successfully",
                 });
-                this.logger.log('SMS notification sent successfully')
-                notificationLogs.status = true;
-                await this.notificationServices.saveNotificationLogs(notificationLogs);
-                return "SMS notification sent sucessfully";
-            }
-            catch (error) {
-                this.logger.error(
-                    `Failed to Send SMS Notification for ${context}`,
-                    error,
-                    '/Not able to send Notification',
-                );
-                notificationLogs.status = false;
-                notificationLogs.error = error.toString();
-                await this.notificationServices.saveNotificationLogs(notificationLogs);
-                throw new Error('Failed to send sms notification' + error)
+            } catch (error) {
+                this.logger.error('Failed to send SMS notification', error);
+                results.push({
+                    recipient: notificationData.recipient,
+                    status: 'error',
+                    error: `SMS not sent: ${JSON.stringify(error)}`,
+                });
             }
         }
+        return results;
     }
+
     private isValidMobileNumber(mobileNumber: string) {
         const regexExpForMobileNumber = /^[6-9]\d{9}$/gi;
         return regexExpForMobileNumber.test(mobileNumber);
     }
-    private createNotificationLog(notificationDto: NotificationDto, notificationDetail, notification_event, bodyText: string, receipients: string): NotificationLog {
+    private createNotificationLog(notificationDto: NotificationDto, subject, key, body, receipients: string): NotificationLog {
         const notificationLogs = new NotificationLog()
         notificationLogs.context = notificationDto.context;
-        notificationLogs.subject = notificationDetail[0].subject;
-        notificationLogs.body = bodyText;
-        notificationLogs.action = notification_event.key
+        notificationLogs.subject = subject;
+        notificationLogs.body = body;
+        notificationLogs.action = key
         notificationLogs.type = 'sms';
         notificationLogs.recipient = receipients;
         return notificationLogs;
     }
-
+    async send(notificationData) {
+        const notificationLogs = this.createNotificationLog(notificationData, notificationData.subject, notificationData.key, notificationData.body, notificationData.recipient);
+        try {
+            const twilio = require('twilio');
+            const client = twilio(this.accountSid, this.authToken);
+            const message = await client.messages.create({
+                from: '+12563056567',
+                to: `+91${notificationData.recipient}`,
+                body: notificationData.body,
+            });
+            this.logger.log('SMS notification sent successfully');
+            notificationLogs.status = true;
+            await this.notificationServices.saveNotificationLogs(notificationLogs);
+            return message;
+        } catch (error) {
+            this.logger.error('Failed to Send SMS Notification', error, '/Not able to send Notification');
+            notificationLogs.status = false;
+            notificationLogs.error = error.toString();
+            await this.notificationServices.saveNotificationLogs(notificationLogs);
+            throw error;
+        }
+    }
 }

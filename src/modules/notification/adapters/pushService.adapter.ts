@@ -26,81 +26,82 @@ export class PushAdapter implements NotificationServiceInterface {
         this.fcmkey = this.configService.get('FCM_KEY');
         this.fcmurl = this.configService.get('FCM_URL')
     }
-    async sendNotification(notificationDto: NotificationDto) {
-        const { context, replacements } = notificationDto;
-        const notification_event = await this.notificationEventsRepo.findOne({ where: { context } })
-        if (!notification_event) {
-            this.logger.error('/Send Push Notification', 'Template not found', context)
-            throw new BadRequestException('Template not found')
+    async sendNotification(notificationDataArray) {
+        const results = [];
+        for (const notificationData of notificationDataArray) {
+            try {
+                const result = await this.send(notificationData);
+                // return result;
+                if (result.data.success === 1) {
+                    results.push({
+                        recipient: notificationData.recipient,
+                        status: 'success',
+                        result: 'Push notification sent successfully'
+                    });
+                } else if (result.data.failure === 1) {
+                    throw new Error('Invalid token');
+                }
+
+            }
+            catch (error) {
+                this.logger.error('Failed to send push notification', error);
+                results.push({
+                    recipient: notificationData.recipient,
+                    status: 'error',
+                    error: error.toString()
+                });
+            }
         }
+        return results;
+    }
 
-        // Fetching template configuration details from template id
-        const notification_details = await this.notificationTemplateConfigRepository.find({ where: { actionId: notification_event.actionId, type: 'push' } });
-        if (notification_details.length === 0) {
-            this.logger.error('/Send Email Notification', `Template Config not found for this context : ${context}`, 'Not Found')
-            throw new BadRequestException('Notification template config not defined');
-        }
+    private createNotificationLog(context, subject, key, body, receipients): NotificationLog {
+        const notificationLogs = new NotificationLog();
+        notificationLogs.context = context;
+        notificationLogs.subject = subject;
+        notificationLogs.body = body
+        notificationLogs.action = key
+        notificationLogs.type = 'push';
+        notificationLogs.recipient = receipients;
+        return notificationLogs;
+    }
 
-        let bodyText = notification_details[0].body;
-        // Used for replacement tags
-        if (replacements && replacements.length > 0) {
-            replacements.forEach((replacement, index) => {
-                bodyText = bodyText.replace(`{#var${index}#}`, replacement);
-            });
-        }
-
-
-        const fcmUrl = this.fcmurl;
-        const fcmKey = this.fcmkey;
-
-        const notificationData = {
-            notification: {
-                title: notification_details[0].subject,
-                body: bodyText,
-                // image: notification_details[0].image,
-                // navigate_to: notification_details[0].navigate_to,
-            },
-            to: notificationDto.push.to
-        };
-        const notificationLogs = this.createNotificationLog(notificationDto, notification_details, notification_event, bodyText);
+    async send(notificationData) {
+        const notificationLogs = this.createNotificationLog(notificationData.context, notificationData.subject, notificationData.key, notificationData.body, notificationData.recipient);
         try {
-            const result = await axios.post(fcmUrl, notificationData, {
+            const notification = {
+                notification: {
+                    title: notificationData.subject,
+                    body: notificationData.body,
+                },
+                to: notificationData.recipient
+            };
+            const result = await axios.post(this.fcmurl, notification, {
                 headers: {
                     'Content-Type': 'application/json',
-                    Authorization: `key=${fcmKey}`,
+                    Authorization: `key=${this.fcmkey}`,
                 },
             });
             if (result.data.success === 1) {
                 this.logger.log('Push notification sent successful')
                 notificationLogs.status = true;
                 await this.notificationServices.saveNotificationLogs(notificationLogs);
-                return 'Push notification sent successful';
+                return result;
             }
             if (result.data.failure === 1) {
                 throw new Error('Invalid token');
             }
+            throw new Error('Unknown response from FCM server');
         } catch (error) {
             this.logger.error(
-                `Failed to Send Push Notification for ${context}`,
+                `Failed to Send Push Notification for ${notificationData.context}`,
                 error,
                 '/Not able to send Notification',
             );
             notificationLogs.status = false;
             notificationLogs.error = error.toString();
             await this.notificationServices.saveNotificationLogs(notificationLogs);
-            throw new Error('Failed to send push notification' + error)
+            throw error;
         }
     }
-
-    private createNotificationLog(notificationDto, notification_details, notification_event, bodyText): NotificationLog {
-        const notificationLogs = new NotificationLog();
-        notificationLogs.context = notificationDto.context;
-        notificationLogs.subject = notification_details[0].subject;
-        notificationLogs.body = bodyText
-        notificationLogs.action = notification_event.key
-        notificationLogs.type = 'push';
-        notificationLogs.recipient = notificationDto.push.to;
-        return notificationLogs;
-    }
-
 }

@@ -9,16 +9,14 @@ import { SearchQueueDTO } from './dto/searchQueue.dto';
 import { UpdateQueueDTO } from './dto/updateQueue.dto';
 import { APIID } from 'src/common/utils/api-id.config';
 
-
 @Injectable()
 export class NotificationQueueService {
-
     constructor(
         @InjectRepository(NotificationQueue)
         private readonly notificationQueueRepo: Repository<NotificationQueue>
     ) { }
 
-    async create(notificationQueueDTO: NotificationQueueDTO, response: Response) {
+    async create(notificationQueueDTO: NotificationQueueDTO, response) {
         const apiId = APIID.QUEUE_CREATE;
         try {
             const result = await this.notificationQueueRepo.save(notificationQueueDTO);
@@ -55,29 +53,23 @@ export class NotificationQueueService {
         }
     }
 
-    async updateQueue(id: string, updateQueueDTO: UpdateQueueDTO, response: Response) {
+    async updateQueue(id: string, updateQueueDTO: UpdateQueueDTO) {
         const apiId = APIID.QUEUE_UPDATE
         try {
             const queue = await this.notificationQueueRepo.findOne({ where: { id } });
             if (!queue) {
-                return APIResponse.error(
-                    response,
-                    apiId,
-                    `No notification queue found for: ${id}`,
-                    'records not found.',
-                    HttpStatus.NOT_FOUND
-                )
+                throw new BadRequestException(`No notification queue found for: ${id}`)
             }
             Object.assign(queue, updateQueueDTO);
             const updateResult = await this.notificationQueueRepo.save(queue);
             if (!updateResult) {
                 throw new BadRequestException('Event update failed');
             }
-            return APIResponse.success(response, apiId, updateResult, HttpStatus.OK, 'Updated successfully')
+            return { updateResult, status: HttpStatus.OK }
         }
         catch (e) {
             const errorMessage = e.message || 'Internal server error';
-            return APIResponse.error(response, apiId, "Internal Server Error", errorMessage, HttpStatus.INTERNAL_SERVER_ERROR);
+            return errorMessage;
         }
 
     }
