@@ -122,6 +122,9 @@ export class NotificationService {
 
       let bodyText = notification_details[0].body;
       const placeholders = (bodyText.match(/\{#var\d+#\}/g) || []).length;
+      if (!Array.isArray(replacements)) {
+        replacements = []; // Assuming default behavior if replacements is not provided
+      }
       if (placeholders !== replacements.length) {
         throw new BadRequestException(`Mismatch between placeholders and replacements: ${placeholders} placeholders and ${replacements.length} replacements.`);
       }

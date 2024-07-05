@@ -1,4 +1,4 @@
-import { IsString, IsEmail, IsArray, ValidateNested, IsObject, IsNotEmpty, ArrayMinSize, IsBoolean } from 'class-validator';
+import { IsString, IsEmail, IsArray, ValidateNested, IsObject, IsNotEmpty, ArrayMinSize, IsBoolean, IsOptional } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -45,9 +45,9 @@ export class NotificationDto {
     context: string;
 
     @ApiProperty({ example: ['John Doe', 'How to use UI tools'] })
-    @IsNotEmpty()
+    @IsOptional()
     @IsArray()
-    @IsString({ each: true })
+    @ArrayMinSize(1)
     replacements: string[];
 
     @ApiProperty({ type: EmailDTO, description: 'Email notification details' })
