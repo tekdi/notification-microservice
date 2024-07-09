@@ -213,45 +213,45 @@ export class NotificationService {
     }
   }
 
-  async subscribeToDeviceTopicFromDB(requestBody: SubscribeToDeviceTopicDto) {
-    try {
-      const { deviceId, topicName } = requestBody;
-      await this.fcm.subscribeToTopic(deviceId, topicName, (err, response) => {
-        if (err) {
-          console.error('Error subscribing to topic:', err);
-          throw err;
-        }
-      });
-    } catch (error) {
-      this.logger.error(
-        `Failed to Subscribe to topic ${requestBody.topicName}`,
-        error,
-        '/Not able to subscribe to topic',
-      );
-      throw error;
-    }
+  // async subscribeToDeviceTopicFromDB(requestBody: SubscribeToDeviceTopicDto) {
+  //   try {
+  //     const { deviceId, topicName } = requestBody;
+  //     await this.fcm.subscribeToTopic(deviceId, topicName, (err, response) => {
+  //       if (err) {
+  //         console.error('Error subscribing to topic:', err);
+  //         throw err;
+  //       }
+  //     });
+  //   } catch (error) {
+  //     this.logger.error(
+  //       `Failed to Subscribe to topic ${requestBody.topicName}`,
+  //       error,
+  //       '/Not able to subscribe to topic',
+  //     );
+  //     throw error;
+  //   }
 
-  }
+  // }
 
-  async unsubscribeFromTopic(requestBody: SubscribeToDeviceTopicDto) {
-    try {
-      const { deviceId, topicName } = requestBody;
-      if (deviceId.length > 0) {
-        await this.fcm.unsubscribeToTopic(deviceId, topicName, (err, response) => {
-          if (err) {
-            throw err; // Handle the error as needed
-          }
-        });
-      }
-    } catch (error) {
-      this.logger.error(
-        `Failed to UnSubscribe to topic ${requestBody.topicName}`,
-        error,
-        '/Not able to Unsubscribe to topic',
-      );
-      throw error;
-    }
-  }
+  // async unsubscribeFromTopic(requestBody: SubscribeToDeviceTopicDto) {
+  //   try {
+  //     const { deviceId, topicName } = requestBody;
+  //     if (deviceId.length > 0) {
+  //       await this.fcm.unsubscribeToTopic(deviceId, topicName, (err, response) => {
+  //         if (err) {
+  //           throw err; // Handle the error as needed
+  //         }
+  //       });
+  //     }
+  //   } catch (error) {
+  //     this.logger.error(
+  //       `Failed to UnSubscribe to topic ${requestBody.topicName}`,
+  //       error,
+  //       '/Not able to Unsubscribe to topic',
+  //     );
+  //     throw error;
+  //   }
+  // }
 
   async sendTopicNotification(requestBody: TopicNotification) {
     try {

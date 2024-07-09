@@ -33,25 +33,25 @@ export class NotificationController {
     return this.notificationService.sendNotification(notificationDto, response);
   }
 
-  @Post('subscribetotopic')
-  @ApiInternalServerErrorResponse({ description: 'Server Error' })
-  @ApiBadRequestResponse({ description: 'Invalid Request' })
-  @UsePipes(new ValidationPipe({ transform: true }))
-  @ApiCreatedResponse({ description: 'Sunscribed the topic' })
-  @ApiBody({ type: SubscribeToDeviceTopicDto })
-  async subscribeToDeviceTopic(@Body() requestBody: SubscribeToDeviceTopicDto) {
-    return await this.notificationService.subscribeToDeviceTopicFromDB(requestBody);
-  }
+  // @Post('subscribetotopic')
+  // @ApiInternalServerErrorResponse({ description: 'Server Error' })
+  // @ApiBadRequestResponse({ description: 'Invalid Request' })
+  // @UsePipes(new ValidationPipe({ transform: true }))
+  // @ApiCreatedResponse({ description: 'Sunscribed the topic' })
+  // @ApiBody({ type: SubscribeToDeviceTopicDto })
+  // async subscribeToDeviceTopic(@Body() requestBody: SubscribeToDeviceTopicDto) {
+  //   return await this.notificationService.subscribeToDeviceTopicFromDB(requestBody);
+  // }
 
-  @Post('unsubscribetotopic')
-  @ApiInternalServerErrorResponse({ description: 'Server Error' })
-  @ApiBadRequestResponse({ description: 'Invalid Request' })
-  @UsePipes(new ValidationPipe({ transform: true }))
-  @ApiCreatedResponse({ description: 'Sunscribed the topic' })
-  @ApiBody({ type: SubscribeToDeviceTopicDto })
-  async subscribeToDeviceTopicFromDB(@Body() requestBody: SubscribeToDeviceTopicDto) {
-    return await this.notificationService.unsubscribeFromTopic(requestBody);
-  }
+  // @Post('unsubscribetotopic')
+  // @ApiInternalServerErrorResponse({ description: 'Server Error' })
+  // @ApiBadRequestResponse({ description: 'Invalid Request' })
+  // @UsePipes(new ValidationPipe({ transform: true }))
+  // @ApiCreatedResponse({ description: 'Sunscribed the topic' })
+  // @ApiBody({ type: SubscribeToDeviceTopicDto })
+  // async subscribeToDeviceTopicFromDB(@Body() requestBody: SubscribeToDeviceTopicDto) {
+  //   return await this.notificationService.unsubscribeFromTopic(requestBody);
+  // }
 
 
   @Post('sendTopicNotification')
