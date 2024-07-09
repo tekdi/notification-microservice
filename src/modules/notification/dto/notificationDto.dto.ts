@@ -39,10 +39,15 @@ export class NotificationDto {
     @IsBoolean()
     isQueue: boolean;
 
-    @ApiProperty({ example: 'EVENT2', description: 'Context of the notification' })
+    @ApiProperty({ example: 'EVENT', description: 'Context of the notification' })
     @IsNotEmpty()
     @IsString()
     context: string;
+
+    @ApiProperty({ example: 'OnAfterAttendeeEnrolled', description: 'Key of the notification' })
+    @IsNotEmpty()
+    @IsString()
+    key: string;
 
     @ApiProperty({ example: ['John Doe', 'How to use UI tools'] })
     @IsOptional()

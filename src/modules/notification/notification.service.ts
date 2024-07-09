@@ -48,9 +48,9 @@ export class NotificationService {
   async sendNotification(notificationDto: NotificationDto, response: Response): Promise<APIResponse> {
     const apiId = APIID.SEND_NOTIFICATION;
     try {
-      const { email, push, sms, context, replacements } = notificationDto;
+      const { email, push, sms, context, replacements, key } = notificationDto;
       const promises = [];
-      const notification_event = await this.notificationActions.findOne({ where: { context } });
+      const notification_event = await this.notificationActions.findOne({ where: { context, key } });
 
       if (!notification_event) {
         this.logger.error('/Send Notification', 'Template not found', context);
