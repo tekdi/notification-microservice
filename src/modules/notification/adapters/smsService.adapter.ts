@@ -84,7 +84,7 @@ export class SmsAdapter implements NotificationServiceInterface {
             const twilio = require('twilio');
             const client = twilio(this.accountSid, this.authToken);
             const message = await client.messages.create({
-                from: `+15735704535`,
+                from: `${this.smsFrom}`,
                 to: `+91${notificationData.recipient}`,
                 body: notificationData.body,
             });
