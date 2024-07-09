@@ -24,9 +24,10 @@ export class NotificationEventsService {
     async createTemplate(userId: string, data: CreateEventDto, response: Response): Promise<Response> {
         const apiId = APIID.TEMPLATE_CREATE;
         try {
+
             const existingTemplate =
                 await this.notificationTemplatesRepository.findOne({
-                    where: { context: data.context },
+                    where: { context: data.context, key: data.key },
                 });
             if (existingTemplate) {
                 this.logger.log(
@@ -36,6 +37,10 @@ export class NotificationEventsService {
                 );
                 throw new BadRequestException('Template Already exist');
             }
+            this.validateConfigBody(data.email);
+            this.validateConfigBody(data.push);
+            this.validateConfigBody(data.sms);
+
             const notificationTemplate = new NotificationActions();
             notificationTemplate.title = data.title;
             notificationTemplate.key = data.key;
@@ -102,6 +107,12 @@ export class NotificationEventsService {
                 );
                 throw new BadRequestException('Template not existing');
             }
+
+            // Validate email, push, and sms bodies
+            this.validateConfigBody(updateEventDto.email);
+            this.validateConfigBody(updateEventDto.push);
+            this.validateConfigBody(updateEventDto.sms);
+
             Object.assign(existingTemplate, updateEventDto);
             const result = await this.notificationTemplatesRepository.save(existingTemplate);
             const createConfig = async (type: string, configData?: any) => {
@@ -165,12 +176,18 @@ export class NotificationEventsService {
         }
     }
 
+
+
     async getTemplatesTypesForEvent(searchFilterDto: SearchFilterDto, response: Response) {
         const apiId = APIID.TEMPLATE_LIST
         try {
-            const context = searchFilterDto.filters.context;
+            const { context, key } = searchFilterDto.filters;
+            let whereCondition: any = { context };
+            if (key) {
+                whereCondition.key = key;
+            }
             const result = await this.notificationTemplatesRepository.find({
-                where: { context },
+                where: whereCondition,
                 relations: ["templateconfig"],
             });
 
@@ -242,4 +259,24 @@ export class NotificationEventsService {
 
     }
 
+
+    private validateVariables(body: string) {
+        const variablePattern = /{#var(\d+)#}/g;
+        const variables = [...body.matchAll(variablePattern)].map(match => parseInt(match[1]));
+        // Check if variables are sequentially ordered
+        for (let i = 0; i < variables.length; i++) {
+            if (variables[i] !== i) {
+                throw new BadRequestException(`Variables should be in sequential order starting from {#var0#}. Found: {#var${variables[i]}#}`);
+            }
+        }
+    }
+
+    private validateConfigBody(config: any) {
+        if (config && config.body) {
+            this.validateVariables(config.body);
+        }
+    }
+
 }
+
+

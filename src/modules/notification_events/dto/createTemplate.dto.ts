@@ -17,7 +17,7 @@ export class EmailDto {
     @IsNotEmpty()
     subject: string;
 
-    @ApiProperty({ example: 'This is body of Email', description: "Email body" })
+    @ApiProperty({ example: 'This is body of {#var0#} Notification', description: "Email body" })
     @IsString()
     @IsNotEmpty()
     body: string;
@@ -87,6 +87,7 @@ export class CreateEventDto {
             "description": "Name of Campaign Promoter"
         }]
     })
+    @IsOptional()
     @ValidateNested({ each: true })
     @Type(() => ReplacementTagDto)
     @IsArray()

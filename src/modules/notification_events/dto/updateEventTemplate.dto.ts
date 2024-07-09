@@ -88,12 +88,6 @@ export class UpdateEventDto {
     @IsOptional()
     replacementTags: ReplacementTagDto[];
 
-    @ApiProperty({ example: "en", description: "en" })
-    @IsString()
-    @IsNotEmpty()
-    @IsOptional()
-    language: string;
-
     @ApiProperty({ example: "published", description: "Status" })
     @IsEnum(['published', 'unpublished'], {
         message: 'Status must be one of: published, unpublished',

@@ -14,6 +14,7 @@ export class SmsAdapter implements NotificationServiceInterface {
 
     private readonly accountSid;
     private readonly authToken;
+    private readonly smsFrom;
 
     constructor(
         @Inject(forwardRef(() => NotificationService)) private readonly notificationServices: NotificationService,
@@ -26,6 +27,8 @@ export class SmsAdapter implements NotificationServiceInterface {
     ) {
         this.accountSid = this.configService.get('TWILIO_ACCOUNT_SID');
         this.authToken = this.configService.get('TWILIO_AUTH_TOKEN');
+        this.smsFrom = this.configService.get('SMS_FROM');
+
     }
     async sendNotification(notificationDataArray) {
         const results = [];
@@ -81,7 +84,7 @@ export class SmsAdapter implements NotificationServiceInterface {
             const twilio = require('twilio');
             const client = twilio(this.accountSid, this.authToken);
             const message = await client.messages.create({
-                from: '+12563056567',
+                from: `${this.smsFrom}`,
                 to: `+91${notificationData.recipient}`,
                 body: notificationData.body,
             });

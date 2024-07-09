@@ -1,6 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { IsNotEmpty, IsString, ValidateNested, } from "class-validator";
+import { IsNotEmpty, IsOptional, IsString, ValidateNested, } from "class-validator";
 
 export class SearchDto {
 
@@ -8,6 +8,12 @@ export class SearchDto {
     @IsString()
     @IsNotEmpty()
     context: string;
+
+    @ApiProperty({ example: 'EVENT' })
+    @IsOptional()
+    @IsString()
+    @IsNotEmpty()
+    key: string;
 }
 
 export class SearchFilterDto {
