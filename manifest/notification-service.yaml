@@ -15,7 +15,7 @@ spec:
         app: notification
     spec:
       containers:
-      - image: ${ECR_REPOSITORY}:${ECR_IMAGE_TAG}
+      - image: ${ECR_REPOSITORY}:${IMAGE_TAG}
         imagePullPolicy: Always
         name: notification-service
         envFrom:
