@@ -77,7 +77,7 @@ jobs:
         echo "Contents of manifest/notification-service-updated.yaml:"
         cat manifest/notification-service-updated.yaml
         ls -ltra manifest/
-        kubectl apply -f manifest/configmap.yaml
+        #kubectl apply -f manifest/configmap.yaml
         kubectl apply -f manifest/notification-service-updated.yaml
         echo "kubectl apply exit code: $?"
         # kubectl get configmap
