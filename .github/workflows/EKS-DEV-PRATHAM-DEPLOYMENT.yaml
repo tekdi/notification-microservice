@@ -74,14 +74,24 @@ jobs:
         export IMAGE_TAG=${{ secrets.ECR_IMAGE_TAG }}
         export ECR_IMAGE=${{ secrets.ECR_IMAGE }}
         envsubst < manifest/notification-service.yaml > manifest/notification-service-updated.yaml
-        cat manifest/notification-service-updated.yaml
-        rm -rf manifest/notification-service.yaml
+        echo "Contents of manifest/notification-service-updated.yaml:"
         cat manifest/notification-service-updated.yaml
         ls -ltra manifest/
         kubectl apply -f manifest/configmap.yaml
         kubectl apply -f manifest/notification-service-updated.yaml
-        sleep 10
-        kubectl get pods
-        kubectl get services
-        kubectl get deployment 
+        echo "kubectl apply exit code: $?"
+        # kubectl get configmap
+
+
+
+
+        
+        
+        # ls -ltra manifest/
+        # kubectl apply -f manifest/configmap.yaml
+        # kubectl apply -f manifest/notification-service-updated.yaml
+        # sleep 10
+        # kubectl get pods
+        # kubectl get services
+        # kubectl get deployment 
         
