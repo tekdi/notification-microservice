@@ -9,7 +9,6 @@ spec:
   selector:
     matchLabels:
       app: notification
-  strategy: {}
   template:
     metadata:
       labels:
@@ -17,7 +16,7 @@ spec:
     spec:
       containers:
       - image: ${ECR_REPOSITORY}:${ECR_IMAGE_TAG}
-        imagePullPolicy: "Always"
+        imagePullPolicy: Always
         name: notification-service
         envFrom:
         - configMapRef:
@@ -25,8 +24,6 @@ spec:
         ports:
         - containerPort: 4000
         resources: {}
-      restartPolicy: Always
-status: {}
 ---
 apiVersion: v1
 kind: Service
