@@ -28,12 +28,13 @@ export class SmsAdapter implements NotificationServiceInterface {
         this.accountSid = this.configService.get('TWILIO_ACCOUNT_SID');
         this.authToken = this.configService.get('TWILIO_AUTH_TOKEN');
         this.smsFrom = this.configService.get('SMS_FROM');
-
+        console.log("accountSid=", this.accountSid, "authToken=", this.authToken, "smsFrom=", this.smsFrom);
     }
     async sendNotification(notificationDataArray) {
         const results = [];
         for (const notificationData of notificationDataArray) {
             try {
+                console.log("accountSid1=", this.accountSid, "authToken1=", this.authToken, "smsFrom1=", this.smsFrom);
                 const recipient = notificationData.recipient;
                 if (!this.isValidMobileNumber(recipient)) {
                     throw new BadRequestException('Invalid Mobile Number');
