@@ -2,7 +2,7 @@ name: Deploy to EKS-Pratham-ms
 on:
   push:
     branches:
-      - main-1
+      - main
 env:
   ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
   EKS_CLUSTER_NAME: ${{ secrets.EKS_CLUSTER_NAME }}
