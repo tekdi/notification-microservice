@@ -78,9 +78,9 @@ jobs:
         rm -rf manifest/notification-service.yaml
         cat manifest/notification-service-updated.yaml
         ls -ltra manifest/
-        kubectl delete service notification
-        kubectl delete deployment notification
-        kubectl delete cm notification-service-config
+        #kubectl delete service notification
+        #kubectl delete deployment notification
+        #kubectl delete cm notification-service-config
         kubectl apply -f manifest/configmap.yaml
         kubectl apply -f manifest/notification-service-updated.yaml
         sleep 10
