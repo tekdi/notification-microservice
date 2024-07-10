@@ -29,11 +29,11 @@ jobs:
         node-version: 21.1.0
     - name: Copy .env file
       env:
-       ENV_FILE_CONTENT: ${{ secrets.ENV_FILE_CONTENT_DEV }}
+        ENV_FILE_CONTENT: ${{ secrets.ENV_FILE_CONTENT_DEV }}
       run: echo "$ENV_FILE_CONTENT" > manifest/configmap.yaml
     - name: Creating Dockerfile
       env:
-       DOCKERFILE_FILE_CONTENT: ${{ secrets.DOCKERFILE_FILE_CONTENT }}
+        DOCKERFILE_FILE_CONTENT: ${{ secrets.DOCKERFILE_FILE_CONTENT }}
       run: echo "$DOCKERFILE_FILE_CONTENT" > Dockerfile
     - name: Login to Amazon ECR
       id: login-ecr
@@ -47,12 +47,24 @@ jobs:
         docker push $ECR_REGISTRY:$IMAGE_TAG
     - name: Update kube config
       run: aws eks update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }} --region ${{ secrets.AWS_REGION_NAME }}
+    - name: Print environment variables
+      run: |
+        echo "ECR_REGISTRY: $ECR_REGISTRY"
+        echo "IMAGE_TAG: $IMAGE_TAG"
+    - name: Update YAML file
+      run: |
+        sed -e 's|${ECR_REPOSITORY}|'"$ECR_REGISTRY"'|g' \
+            -e 's|${ECR_IMAGE_TAG}|'"$IMAGE_TAG"'|g' \
+            manifest/notification-service.yaml > manifest/notification-service-updated.yaml
+    - name: Print updated YAML
+      run: |
+        echo "Contents of notification-service-updated.yaml:"
+        cat manifest/notification-service-updated.yaml
     - name: Deploy to EKS
       env:
         ECR_REGISTRY: ${{ secrets.ECR_REPOSITORY }}
         IMAGE_TAG: ${{ secrets.ECR_IMAGE_TAG }}
       run: |
-        envsubst < manifest/notification-service.yaml > manifest/notification-service-updated.yaml
         kubectl apply -f manifest/configmap.yaml
         kubectl apply -f manifest/notification-service-updated.yaml
         sleep 10
