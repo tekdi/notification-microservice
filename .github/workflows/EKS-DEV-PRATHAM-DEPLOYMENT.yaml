@@ -30,7 +30,7 @@ jobs:
 
     - name: Decode and write .env file
       run: |
-        echo "${{ secrets.ENV_FILE_PROD }}" | base64 -d > manifest/configmap.yaml
+        echo "${{ secrets.ENV_FILE_CONTENT_DEV }}" | base64 -d > manifest/configmap.yaml
         echo "Contents of manifest/configmap.yaml:"
         cat manifest/configmap.yaml
         
@@ -85,15 +85,14 @@ jobs:
         envsubst < manifest/notification-service.yaml > manifest/notification-service-updated.yaml
         echo "Contents of manifest/notification-service-updated.yaml:"
         cat manifest/notification-service-updated.yaml
-        ls -ltra manifest/
-        kubectl apply -f manifest/configmap.yaml
-        kubectl apply -f manifest/notification-service-updated.yaml
         echo "kubectl apply exit code: $?"
-        kubectl get configmap
+        kubectl get cm
         ls -ltra manifest/
+        kubectl delete deployment notification
+        kubectl delete svc notification
         kubectl apply -f manifest/configmap.yaml
         kubectl apply -f manifest/notification-service-updated.yaml
-        sleep 10
+        sleep 5
         kubectl get pods
         kubectl get services
         kubectl get deployment
