@@ -30,7 +30,7 @@ jobs:
 
     - name: Decode and write .env file
       run: |
-        echo "${{ secrets.ENV_FILE_CONTENT_DEV }}" | base64 -d > manifest/configmap.yaml
+        echo "${{ secrets.ENV_FILE_CONTENT_DEV }}" > manifest/configmap.yaml
         echo "Contents of manifest/configmap.yaml:"
         cat manifest/configmap.yaml
         
