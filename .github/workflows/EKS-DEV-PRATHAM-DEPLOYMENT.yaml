@@ -90,6 +90,13 @@ jobs:
         kubectl apply -f manifest/notification-service-updated.yaml
         echo "kubectl apply exit code: $?"
         kubectl get configmap
+        ls -ltra manifest/
+        kubectl apply -f manifest/configmap.yaml
+        kubectl apply -f manifest/notification-service-updated.yaml
+        sleep 10
+        kubectl get pods
+        kubectl get services
+        kubectl get deployment
 
 
 
