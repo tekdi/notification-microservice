@@ -76,7 +76,7 @@ jobs:
         envsubst < manifest/notification-service.yaml > manifest/notification-service-updated.yaml
         cat manifest/notification-service-updated.yaml
         rm -rf manifest/notification-service.yaml
-        
+        cat manifest/notification-service-updated.yaml
         ls -ltra manifest/
         kubectl delete service notification
         kubectl delete deployment notification
