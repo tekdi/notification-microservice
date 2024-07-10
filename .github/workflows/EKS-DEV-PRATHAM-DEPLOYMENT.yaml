@@ -49,11 +49,14 @@ jobs:
       run: aws eks update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }} --region ${{ secrets.AWS_REGION_NAME }}
     - name: Deploy to EKS
       env:
-        ECR_REGISTRY: ${{ secrets.ECR_REPOSITORY }}
+        ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
         IMAGE_TAG: ${{ secrets.ECR_IMAGE_TAG }}
       run: |
         envsubst < manifest/notification-service.yaml > manifest/notification-service-updated.yaml
+        echo "Substituted YAML:"
         cat manifest/notification-service-updated.yaml  # Print the substituted file
+        echo "Validating YAML:"
+        python -c 'import yaml, sys; yaml.safe_load(sys.stdin)' < manifest/notification-service-updated.yaml  # Validate YAML format
         kubectl apply -f manifest/configmap.yaml
         kubectl apply -f manifest/notification-service-updated.yaml
         sleep 10
