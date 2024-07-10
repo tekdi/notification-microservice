@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: notification
+  name: notification
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notification
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: notification
+    spec:
+      containers:
+      - image: ${ECR_REPOSITORY}:${ECR_IMAGE_TAG}
+        imagePullPolicy: "Always"
+        name: notification-service
+        envFrom:
+        - configMapRef:
+            name: notification-service-config
+        ports:
+        - containerPort: 4000
+        resources: {}
+      restartPolicy: Always
+status: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification
+spec:
+  type: ClusterIP
+  ports:
+  - port: 4000
+    protocol: TCP
+  selector:
+    app: notification
