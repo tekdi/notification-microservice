@@ -100,14 +100,7 @@ export class NotificationService {
         e,
         '/Not able to send Notification',
       );
-      const errorMessage = e.message || 'Internal server error';
-      return APIResponse.error(
-        response,
-        apiId,
-        'Something went wrong',
-        errorMessage,
-        HttpStatus.INTERNAL_SERVER_ERROR
-      );
+      throw e;
     }
   }
 
