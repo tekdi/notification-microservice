@@ -112,25 +112,32 @@ export class NotificationService {
         this.logger.error(`/Send ${channel} Notification`, `Template Config not found for this context: ${notificationDto.context}`, 'Not Found');
         throw new BadRequestException(`Notification template config not defined for ${type}`);
       }
+      let bodyText;
+      let subject;
+      bodyText = notification_details[0].body;
+      subject = notification_details[0].subject;
 
-      let bodyText = notification_details[0].body;
-      const placeholders = (bodyText.match(/\{#var\d+#\}/g) || []).length;
-      if (!Array.isArray(replacements)) {
-        replacements = []; // Assuming default behavior if replacements is not provided
-      }
-      if (placeholders !== replacements.length) {
-        throw new BadRequestException(`Mismatch between placeholders and replacements: ${placeholders} placeholders and ${replacements.length} replacements.`);
+      // Ensure replacements are in the correct format
+      if (typeof replacements !== 'object' || replacements === null) {
+        replacements = {};
       }
 
-      if (replacements && replacements.length > 0) {
-        replacements.forEach((replacement, index) => {
-          bodyText = bodyText.replace(`{#var${index}#}`, replacement);
-        });
-      }
+      // Extract placeholders from the templates
+      const subjectPlaceholders = this.extractPlaceholders(subject);
+      const bodyPlaceholders = this.extractPlaceholders(bodyText);
+
+      // Validate that all placeholders are present in the replacements object
+      this.validatePlaceholders([...subjectPlaceholders, ...bodyPlaceholders], replacements);
+
+
+      // Replace placeholders in subject and bodyText
+      subject = this.replacePlaceholders(subject, replacements);
+      bodyText = this.replacePlaceholders(bodyText, replacements);
 
       const notificationDataArray = recipients.map(recipient => {
         return {
-          subject: notification_details[0].subject,
+          // subject: notification_details[0].subject,
+          subject: subject,
           body: bodyText,
           recipient: recipient,
           key: notification_event.key,
@@ -157,6 +164,33 @@ export class NotificationService {
       }
     }
   };
+
+  replacePlaceholders(template, replacements) {
+    return template.replace(/{(\w+)}/g, (match, key) => {
+      return replacements[match] || match; // Replace with the value or keep the placeholder
+    });
+  }
+
+  // Function to extract placeholders from the template
+  extractPlaceholders(template: string): string[] {
+    const regex = /{(\w+)}/g;
+    const matches = [];
+    let match;
+    while ((match = regex.exec(template)) !== null) {
+      matches.push(match[0]);
+    }
+    return matches;
+  }
+
+  // Function to validate that all placeholders have corresponding replacements
+  validatePlaceholders(placeholders: string[], replacements: { [key: string]: string }): void {
+    const missingReplacements = placeholders.filter((placeholder) => !replacements.hasOwnProperty(placeholder));
+
+    if (missingReplacements.length > 0) {
+      throw new BadRequestException(`Missing replacements for placeholders: ${missingReplacements.join(', ')}`);
+    }
+  }
+
 
 
   //Provider which store in Queue 
@@ -298,7 +332,6 @@ export class NotificationService {
       throw new Error('Failed to save notification logs');
     }
   }
-
 
   // // proper working function
   // async sendWhatsappMessage(
