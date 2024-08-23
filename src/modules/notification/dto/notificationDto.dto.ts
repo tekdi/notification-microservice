@@ -1,6 +1,6 @@
 import { IsString, IsEmail, IsArray, ValidateNested, IsObject, IsNotEmpty, ArrayMinSize, IsBoolean, IsOptional } from 'class-validator';
 import { Type } from 'class-transformer';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class EmailDTO {
 
@@ -49,11 +49,24 @@ export class NotificationDto {
     @IsString()
     key: string;
 
-    @ApiProperty({ example: ['John Doe', 'How to use UI tools'] })
+    // @ApiProperty({ example: ['John Doe', 'How to use UI tools'] })
+    // @IsOptional()
+    // @IsArray()
+    // @ArrayMinSize(1)
+    // replacements: string[];
+    @ApiPropertyOptional({
+        description: 'Dynamic replacements for template tags',
+        example: {
+            "{eventName}": "How to use UI tools",
+            "{userName}": "John Doe",
+            "{courseTitle}": "How to use UI tools",
+            "{contactEmail}": "support@example.com"
+        }
+    })
     @IsOptional()
-    @IsArray()
-    @ArrayMinSize(1)
-    replacements: string[];
+    @IsObject()
+    // @ValidateReplacement() // Custom decorator to ensure at least one replacement
+    replacements?: { [key: string]: string };
 
     @ApiProperty({ type: EmailDTO, description: 'Email notification details' })
     @ValidateNested()
