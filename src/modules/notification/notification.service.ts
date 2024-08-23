@@ -73,23 +73,44 @@ export class NotificationService {
       }
 
       const results = await Promise.allSettled(promises);
-      const serverResponses = results.map((result) => {
+      // const serverResponses = results.map((result) => {
+      //   if (result.status === 'fulfilled') {
+      //     return {
+      //       data: result.value
+      //     };
+      //   } else {
+      //     return {
+      //       error: result.reason?.message,
+      //       code: result.reason?.status
+      //     };
+      //   }
+      // });
+      const serverResponses = {
+        email: { data: [], errors: [] },
+        sms: { data: [], errors: [] },
+        push: { data: [], errors: [] }
+      };
+
+      results.forEach((result, index) => {
+        const channel = ['email', 'sms', 'push'][index];
         if (result.status === 'fulfilled') {
-          return {
-            data: result.value
-          };
+          serverResponses[channel].data.push(result.value);
         } else {
-          return {
+          serverResponses[channel].errors.push({
             error: result.reason?.message,
             code: result.reason?.status
-          };
+          });
         }
       });
+      // Filter out channels with empty data and errors arrays
+      const finalResponses = Object.fromEntries(
+        Object.entries(serverResponses).filter(([channel, { data, errors }]) => data.length > 0 || errors.length > 0 || errors.length > 0)
+      );
 
       return APIResponse.success(
         response,
         apiId,
-        serverResponses,
+        finalResponses,
         HttpStatus.OK,
         'Notification process completed'
       );
