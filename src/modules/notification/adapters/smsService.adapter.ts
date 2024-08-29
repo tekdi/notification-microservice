@@ -50,7 +50,7 @@ export class SmsAdapter implements NotificationServiceInterface {
                 // return result;
                 results.push({
                     recipient: recipient,
-                    status: 'success',
+                    status: 200,
                     result: "SMS notification sent successfully",
                 });
             } catch (error) {

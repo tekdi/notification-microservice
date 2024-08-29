@@ -30,7 +30,7 @@ export class EmailAdapter implements NotificationServiceInterface {
                 if (result.status === 'success') {
                     results.push({
                         recipient: recipient,
-                        status: 'success',
+                        status: 200,
                         result: 'Email notification sent successfully'
                     });
                 } else {
