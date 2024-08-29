@@ -94,7 +94,17 @@ export class NotificationService {
       results.forEach((result, index) => {
         const channel = ['email', 'sms', 'push'][index];
         if (result.status === 'fulfilled') {
-          serverResponses[channel].data.push(result.value);
+          result.value.forEach(notification => {
+            if (notification.status === 200) {
+              serverResponses[channel].data.push(notification);
+            } else {
+              serverResponses[channel].errors.push({
+                recipient: notification.recipient,
+                error: notification.error || notification.result,
+                code: notification.status
+              });
+            }
+          });
         } else {
           serverResponses[channel].errors.push({
             error: result.reason?.message,
