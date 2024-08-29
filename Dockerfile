@@ -1,22 +1,8 @@
-FROM node:slim
-
-# Create app directory
+FROM node:20 as dependencies
 WORKDIR /app
-
-# Install app dependencies
-# A wildcard is used to ensure both package.json AND package-lock.json are copied
-# where available (npm@5+)
-COPY package*.json ./
-
-#RUN npm cache clean --force
-
-RUN npm install
-RUN npm i --save @nestjs/config
-# If you are building your code for production
-# RUN npm ci --only=production
-
-# Bundle app source
-COPY . .
-
-EXPOSE 3000
-CMD [ "npm", "run","start" ]
+COPY . ./
+RUN npm i --force
+RUN npm install fcm-node --force
+RUN apt-get update 
+EXPOSE 4000
+CMD ["npm", "start"]
