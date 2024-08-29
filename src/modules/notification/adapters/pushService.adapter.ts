@@ -35,7 +35,7 @@ export class PushAdapter implements NotificationServiceInterface {
                 if (result.data.success === 1) {
                     results.push({
                         recipient: notificationData.recipient,
-                        status: 'success',
+                        status: 200,
                         result: 'Push notification sent successfully'
                     });
                 } else if (result.data.failure === 1) {
