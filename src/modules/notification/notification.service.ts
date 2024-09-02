@@ -94,7 +94,9 @@ export class NotificationService {
       results.forEach((result, index) => {
         const channel = ['email', 'sms', 'push'][index];
         if (result.status === 'fulfilled') {
-          result.value.forEach(notification => {
+          const notifications = Array.isArray(result.value) ? result.value : [result.value];
+          notifications.forEach(notification => {
+            // result.value.forEach(notification => {
             if (notification.status === 200) {
               serverResponses[channel].data.push(notification);
             } else {
@@ -113,9 +115,14 @@ export class NotificationService {
         }
       });
       // Filter out channels with empty data and errors arrays
+      // const finalResponses = Object.fromEntries(
+      //   Object.entries(serverResponses).filter(([channel, { data, errors }]) => data.length > 0 || errors.length > 0 || errors.length > 0)
+      // );
+      // Filter out channels with empty data and errors arrays
       const finalResponses = Object.fromEntries(
-        Object.entries(serverResponses).filter(([channel, { data, errors }]) => data.length > 0 || errors.length > 0 || errors.length > 0)
+        Object.entries(serverResponses).filter(([_, { data, errors }]) => data.length > 0 || errors.length > 0)
       );
+
 
       return APIResponse.success(
         response,
@@ -184,7 +191,7 @@ export class NotificationService {
           if (saveQueue.length === 0) {
             throw new Error('Failed to save notifications in  queue');
           }
-          return { success: true, message: 'Notification saved in queued successfully' };
+          return { status: 200, message: 'Notification saved in queue successfully' };
         } catch (error) {
           this.logger.error('Error to save notifications in queue', error);
           throw new Error('Failed to save notifications in queue');
