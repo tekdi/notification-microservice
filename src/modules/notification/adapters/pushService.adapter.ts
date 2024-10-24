@@ -108,15 +108,11 @@ export class PushAdapter implements NotificationServiceInterface {
     }
 
     async getAccessToken() {
-        try {
-            const token = await admin.credential.cert({
-                projectId: this.configService.get('FIREBASE_PROJECT_ID'),
-                clientEmail: this.configService.get('FIREBASE_CLIENT_EMAIL'),
-                privateKey: this.configService.get('FIREBASE_PRIVATE_KEY').replace(/\\n/g, '\n'),
-            }).getAccessToken();
-            return token.access_token;
-        } catch (error) {
-            throw error;
-        }
+        const token = await admin.credential.cert({
+            projectId: this.configService.get('FIREBASE_PROJECT_ID'),
+            clientEmail: this.configService.get('FIREBASE_CLIENT_EMAIL'),
+            privateKey: this.configService.get('FIREBASE_PRIVATE_KEY').replace(/\\n/g, '\n'),
+        }).getAccessToken();
+        return token.access_token;
     }
 }

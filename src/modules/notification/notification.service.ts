@@ -236,24 +236,20 @@ export class NotificationService {
 
   //Provider which store in Queue 
   async saveNotificationQueue(notificationDataArray) {
-    try {
-      const arrayofResult = await this.notificationQueue.save(notificationDataArray);
-      if (arrayofResult) {
-        if (this.amqpConnection && arrayofResult) {
-          try {
-            for (const result of arrayofResult) {
-              this.amqpConnection.publish('notification.exchange', 'notification.route', result, { persistent: true });
-            }
-          }
-          catch (e) {
-            throw e;
+    const arrayofResult = await this.notificationQueue.save(notificationDataArray);
+    if (arrayofResult) {
+      if (this.amqpConnection) {
+        try {
+          for (const result of arrayofResult) {
+            this.amqpConnection.publish('notification.exchange', 'notification.route', result, { persistent: true });
           }
         }
-        return arrayofResult;
+        catch (e) {
+          this.logger.error('/error to save in notification in rabbitMq', e)
+          throw e;
+        }
       }
-    }
-    catch (e) {
-      throw e;
+      return arrayofResult;
     }
   }
 
@@ -362,7 +358,7 @@ export class NotificationService {
 
   async saveNotificationLogs(notificationLogs: NotificationLog) {
     try {
-      const result = await this.notificationLogRepository.save(notificationLogs);
+      await this.notificationLogRepository.save(notificationLogs);
     }
     catch (e) {
       this.logger.error(
