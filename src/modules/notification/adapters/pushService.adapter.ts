@@ -5,11 +5,8 @@ import * as admin from "firebase-admin";
 import { ConfigService } from "@nestjs/config";
 import { NotificationLog } from "../entity/notificationLogs.entity";
 import { NotificationService } from "../notification.service";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { NotificationActions } from "src/modules/notification_events/entity/notificationActions.entity";
-import { NotificationActionTemplates } from "src/modules/notification_events/entity/notificationActionTemplates.entity";
 import { LoggerService } from "src/common/logger/logger.service";
+import { ERROR_MESSAGES, SUCCESS_MESSAGES } from "src/common/utils/constant.util";
 
 @Injectable()
 export class PushAdapter implements NotificationServiceInterface {
@@ -43,12 +40,12 @@ export class PushAdapter implements NotificationServiceInterface {
                     results.push({
                         recipient: notificationData.recipient,
                         status: 200,
-                        result: 'Push notification sent successfully'
+                        result: SUCCESS_MESSAGES.PUSH_NOTIFICATION_SEND_SUCCESSFULLY
                     });
                 }
             }
             catch (error) {
-                this.logger.error('Failed to send push notification', error.toString());
+                this.logger.error(ERROR_MESSAGES.PUSH_NOTIFICATION_FAILED, error.toString());
                 results.push({
                     recipient: notificationData.recipient,
                     status: 'error',
@@ -99,8 +96,8 @@ export class PushAdapter implements NotificationServiceInterface {
                 await this.notificationServices.saveNotificationLogs(notificationLogs);
                 return result;
             } else {
-                this.logger.log('Failed to send push notification: Invalid response from FCM');
-                throw new Error('Failed to send push notification: Invalid response from FCM');
+                this.logger.log(ERROR_MESSAGES.PUSH_NOTIFICATION_FAILED);
+                throw new Error(ERROR_MESSAGES.PUSH_NOTIFICATION_FAILED);
             }
         } catch (error) {
             notificationLogs.status = false;

@@ -18,6 +18,8 @@ import { NotificationQueue } from '../notification-queue/entities/notificationQu
 import { AmqpConnection, RabbitSubscribe } from '@nestjs-plus/rabbitmq';
 import { NotificationQueueService } from '../notification-queue/notificationQueue.service';
 import { APIID } from 'src/common/utils/api-id.config';
+import { SUCCESS_MESSAGES, ERROR_MESSAGES } from 'src/common/utils/constant.util';
+
 @Injectable()
 export class NotificationService {
 
@@ -53,8 +55,8 @@ export class NotificationService {
       const notification_event = await this.notificationActions.findOne({ where: { context, key } });
 
       if (!notification_event) {
-        this.logger.error('/Send Notification', 'Template not found', context);
-        throw new BadRequestException('Template not found');
+        this.logger.error(SUCCESS_MESSAGES.SEND_NOTIFICATION, ERROR_MESSAGES.TEMPLATE_NOTFOUND, context);
+        throw new BadRequestException(ERROR_MESSAGES.TEMPLATE_NOTFOUND);
       }
 
       // Handle email notifications if specified
@@ -129,15 +131,15 @@ export class NotificationService {
         apiId,
         finalResponses,
         HttpStatus.OK,
-        'Notification process completed'
+        SUCCESS_MESSAGES.NOTIFICATION_COMPLETED
       );
 
     }
     catch (e) {
       this.logger.error(
-        `Failed to Send Notification`,
+        ERROR_MESSAGES.NOTIFICATION_FAILED,
         e,
-        '/Not able to send Notification',
+        SUCCESS_MESSAGES.SEND_NOTIFICATION,
       );
       throw e;
     }
@@ -148,8 +150,8 @@ export class NotificationService {
     if (recipients && recipients.length > 0 && Object.keys(recipients).length > 0) {
       const notification_details = await this.notificationActionTemplates.find({ where: { actionId: notification_event.actionId, type } });
       if (notification_details.length === 0) {
-        this.logger.error(`/Send ${channel} Notification`, `Template Config not found for this context: ${notificationDto.context}`, 'Not Found');
-        throw new BadRequestException(`Notification template config not defined for ${type}`);
+        this.logger.error(`/Send ${channel} Notification`, `${ERROR_MESSAGES.TEMPLATE_CONFIG_NOTFOUND} ${notificationDto.context}`, 'Not Found');
+        throw new BadRequestException(`${ERROR_MESSAGES.TEMPLATE_CONFIG_NOTFOUND} ${type}`);
       }
       let bodyText;
       let subject;
@@ -190,12 +192,12 @@ export class NotificationService {
         try {
           const saveQueue = await this.saveNotificationQueue(notificationDataArray);
           if (saveQueue.length === 0) {
-            throw new Error('Failed to save notifications in  queue');
+            throw new Error(ERROR_MESSAGES.NOTIFICATION_QUEUE_SAVE_FAILED);
           }
-          return { status: 200, message: 'Notification saved in queue successfully' };
+          return { status: 200, message: SUCCESS_MESSAGES.NOTIFICATION_QUEUE_SAVE_SUCCESSFULLY };
         } catch (error) {
-          this.logger.error('Error to save notifications in queue', error);
-          throw new Error('Failed to save notifications in queue');
+          this.logger.error(ERROR_MESSAGES.NOTIFICATION_QUEUE_SAVE_FAILED, error);
+          throw new Error(ERROR_MESSAGES.NOTIFICATION_QUEUE_SAVE_FAILED);
         }
       } else {
         const adapter = this.adapterFactory.getAdapter(type);
@@ -341,18 +343,18 @@ export class NotificationService {
         },
       });
       return {
-        message: 'Notification sent successfully',
+        message: SUCCESS_MESSAGES.NOTIFICATION_SENT_SUCCESSFULLY,
         status: response.status
       }
     }
     catch (e) {
       this.logger.error(
-        `Failed to Send  Notification for topic this:  ${requestBody.topic_name}`,
+        `Failed to Send Notification for this:  ${requestBody.topic_name} topic`,
         e.toString(),
-        '/Not able to send topic Notification',
+        ERROR_MESSAGES.TOPIC_NOTIFICATION_FAILED,
       );
       return {
-        message: 'Failed to send topic notification',
+        message: ERROR_MESSAGES.TOPIC_NOTIFICATION_FAILED,
         status: e.response.status
       }
     }
@@ -364,11 +366,11 @@ export class NotificationService {
     }
     catch (e) {
       this.logger.error(
-        `/POST Save notification log for notification`,
-        e,
-        '/Failed to  Save Log of Notification for notification',
-      );
-      throw new Error('Failed to save notification logs');
+        `/POST,
+        ${e},
+        ${ERROR_MESSAGES.NOTIFICATION_LOG_SAVE_FAILED},
+      `);
+      throw new Error(ERROR_MESSAGES.NOTIFICATION_LOG_SAVE_FAILED);
     }
   }
 
@@ -386,7 +388,7 @@ export class NotificationService {
   //     const message = await client.messages.create({
   //       body: notificationData.message,
   //       from: 'whatsapp:+14155238886',
-  //       to: `whatsapp:${notificationData.to}`,
+  //       to: `whatsapp: ${ notificationData.to }`,
   //     });
   //     this.logger.info('Message sent successfully to whatsapp');
 
