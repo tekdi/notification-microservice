@@ -5,8 +5,8 @@ import axios from 'axios';
 import { NotificationDto } from './dto/notificationDto.dto';
 import { NotificationAdapterFactory } from './notificationadapters';
 import APIResponse from 'src/common/utils/response';
-import * as FCM from 'fcm-node';
-import { SubscribeToDeviceTopicDto } from './dto/subscribtotopic.dto';
+// import * as FCM from 'fcm-node';
+// import { SubscribeToDeviceTopicDto } from './dto/subscribtotopic.dto';
 import { ConfigService } from '@nestjs/config';
 import { TopicNotification } from './dto/topicnotification .dto';
 import { NotificationLog } from './entity/notificationLogs.entity';
@@ -21,19 +21,19 @@ import { APIID } from 'src/common/utils/api-id.config';
 @Injectable()
 export class NotificationService {
 
-  private readonly fcm: FCM;
+  // private readonly fcm: FCM;
   private readonly fcmkey;
   private readonly fcmurl;
 
   constructor(
     @InjectRepository(NotificationLog)
-    private notificationLogRepository: Repository<NotificationLog>,
+    private readonly notificationLogRepository: Repository<NotificationLog>,
     @InjectRepository(NotificationActions)
-    private notificationActions: Repository<NotificationActions>,
+    private readonly notificationActions: Repository<NotificationActions>,
     @InjectRepository(NotificationActionTemplates)
-    private notificationActionTemplates: Repository<NotificationActionTemplates>,
+    private readonly notificationActionTemplates: Repository<NotificationActionTemplates>,
     @InjectRepository(NotificationQueue)
-    private notificationQueue: Repository<NotificationQueue>,
+    private readonly notificationQueue: Repository<NotificationQueue>,
     private readonly notificationQueueService: NotificationQueueService,
     private readonly adapterFactory: NotificationAdapterFactory,
     private readonly configService: ConfigService,
@@ -42,7 +42,7 @@ export class NotificationService {
   ) {
     this.fcmkey = this.configService.get('FCM_KEY');
     this.fcmurl = this.configService.get('FCM_URL')
-    this.fcm = new FCM(this.fcmkey);
+    // this.fcm = new FCM(this.fcmkey);
   }
 
   async sendNotification(notificationDto: NotificationDto, response: Response): Promise<APIResponse> {
@@ -132,7 +132,8 @@ export class NotificationService {
         'Notification process completed'
       );
 
-    } catch (e) {
+    }
+    catch (e) {
       this.logger.error(
         `Failed to Send Notification`,
         e,
@@ -262,7 +263,7 @@ export class NotificationService {
   async handleNotification(notification, message: any, retryCount = 3) {
     try {
       const adapter = this.adapterFactory.getAdapter(notification.channel);
-      const result = await adapter.sendNotification([notification])
+      await adapter.sendNotification([notification])
       const updateQueueDTO = { status: true, retries: 3 - retryCount, last_attempted: new Date() };
       await this.notificationQueueService.updateQueue(notification.id, updateQueueDTO)
     }
@@ -347,7 +348,7 @@ export class NotificationService {
     catch (e) {
       this.logger.error(
         `Failed to Send  Notification for topic this:  ${requestBody.topic_name}`,
-        e,
+        e.toString(),
         '/Not able to send topic Notification',
       );
       return {
