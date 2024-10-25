@@ -5,7 +5,7 @@ import { NotificationEventsModule } from './modules/notification_events/notifica
 import { NotificationModule } from './modules/notification/notification.module';
 import { DatabaseModule } from './common/database-modules';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { LoggerModule } from './logger/logger.module';
+// import { LoggerModule } from './logger/logger.module';
 import { NotificationQueueModule } from './modules/notification-queue/notificationQueue.module';
 import { RabbitmqModule } from './modules/rabbitmq/rabbitmq.module';
 
@@ -15,7 +15,7 @@ import { RabbitmqModule } from './modules/rabbitmq/rabbitmq.module';
     ConfigModule.forRoot({ isGlobal: true }),
     DatabaseModule,
     RabbitmqModule,
-    NotificationEventsModule, NotificationModule, LoggerModule, NotificationQueueModule],
+    NotificationEventsModule, NotificationModule, NotificationQueueModule],
   controllers: [AppController],
   providers: [AppService, ConfigService],
 })
