@@ -4,9 +4,14 @@ export const SUCCESS_MESSAGES = {
     NOTIFICATION_QUEUE_SAVE_SUCCESSFULLY: 'Notification saved in queue successfully',
     NOTIFICATION_SENT_SUCCESSFULLY: 'Notification sent successfully',
     PUSH_NOTIFICATION_SEND_SUCCESSFULLY: 'Push notification sent successfully',
-
-
-
+    TEMPLATE_CREATE: 'Template created successfully',
+    TEMPLATE_UPDATE: 'Template updated successfully',
+    TEMPLATE_DELETE: 'Template delete successfully',
+    TEMPLATE_GET: 'Template get successfully',
+    CREATE_TEMPLATE_API: '/create Template for Notification',
+    UPDATE_TEMPLATE_API: '/Update Template for Notification',
+    TEMPLATE_DELETE_ID: (actionId) => `Template id: ${actionId} deleted successfully.`,
+    TEMPLATE_LIST: 'Get template list'
 };
 export const ERROR_MESSAGES = {
     INVALID_REQUEST: "Invalid request",
@@ -22,6 +27,9 @@ export const ERROR_MESSAGES = {
     NOTIFICATION_QUEUE_SAVE_FAILED: 'Failed to save notifications in queue',
     NOTIFICATION_LOG_SAVE_FAILED: 'Failed to save Log of notification',
     TOPIC_NOTIFICATION_FAILED: 'Failed to send topic notification',
-    PUSH_NOTIFICATION_FAILED: 'Failed to send push notification'
-
+    PUSH_NOTIFICATION_FAILED: 'Failed to send push notification',
+    TEMPLATE_ALREADY_EXIST: 'Template already exist',
+    TEMPLATE_NOT_EXIST: 'Template not exist',
+    TEMPLATE_NOT_DELETED: 'Template not deleted',
+    TEMPLATE_ID_NOTFOUND: (template_id) => `No template id found: ${template_id}`,
 }

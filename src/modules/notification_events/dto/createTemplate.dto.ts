@@ -36,6 +36,16 @@ export class PushNotificationDto {
     @IsString()
     body: string;
 
+    @ApiProperty({ description: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?fit=crop&w=800&h=600', example: 'This is image of Push' })
+    @IsOptional()
+    @IsString()
+    image: string;
+
+    @ApiProperty({ description: 'link', example: 'This is navigate link of Push' })
+    @IsOptional()
+    @IsString()
+    link: string;
+
 }
 
 export class SMSNotificationDto {

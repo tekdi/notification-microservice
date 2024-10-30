@@ -28,6 +28,13 @@ export class NotificationActionTemplates {
     @Column({ type: 'uuid' })
     createdBy: string;
 
+    @Column()
+    image: string;
+
+    @Column()
+    link: string;
+
+
     @Column({ type: 'uuid', nullable: true })
     updatedBy: string;
 
