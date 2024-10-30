@@ -1,4 +1,4 @@
-import { BadRequestException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, HttpStatus, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { NotificationActions } from './entity/notificationActions.entity';
@@ -110,16 +110,19 @@ export class NotificationEventsService {
                     return await this.notificationTemplateConfigRepository.save(existingConfig);
                 }
                 else {
-                    existingConfig = this.notificationTemplateConfigRepository.create({
+                    const newConfig = this.notificationTemplateConfigRepository.create({
                         actionId: id,
                         type: type,
                         subject: configData.subject,
                         body: configData.body,
                         status: result.status,
                         language: 'en',
-                        updatedBy: userId
+                        updatedBy: userId,
+                        createdBy: userId,
+                        image: configData.image || null,
+                        link: configData.link || null
                     });
-                    return await this.notificationTemplateConfigRepository.save(existingConfig);
+                    return await this.notificationTemplateConfigRepository.save(newConfig);
                 }
             }
         };

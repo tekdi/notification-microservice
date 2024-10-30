@@ -155,8 +155,13 @@ export class NotificationService {
       }
       let bodyText;
       let subject;
+      let image;
+      let link;
       bodyText = notification_details[0].body;
       subject = notification_details[0].subject;
+      image = notification_details[0]?.image;
+      link = notification_details[0]?.link
+
 
       // Ensure replacements are in the correct format
       if (typeof replacements !== 'object' || replacements === null) {
@@ -177,14 +182,15 @@ export class NotificationService {
 
       const notificationDataArray = recipients.map(recipient => {
         return {
-          // subject: notification_details[0].subject,
           subject: subject,
           body: bodyText,
           recipient: recipient,
           key: notification_event.key,
           context: notificationDto.context,
           channel: type,
-          context_id: notification_event.actionId
+          context_id: notification_event.actionId,
+          image: image || null,
+          link: link || null
         };
       });
 

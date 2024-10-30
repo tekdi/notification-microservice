@@ -75,8 +75,12 @@ export class PushAdapter implements NotificationServiceInterface {
                     notification: {
                         title: notificationData.subject,
                         body: notificationData.body,
+                        image: notificationData.image || undefined
                     },
-                    token: notificationData.recipient
+                    token: notificationData.recipient,
+                    data: {
+                        link: notificationData.link || ''
+                    }
                 }
             }
 
