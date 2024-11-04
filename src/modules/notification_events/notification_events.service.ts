@@ -75,7 +75,9 @@ export class NotificationEventsService {
         if (data.sms && Object.keys(data.sms).length > 0) {
             await createConfig('sms', data.sms);
         }
-        return APIResponse.success(response, apiId, { id: notificationTemplateResult.actionId }, HttpStatus.CREATED, SUCCESS_MESSAGES.TEMPLATE_UPDATE);
+        return response
+            .status(HttpStatus.CREATED)
+            .json(APIResponse.success(apiId, notificationTemplateResult, 'Created'));
     }
 
     async updateNotificationTemplate(
@@ -149,7 +151,9 @@ export class NotificationEventsService {
                 }
             });
         }
-        return APIResponse.success(response, apiId, { id: id }, HttpStatus.OK, SUCCESS_MESSAGES.TEMPLATE_UPDATE);
+        return response
+            .status(HttpStatus.OK)
+            .json(APIResponse.success(apiId, { id: id }, 'OK'));
     }
 
     async getTemplates(searchFilterDto: SearchFilterDto, response: Response) {
@@ -178,7 +182,9 @@ export class NotificationEventsService {
             }, {});
             return { ...rest, templates: formattedTemplateConfig };
         });
-        return APIResponse.success(response, apiId, finalResult, HttpStatus.OK, SUCCESS_MESSAGES.TEMPLATE_GET);
+        return response
+            .status(HttpStatus.OK)
+            .json(APIResponse.success(apiId, finalResult, 'OK'));
     }
 
     async deleteTemplate(actionId: number, response: Response) {
@@ -191,13 +197,9 @@ export class NotificationEventsService {
         if (deleteTemplate.affected !== 1) {
             throw new BadRequestException(ERROR_MESSAGES.TEMPLATE_NOT_DELETED);
         }
-        return APIResponse.success(
-            response,
-            apiId,
-            SUCCESS_MESSAGES.TEMPLATE_DELETE_ID,
-            HttpStatus.OK,
-            SUCCESS_MESSAGES.TEMPLATE_DELETE,
-        )
+        return response
+            .status(HttpStatus.OK)
+            .json(APIResponse.success(apiId, { id: actionId }, 'OK'));
     }
 }
 

@@ -11,7 +11,8 @@ export const SUCCESS_MESSAGES = {
     CREATE_TEMPLATE_API: '/create Template for Notification',
     UPDATE_TEMPLATE_API: '/Update Template for Notification',
     TEMPLATE_DELETE_ID: (actionId) => `Template id: ${actionId} deleted successfully.`,
-    TEMPLATE_LIST: 'Get template list'
+    TEMPLATE_LIST: 'Get template list',
+    CREATED: 'Created'
 };
 export const ERROR_MESSAGES = {
     INVALID_REQUEST: "Invalid request",
@@ -32,4 +33,7 @@ export const ERROR_MESSAGES = {
     TEMPLATE_NOT_EXIST: 'Template not exist',
     TEMPLATE_NOT_DELETED: 'Template not deleted',
     TEMPLATE_ID_NOTFOUND: (template_id) => `No template id found: ${template_id}`,
+    QUEUE_NOTFOUND: 'No data found in queue',
+    QUEUE_UPDATE: (id) => `No notification queue found for:${id}`,
+    EVENT_UPDATE_FAILED: 'Event update failed'
 }

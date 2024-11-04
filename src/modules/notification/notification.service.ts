@@ -126,13 +126,16 @@ export class NotificationService {
       );
 
 
-      return APIResponse.success(
-        response,
-        apiId,
-        finalResponses,
-        HttpStatus.OK,
-        SUCCESS_MESSAGES.NOTIFICATION_COMPLETED
-      );
+      // return APIResponse.success(
+      //   response,
+      //   apiId,
+      //   finalResponses,
+      //   HttpStatus.OK,
+      //   SUCCESS_MESSAGES.NOTIFICATION_COMPLETED
+      // );
+      return response
+        .status(HttpStatus.OK)
+        .json(APIResponse.success(apiId, finalResponses, 'OK'));
 
     }
     catch (e) {
