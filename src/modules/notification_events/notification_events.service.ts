@@ -153,8 +153,10 @@ export class NotificationEventsService {
     }
 
     async getTemplates(searchFilterDto: SearchFilterDto, response: Response) {
-        const apiId = APIID.TEMPLATE_LIST
-        const { context, key } = searchFilterDto?.filters;
+        const apiId = APIID.TEMPLATE_LIST;
+        const { context } = searchFilterDto.filters;
+        const key = searchFilterDto.filters?.key;
+
         let whereCondition: any = { context };
         if (key) {
             whereCondition.key = key;
