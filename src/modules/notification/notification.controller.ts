@@ -1,10 +1,10 @@
-import { Body, Controller, Post, Get, UsePipes, ValidationPipe, BadRequestException, Res, UseFilters } from '@nestjs/common';
+import { Body, Controller, Post, Get, UsePipes, ValidationPipe, BadRequestException, Res, UseFilters, Query } from '@nestjs/common';
 import { NotificationService } from './notification.service';
 import { ApiBadRequestResponse, ApiBody, ApiCreatedResponse, ApiInternalServerErrorResponse, ApiOkResponse, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { NotificationDto } from './dto/notificationDto.dto';
 import { SubscribeToDeviceTopicDto } from './dto/subscribtotopic.dto';
 import { TopicNotification } from './dto/topicnotification .dto';
-import { Response, response } from 'express';
+import { Response } from 'express';
 import { AllExceptionsFilter } from 'src/common/filters/exception.filter';
 import { APIID } from 'src/common/utils/api-id.config';
 
@@ -25,12 +25,12 @@ export class NotificationController {
   @ApiBadRequestResponse({ description: 'Invalid Request' })
   @ApiBody({ type: NotificationDto })
   async sendNotification(
-    @Body() notificationDto: NotificationDto, @Res() response: Response
+    @Body() notificationDto: NotificationDto, @Res() response: Response, @Query('userId') userId: string
   ) {
     if (!notificationDto.email && !notificationDto.push && !notificationDto.sms) {
       throw new BadRequestException('At least one of email, push, or sms is required.');
     }
-    return this.notificationService.sendNotification(notificationDto, response);
+    return this.notificationService.sendNotification(notificationDto, userId, response);
   }
 
   // @Post('subscribetotopic')

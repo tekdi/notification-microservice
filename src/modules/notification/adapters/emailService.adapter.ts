@@ -8,14 +8,14 @@ import { NotificationActionTemplates } from "src/modules/notification_events/ent
 import NotifmeSdk from 'notifme-sdk';
 import { NotificationLog } from "../entity/notificationLogs.entity";
 import { NotificationService } from "../notification.service";
-import { LoggerService } from "src/common/logger/logger.service";
+import { LoggerUtil } from "src/common/logger/LoggerUtil";
+import { ERROR_MESSAGES, SUCCESS_MESSAGES } from "src/common/utils/constant.util";
 
 
 @Injectable()
 export class EmailAdapter implements NotificationServiceInterface {
     constructor(
-        @Inject(forwardRef(() => NotificationService)) private readonly notificationServices: NotificationService,
-        private logger: LoggerService
+        @Inject(forwardRef(() => NotificationService)) private readonly notificationServices: NotificationService
     ) { }
 
     async sendNotification(notificationDataArray) {
@@ -24,14 +24,14 @@ export class EmailAdapter implements NotificationServiceInterface {
             try {
                 const recipient = notificationData.recipient;
                 if (!recipient || !this.isValidEmail(recipient)) {
-                    throw new BadRequestException('Invalid Email ID or Request Format');
+                    throw new BadRequestException(ERROR_MESSAGES.INVALID_EMAIL);
                 }
                 const result = await this.send(notificationData);
                 if (result.status === 'success') {
                     results.push({
                         recipient: recipient,
                         status: 200,
-                        result: 'Email notification sent successfully'
+                        result: SUCCESS_MESSAGES.EMAIL_NOTIFICATION_SEND_SUCCESSFULLY
                     });
                 } else {
                     results.push({
@@ -42,7 +42,7 @@ export class EmailAdapter implements NotificationServiceInterface {
                 }
             }
             catch (error) {
-                this.logger.error('Failed to send email notification', error);
+                LoggerUtil.error(ERROR_MESSAGES.EMAIL_NOTIFICATION_FAILED, error);
                 results.push({
                     recipient: notificationData.recipient,
                     status: 'error',
@@ -111,7 +111,7 @@ export class EmailAdapter implements NotificationServiceInterface {
             if (result.status === 'success') {
                 notificationLogs.status = true;
                 await this.notificationServices.saveNotificationLogs(notificationLogs);
-                this.logger.log('Email notification sent successfully')
+                LoggerUtil.error(SUCCESS_MESSAGES.EMAIL_NOTIFICATION_SEND_SUCCESSFULLY);
                 return result;
             }
 
@@ -120,11 +120,7 @@ export class EmailAdapter implements NotificationServiceInterface {
             }
         }
         catch (e) {
-            this.logger.error(
-                `Failed to Send Email Notification for`, //${context}`,
-                e,
-                '/Not able to send Notification',
-            );
+            LoggerUtil.error(ERROR_MESSAGES.EMAIL_NOTIFICATION_FAILED, e);
             notificationLogs.status = false;
             notificationLogs.error = e.toString();
             await this.notificationServices.saveNotificationLogs(notificationLogs);

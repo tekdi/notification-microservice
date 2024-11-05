@@ -8,9 +8,9 @@ import { Response } from 'express';
 import { CreateEventDto } from './dto/createTemplate.dto';
 import { NotificationActionTemplates } from './entity/notificationActionTemplates.entity';
 import { UpdateEventDto } from './dto/updateEventTemplate.dto';
-import { LoggerService } from 'src/common/logger/logger.service';
 import { APIID } from 'src/common/utils/api-id.config';
 import { ERROR_MESSAGES, SUCCESS_MESSAGES } from 'src/common/utils/constant.util';
+import { LoggerUtil } from 'src/common/logger/LoggerUtil';
 @Injectable()
 export class NotificationEventsService {
 
@@ -18,8 +18,7 @@ export class NotificationEventsService {
         @InjectRepository(NotificationActions)
         private notificationTemplatesRepository: Repository<NotificationActions>,
         @InjectRepository(NotificationActionTemplates)
-        private notificationTemplateConfigRepository: Repository<NotificationActionTemplates>,
-        private readonly logger: LoggerService
+        private notificationTemplateConfigRepository: Repository<NotificationActionTemplates>
     ) { }
 
     async createTemplate(userId: string, data: CreateEventDto, response: Response): Promise<Response> {
@@ -29,11 +28,7 @@ export class NotificationEventsService {
                 where: { context: data.context, key: data.key },
             });
         if (existingTemplate) {
-            this.logger.log(
-                apiId,
-                SUCCESS_MESSAGES.CREATE_TEMPLATE_API,
-                ERROR_MESSAGES.TEMPLATE_ALREADY_EXIST,
-            );
+            LoggerUtil.log(apiId, SUCCESS_MESSAGES.CREATE_TEMPLATE_API, ERROR_MESSAGES.TEMPLATE_ALREADY_EXIST, userId);
             throw new BadRequestException(ERROR_MESSAGES.TEMPLATE_ALREADY_EXIST);
         }
 
@@ -75,6 +70,7 @@ export class NotificationEventsService {
         if (data.sms && Object.keys(data.sms).length > 0) {
             await createConfig('sms', data.sms);
         }
+        LoggerUtil.log(SUCCESS_MESSAGES.TEMPLATE_CREATED_SUCESSFULLY(userId), `templateId: ${notificationTemplateResult.actionId}`, '/create/template');
         return response
             .status(HttpStatus.CREATED)
             .json(APIResponse.success(apiId, notificationTemplateResult, 'Created'));
@@ -87,19 +83,29 @@ export class NotificationEventsService {
         response: Response
     ) {
         const apiId = APIID.TEMPLATE_UPDATE;
+        updateEventDto.updatedBy = userId;
+        //check actionId exist or not
         const existingTemplate = await this.notificationTemplatesRepository.findOne({
             where: { actionId: id },
         });
         if (!existingTemplate) {
-            this.logger.log(
-                `${apiId}`,
-                SUCCESS_MESSAGES.UPDATE_TEMPLATE_API,
-                ERROR_MESSAGES.TEMPLATE_NOT_EXIST,
-            );
+            LoggerUtil.log(apiId, SUCCESS_MESSAGES.UPDATE_TEMPLATE_API, ERROR_MESSAGES.TEMPLATE_NOT_EXIST, userId);
             throw new BadRequestException(ERROR_MESSAGES.TEMPLATE_NOT_EXIST);
+        }
+        //check key already exist for this context
+        if (updateEventDto.key) {
+            const checkKeyAlreadyExist =
+                await this.notificationTemplatesRepository.findOne({
+                    where: { context: existingTemplate.context, key: updateEventDto.key },
+                });
+            if (checkKeyAlreadyExist) {
+                LoggerUtil.error(apiId, ERROR_MESSAGES.ALREADY_EXIST_KEY_FOR_CONTEXT, `requested By  ${userId}`);
+                throw new BadRequestException(ERROR_MESSAGES.ALREADY_EXIST_KEY_FOR_CONTEXT_ENTER_ANOTHER);
+            }
         }
 
         Object.assign(existingTemplate, updateEventDto);
+
         const result = await this.notificationTemplatesRepository.save(existingTemplate);
         const createConfig = async (type: string, configData?: any) => {
             if (configData && Object.keys(configData).length > 0) {
@@ -112,6 +118,9 @@ export class NotificationEventsService {
                     return await this.notificationTemplateConfigRepository.save(existingConfig);
                 }
                 else {
+                    if (!configData.subject || !configData.body) {
+                        throw new BadRequestException(ERROR_MESSAGES.NOT_EMPTY_SUBJECT_OR_BODY);
+                    }
                     const newConfig = this.notificationTemplateConfigRepository.create({
                         actionId: id,
                         type: type,
@@ -120,7 +129,7 @@ export class NotificationEventsService {
                         status: result.status,
                         language: 'en',
                         updatedBy: userId,
-                        createdBy: userId,
+                        createdBy: userId, // getting null constraint error
                         image: configData.image || null,
                         link: configData.link || null
                     });
@@ -151,12 +160,13 @@ export class NotificationEventsService {
                 }
             });
         }
+        LoggerUtil.log(`Template updated successfully by userId: ${userId}`, `Id: ${id}`, '/update/template');
         return response
             .status(HttpStatus.OK)
             .json(APIResponse.success(apiId, { id: id }, 'OK'));
     }
 
-    async getTemplates(searchFilterDto: SearchFilterDto, response: Response) {
+    async getTemplates(searchFilterDto: SearchFilterDto, userId: string, response: Response) {
         const apiId = APIID.TEMPLATE_LIST;
         const { context } = searchFilterDto.filters;
         const key = searchFilterDto.filters?.key;
@@ -182,21 +192,24 @@ export class NotificationEventsService {
             }, {});
             return { ...rest, templates: formattedTemplateConfig };
         });
+        LoggerUtil.log(SUCCESS_MESSAGES.GET_TEMPLATE(userId), '/get/template');
         return response
             .status(HttpStatus.OK)
             .json(APIResponse.success(apiId, finalResult, 'OK'));
     }
 
-    async deleteTemplate(actionId: number, response: Response) {
-        const apiId = APIID.TEMPLATE_DELETE
+    async deleteTemplate(actionId: number, userId: string, response: Response) {
+        const apiId = APIID.TEMPLATE_DELETE;
         const templateId = await this.notificationTemplatesRepository.findOne({ where: { actionId } });
         if (!templateId) {
+            LoggerUtil.log(apiId, SUCCESS_MESSAGES.UPDATE_TEMPLATE_API, ERROR_MESSAGES.TEMPLATE_NOT_EXIST, userId);
             throw new NotFoundException(ERROR_MESSAGES.TEMPLATE_ID_NOTFOUND(actionId))
         }
         const deleteTemplate = await this.notificationTemplatesRepository.delete({ actionId });
         if (deleteTemplate.affected !== 1) {
             throw new BadRequestException(ERROR_MESSAGES.TEMPLATE_NOT_DELETED);
         }
+        LoggerUtil.log(SUCCESS_MESSAGES.DELETE_TEMPLATE(userId), '/delete/template');
         return response
             .status(HttpStatus.OK)
             .json(APIResponse.success(apiId, { id: actionId }, 'OK'));

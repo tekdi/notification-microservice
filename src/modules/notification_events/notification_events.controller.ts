@@ -1,7 +1,7 @@
-import { Controller, Delete, Param, ParseUUIDPipe, Patch, Query, Res, UseFilters, UsePipes, ValidationPipe } from '@nestjs/common';
+import { BadRequestException, Controller, Delete, Param, ParseUUIDPipe, Patch, Query, Res, UseFilters, UsePipes, ValidationPipe } from '@nestjs/common';
 import { NotificationEventsService } from './notification_events.service';
 import { Post, Body } from '@nestjs/common';
-import { ApiBadRequestResponse, ApiBody, ApiCreatedResponse, ApiInternalServerErrorResponse, ApiOkResponse, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBadRequestResponse, ApiBody, ApiCreatedResponse, ApiInternalServerErrorResponse, ApiOkResponse, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { SearchFilterDto } from './dto/searchTemplateType.dto';
 import { Response } from 'express';
 import { CreateEventDto } from './dto/createTemplate.dto';
@@ -22,9 +22,13 @@ export class NotificationEventsController {
   @ApiBadRequestResponse({ description: ERROR_MESSAGES.INVALID_REQUEST })
   @UsePipes(new ValidationPipe({ transform: true }))
   @ApiBody({ type: CreateEventDto })
-  async create(@Body() createEventDto: CreateEventDto, @Res() response: Response) {
-    const userId = '016badad-22b0-4566-88e9-aab1b35b1dfc';
-    return this.notificationeventsService.createTemplate(userId, createEventDto, response)
+  @ApiQuery({ name: 'userId', required: true, description: ERROR_MESSAGES.USERID_REQUIRED })
+  async create(
+    @Body() createEventDto: CreateEventDto,
+    @Res() response: Response,
+    @Query('userId', new ParseUUIDPipe({ exceptionFactory: () => new BadRequestException(ERROR_MESSAGES.USERID_UUID) })) userId: string
+  ) {
+    return this.notificationeventsService.createTemplate(userId, createEventDto, response);
   }
 
   @UseFilters(new AllExceptionsFilter(APIID.TEMPLATE_LIST))
@@ -34,8 +38,8 @@ export class NotificationEventsController {
   @ApiBadRequestResponse({ description: ERROR_MESSAGES.INVALID_REQUEST })
   @UsePipes(new ValidationPipe({ transform: true }))
   @ApiOkResponse({ description: SUCCESS_MESSAGES.TEMPLATE_LIST })
-  async getTemplates(@Body() searchFilterDto: SearchFilterDto, @Res() response: Response) {
-    return this.notificationeventsService.getTemplates(searchFilterDto, response)
+  async getTemplates(@Body() searchFilterDto: SearchFilterDto, @Res() response: Response, @Query('userId') userId: string | null) {
+    return this.notificationeventsService.getTemplates(searchFilterDto, userId, response)
   }
 
   @UseFilters(new AllExceptionsFilter(APIID.TEMPLATE_GET))
@@ -43,13 +47,14 @@ export class NotificationEventsController {
   @ApiBody({ type: UpdateEventDto })
   @ApiResponse({ status: 200, description: SUCCESS_MESSAGES.UPDATE_TEMPLATE_API })
   @ApiResponse({ status: 400, description: ERROR_MESSAGES.BAD_REQUEST })
+  @ApiQuery({ name: 'userId', required: true, description: ERROR_MESSAGES.USERID_REQUIRED })
   @UsePipes(new ValidationPipe({ transform: true }))
   updateEvent(
     @Param("id") id: number,
     @Body() updateEventDto: UpdateEventDto,
-    @Res() response: Response
+    @Res() response: Response,
+    @Query('userId', new ParseUUIDPipe({ exceptionFactory: () => new BadRequestException(ERROR_MESSAGES.USERID_REQUIRED) })) userId: string
   ) {
-    const userId = '016badad-22b0-4566-88e9-aab1b35b1dfe';
     return this.notificationeventsService.updateNotificationTemplate(
       id,
       updateEventDto,
@@ -64,8 +69,8 @@ export class NotificationEventsController {
   @UsePipes(new ValidationPipe({ transform: true }))
   @ApiResponse({ status: 200, description: SUCCESS_MESSAGES.TEMPLATE_DELETE })
   @ApiResponse({ status: 404, description: ERROR_MESSAGES.TEMPLATE_NOTFOUND })
-  deleteTemplate(@Param('id') id: number, @Res() response: Response) {
-    return this.notificationeventsService.deleteTemplate(id, response)
+  deleteTemplate(@Param('id') id: number, @Res() response: Response, @Query('userId') userId: string) {
+    return this.notificationeventsService.deleteTemplate(id, userId, response)
   }
 
 }

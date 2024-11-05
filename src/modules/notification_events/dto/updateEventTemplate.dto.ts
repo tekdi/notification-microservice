@@ -65,11 +65,8 @@ export class SMSNotificationDto {
 
 
 export class UpdateEventDto {
-    // @ApiProperty({ example: "EVENT" })
-    // @IsString()
-    // @IsNotEmpty()
-    // @IsOptional()
-    // context: string;
+
+    updatedBy: string;
 
     @ApiProperty({ example: "This is title", description: "Event title" })
     @IsString()

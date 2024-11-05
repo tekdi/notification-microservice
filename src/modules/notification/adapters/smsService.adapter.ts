@@ -8,7 +8,8 @@ import { NotificationActionTemplates } from "src/modules/notification_events/ent
 import { ConfigService } from "@nestjs/config";
 import { NotificationLog } from "../entity/notificationLogs.entity";
 import { NotificationService } from "../notification.service";
-import { LoggerService } from "src/common/logger/logger.service";
+import { LoggerUtil } from "src/common/logger/LoggerUtil";
+import { ERROR_MESSAGES, SUCCESS_MESSAGES } from "src/common/utils/constant.util";
 @Injectable()
 export class SmsAdapter implements NotificationServiceInterface {
 
@@ -23,7 +24,6 @@ export class SmsAdapter implements NotificationServiceInterface {
         private notificationEventsRepo: Repository<NotificationActions>,
         @InjectRepository(NotificationActionTemplates)
         private notificationTemplateConfigRepository: Repository<NotificationActionTemplates>,
-        private logger: LoggerService
     ) {
         this.accountSid = this.configService.get('TWILIO_ACCOUNT_SID');
         this.authToken = this.configService.get('TWILIO_AUTH_TOKEN');
@@ -37,7 +37,7 @@ export class SmsAdapter implements NotificationServiceInterface {
                 console.log("accountSid1=", this.accountSid, "authToken1=", this.authToken, "smsFrom1=", this.smsFrom);
                 const recipient = notificationData.recipient;
                 if (!this.isValidMobileNumber(recipient)) {
-                    throw new BadRequestException('Invalid Mobile Number');
+                    throw new BadRequestException(ERROR_MESSAGES.INVALID_MOBILE_NUMBER);
                 }
                 const smsNotificationDto = {
                     body: notificationData.body,
@@ -51,10 +51,10 @@ export class SmsAdapter implements NotificationServiceInterface {
                 results.push({
                     recipient: recipient,
                     status: 200,
-                    result: "SMS notification sent successfully",
+                    result: SUCCESS_MESSAGES.SMS_NOTIFICATION_SEND_SUCCESSFULLY,
                 });
             } catch (error) {
-                this.logger.error('Failed to send SMS notification', error);
+                LoggerUtil.error('Failed to send SMS notification', error);
                 results.push({
                     recipient: notificationData.recipient,
                     status: 'error',
@@ -89,12 +89,12 @@ export class SmsAdapter implements NotificationServiceInterface {
                 to: `+91${notificationData.recipient}`,
                 body: notificationData.body,
             });
-            this.logger.log('SMS notification sent successfully');
+            LoggerUtil.error(SUCCESS_MESSAGES.SMS_NOTIFICATION_SEND_SUCCESSFULLY);
             notificationLogs.status = true;
             await this.notificationServices.saveNotificationLogs(notificationLogs);
             return message;
         } catch (error) {
-            this.logger.error('Failed to Send SMS Notification', error, '/Not able to send Notification');
+            LoggerUtil.error(ERROR_MESSAGES.SMS_NOTIFICATION_FAILED, error);
             notificationLogs.status = false;
             notificationLogs.error = error.toString();
             await this.notificationServices.saveNotificationLogs(notificationLogs);

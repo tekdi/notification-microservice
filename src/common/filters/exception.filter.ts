@@ -6,9 +6,10 @@ import {
     HttpStatus,
 } from '@nestjs/common';
 import { QueryFailedError } from 'typeorm';
-import { Response } from 'express';
+import { Response, Request } from 'express';
 import APIResponse from '../utils/response';
 import { ERROR_MESSAGES } from '../utils/constant.util';
+import { LoggerUtil } from '../logger/LoggerUtil';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -20,11 +21,17 @@ export class AllExceptionsFilter implements ExceptionFilter {
     ) {
         const ctx = host.switchToHttp();
         const response = ctx.getResponse<Response>();
+        const request = ctx.getRequest<Request>();
+        const userId = request.query.userId;
         const status =
             exception instanceof HttpException ? exception.getStatus() : 500;
 
         let errorMessage =
             exception?.message || ERROR_MESSAGES.INTERNAL_SERVER_ERROR;
+
+        LoggerUtil.error(`Error occurred on API: ${request.url} requested by userId: ${userId}`,
+            request.method,
+            errorMessage)
 
         if (exception instanceof HttpException) {
             const statusCode = exception.getStatus();
@@ -43,10 +50,15 @@ export class AllExceptionsFilter implements ExceptionFilter {
                 ERROR_MESSAGES.INTERNAL_SERVER_ERROR,
                 statusCode.toString(),
             );
+            LoggerUtil.error(`Database Query Failed on API: ${request.url} requested by userId: ${userId}`,
+                request.method,
+                (exception as QueryFailedError).message,
+                'QueryFailedError')
+
             return response.status(statusCode).json(errorResponse);
         }
         const detailedErrorMessage = `${errorMessage}`;
-        console.log('detailedErrorMessage', detailedErrorMessage);
+
         const errorResponse = APIResponse.error(
             this.apiId,
             detailedErrorMessage,
