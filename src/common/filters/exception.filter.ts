@@ -22,16 +22,16 @@ export class AllExceptionsFilter implements ExceptionFilter {
         const ctx = host.switchToHttp();
         const response = ctx.getResponse<Response>();
         const request = ctx.getRequest<Request>();
-        const userId = request.query.userId;
+        const userId = request?.query?.userId;
         const status =
             exception instanceof HttpException ? exception.getStatus() : 500;
 
         let errorMessage =
             exception?.message || ERROR_MESSAGES.INTERNAL_SERVER_ERROR;
 
-        LoggerUtil.error(`Error occurred on API: ${request.url} requested by userId: ${userId}`,
-            request.method,
-            errorMessage)
+        LoggerUtil.error(`Error occurred on API: ${request.url} Method : ${request.method}`,
+            errorMessage, 'Notification Service', `requested by userId: ${userId}`,
+        )
 
         if (exception instanceof HttpException) {
             const statusCode = exception.getStatus();

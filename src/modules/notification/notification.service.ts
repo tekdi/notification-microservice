@@ -48,44 +48,46 @@ export class NotificationService {
 
   async sendNotification(notificationDto: NotificationDto, userId: string, response: Response): Promise<APIResponse> {
     const apiId = APIID.SEND_NOTIFICATION;
+    const serverResponses: Record<string, { data: any[], errors: any[] }> = {
+      email: { data: [], errors: [] },
+      sms: { data: [], errors: [] },
+      push: { data: [], errors: [] },
+    };
+
     try {
       const { email, push, sms, context, replacements, key } = notificationDto;
-      const promises = [];
+      // Check if notification template exists
       const notification_event = await this.notificationActions.findOne({ where: { context, key } });
-
       if (!notification_event) {
         LoggerUtil.log(apiId, SUCCESS_MESSAGES.UPDATE_TEMPLATE_API, ERROR_MESSAGES.TEMPLATE_NOT_EXIST, userId);
         throw new BadRequestException(ERROR_MESSAGES.TEMPLATE_NOTFOUND);
       }
 
-      // Handle email notifications if specified
+      // Prepare promises based on provided notification types
+      const promises: Array<{ promise: Promise<any>; channel: string }> = [];
+
       if (email && email.receipients && email.receipients.length > 0) {
-        promises.push(this.notificationHandler('email', email.receipients, 'email', replacements, notificationDto, notification_event, userId));
+        const promise = this.notificationHandler('email', email.receipients, 'email', replacements, notificationDto, notification_event, userId);
+        promises.push({ promise, channel: 'email' });
       }
 
-      // Handle SMS notifications if specified
       if (sms && sms.receipients && sms.receipients.length > 0) {
-        promises.push(this.notificationHandler('sms', sms.receipients, 'sms', replacements, notificationDto, notification_event, userId));
+        const promise = this.notificationHandler('sms', sms.receipients, 'sms', replacements, notificationDto, notification_event, userId);
+        promises.push({ promise, channel: 'sms' });
       }
 
-      // Handle push notifications if specified
       if (push && push.receipients && push.receipients.length > 0) {
-        promises.push(this.notificationHandler('push', push.receipients, 'push', replacements, notificationDto, notification_event, userId));
+        const promise = this.notificationHandler('push', push.receipients, 'push', replacements, notificationDto, notification_event, userId);
+        promises.push({ promise, channel: 'push' });
       }
-
-      const results = await Promise.allSettled(promises);
-      const serverResponses = {
-        email: { data: [], errors: [] },
-        sms: { data: [], errors: [] },
-        push: { data: [], errors: [] }
-      };
-
+      // Process all notification promises
+      const results = await Promise.allSettled(promises.map(p => p.promise));
+      // Map each result back to the appropriate channel
       results.forEach((result, index) => {
-        const channel = ['email', 'sms', 'push'][index];
+        const channel = promises[index].channel;
         if (result.status === 'fulfilled') {
-          const notifications = Array.isArray(result.value) ? result.value : [result.value];
+          const notifications = result.value;
           notifications.forEach(notification => {
-            // result.value.forEach(notification => {
             if (notification.status === 200) {
               serverResponses[channel].data.push(notification);
             } else {
@@ -103,20 +105,19 @@ export class NotificationService {
           });
         }
       });
-      // Filter out channels with empty data and errors arrays
+      // Only return channels with data or errors
       const finalResponses = Object.fromEntries(
         Object.entries(serverResponses).filter(([_, { data, errors }]) => data.length > 0 || errors.length > 0)
       );
+
       return response
         .status(HttpStatus.OK)
         .json(APIResponse.success(apiId, finalResponses, 'OK'));
-    }
-    catch (e) {
+    } catch (e) {
       LoggerUtil.error(apiId, SUCCESS_MESSAGES.UPDATE_TEMPLATE_API, ERROR_MESSAGES.TEMPLATE_NOT_EXIST, userId);
       throw e;
     }
   }
-
   // Helper function to handle sending notifications for a specific channel
   async notificationHandler(channel, recipients, type, replacements, notificationDto, notification_event, userId) {
     if (recipients && recipients.length > 0 && Object.keys(recipients).length > 0) {
