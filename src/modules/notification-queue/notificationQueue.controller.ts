@@ -22,7 +22,7 @@ export class NotificationQueueController {
     @ApiBadRequestResponse({ description: ERROR_MESSAGES.INVALID_REQUEST })
     @UsePipes(new ValidationPipe({ transform: true }))
     @ApiBody({ type: NotificationQueueDTO })
-    async create(@Body() notificationQueueDTO, @Res() response: Response, @Query('userId') userId: string) {
+    async create(@Body() notificationQueueDTO, @Res() response: Response) {
         return this.notificationQueueService.create(notificationQueueDTO, response);
     }
 
@@ -33,7 +33,7 @@ export class NotificationQueueController {
     @ApiBadRequestResponse({ description: 'Ivalid Request' })
     @ApiBody({ type: SearchQueueDTO })
     @UsePipes(new ValidationPipe({ transform: true }))
-    async get(@Body() searchQueueDTO: SearchQueueDTO, @Res() response: Response, @Query('userId') userId: string) {
+    async get(@Body() searchQueueDTO: SearchQueueDTO, @Res() response: Response) {
         this.notificationQueueService.getList(searchQueueDTO, response)
     }
 
@@ -42,7 +42,7 @@ export class NotificationQueueController {
     @ApiBadRequestResponse({ description: ERROR_MESSAGES.INVALID_REQUEST })
     @ApiOkResponse({ description: SUCCESS_MESSAGES.QUEUE_UPDATED })
     @ApiBody({ type: UpdateQueueDTO })
-    async update(@Param('id', ParseUUIDPipe) id: string, @Body() updateQueueDTO: UpdateQueueDTO, @Query('userId') userId: string) {
+    async update(@Param('id', ParseUUIDPipe) id: string, @Body() updateQueueDTO: UpdateQueueDTO) {
         return this.notificationQueueService.updateQueue(id, updateQueueDTO)
     }
 }
