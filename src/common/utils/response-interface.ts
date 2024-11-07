@@ -1,5 +1,3 @@
-import { IsOptional } from "class-validator";
-
 // structure for server responses
 export interface ServerResponse {
     // api id
@@ -21,14 +19,11 @@ export interface ServerResponse {
     ver: string;
 
     headers?: any;
-
-    response: any;
 }
 
 export interface Params {
     resmsgid: string;
-    err?: any;
+    error?: string;
     status: string;
-    errmsg?: any;
-    successmessage?: string;
+    errmsg?: string;
 }

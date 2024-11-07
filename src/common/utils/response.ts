@@ -1,25 +1,21 @@
 import { v4 } from 'uuid';
-import { Params } from './response-interface';
-import { Response } from 'express';
+import { ServerResponse, Params } from './response-interface';
 
 export default class APIResponse {
     public static success<Type>(
-        response: Response,
         id: string,
         result: Type,
-        statusCode: number,
-        successmessage: string
-    ) {
+        statusCode: string,
+    ): ServerResponse {
         try {
             const params: Params = {
                 resmsgid: v4(),
                 status: 'successful',
-                err: null,
+                error: null,
                 errmsg: null,
-                successmessage: successmessage
             };
 
-            const resObj = {
+            const resObj: ServerResponse = {
                 id,
                 ver: '1.0',
                 ts: new Date().toISOString(),
@@ -27,28 +23,27 @@ export default class APIResponse {
                 responseCode: statusCode,
                 result,
             };
-            return response.status(Number(statusCode)).json(resObj);
+            return resObj;
         } catch (e) {
             return e;
         }
     }
 
     public static error(
-        response: Response,
         id: string,
         errmsg: string,
         error: string,
-        statusCode: number,
-    ) {
+        statusCode: string,
+    ): ServerResponse {
         try {
             const params: Params = {
                 resmsgid: v4(),
                 status: 'failed',
-                err: error,
                 errmsg: errmsg,
+                error,
             };
 
-            const resObj = {
+            const resObj: ServerResponse = {
                 id,
                 ver: '1.0',
                 ts: new Date().toISOString(),
@@ -56,7 +51,7 @@ export default class APIResponse {
                 responseCode: statusCode,
                 result: {},
             };
-            return response.status(Number(statusCode)).json(resObj);
+            return resObj;
         } catch (e) {
             return e;
         }

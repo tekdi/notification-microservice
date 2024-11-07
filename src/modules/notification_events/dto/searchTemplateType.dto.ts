@@ -20,5 +20,6 @@ export class SearchFilterDto {
     @ApiProperty({ type: SearchDto, description: 'Filters for search' })
     @ValidateNested({ each: true })
     @Type(() => SearchDto)
+    @IsNotEmpty()
     filters: SearchDto
 }

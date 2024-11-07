@@ -10,7 +10,6 @@ import { NotificationActions } from '../notification_events/entity/notificationA
 import { NotificationActionTemplates } from '../notification_events/entity/notificationActionTemplates.entity';
 import { NotificationLog } from './entity/notificationLogs.entity';
 import { NotificationService } from './notification.service';
-import { LoggerService } from 'src/common/logger/logger.service';
 import { NotificationQueue } from '../notification-queue/entities/notificationQueue.entity';
 import { RabbitmqModule } from '../rabbitmq/rabbitmq.module';
 import { NotificationQueueService } from '../notification-queue/notificationQueue.service';
@@ -21,7 +20,7 @@ import { NotificationQueueService } from '../notification-queue/notificationQueu
     TypeOrmModule.forFeature([NotificationActions, NotificationActionTemplates, NotificationLog, NotificationQueue]), // import entity here
     NotificationEventsModule, RabbitmqModule
   ],
-  providers: [NotificationAdapterFactory, PushAdapter, SmsAdapter, EmailAdapter, NotificationService, LoggerService, NotificationQueueService],
+  providers: [NotificationAdapterFactory, PushAdapter, SmsAdapter, EmailAdapter, NotificationService, NotificationQueueService],
   controllers: [NotificationController],
   exports: [NotificationService]
 })

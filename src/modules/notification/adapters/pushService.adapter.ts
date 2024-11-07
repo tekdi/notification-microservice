@@ -5,16 +5,14 @@ import * as admin from "firebase-admin";
 import { ConfigService } from "@nestjs/config";
 import { NotificationLog } from "../entity/notificationLogs.entity";
 import { NotificationService } from "../notification.service";
-import { LoggerService } from "src/common/logger/logger.service";
 import { ERROR_MESSAGES, SUCCESS_MESSAGES } from "src/common/utils/constant.util";
-
+import { LoggerUtil } from "src/common/logger/LoggerUtil";
 @Injectable()
 export class PushAdapter implements NotificationServiceInterface {
     private readonly fcmurl: string;
     constructor(
         @Inject(forwardRef(() => NotificationService)) private readonly notificationServices: NotificationService,
-        private readonly configService: ConfigService,
-        private readonly logger: LoggerService
+        private readonly configService: ConfigService
     ) {
         this.fcmurl = this.configService.get('FCM_URL');
 
@@ -45,7 +43,7 @@ export class PushAdapter implements NotificationServiceInterface {
                 }
             }
             catch (error) {
-                this.logger.error(ERROR_MESSAGES.PUSH_NOTIFICATION_FAILED, error.toString());
+                LoggerUtil.error(ERROR_MESSAGES.PUSH_NOTIFICATION_FAILED, error.toString());
                 results.push({
                     recipient: notificationData.recipient,
                     status: 'error',
@@ -75,8 +73,12 @@ export class PushAdapter implements NotificationServiceInterface {
                     notification: {
                         title: notificationData.subject,
                         body: notificationData.body,
+                        image: notificationData.image || undefined
                     },
-                    token: notificationData.recipient
+                    token: notificationData.recipient,
+                    data: {
+                        link: notificationData.link || ''
+                    }
                 }
             }
 
@@ -91,12 +93,12 @@ export class PushAdapter implements NotificationServiceInterface {
             });
 
             if (result.status === 200 && result.data.name) {
-                this.logger.log('Push notification sent successfully');
+                LoggerUtil.error(SUCCESS_MESSAGES.PUSH_NOTIFICATION_SEND_SUCCESSFULLY);
                 notificationLogs.status = true;
                 await this.notificationServices.saveNotificationLogs(notificationLogs);
                 return result;
             } else {
-                this.logger.log(ERROR_MESSAGES.PUSH_NOTIFICATION_FAILED);
+                LoggerUtil.error(ERROR_MESSAGES.PUSH_NOTIFICATION_FAILED);
                 throw new Error(ERROR_MESSAGES.PUSH_NOTIFICATION_FAILED);
             }
         } catch (error) {

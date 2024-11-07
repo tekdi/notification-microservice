@@ -1,4 +1,4 @@
-import { BadRequestException, HttpStatus, Injectable } from '@nestjs/common';
+import { BadRequestException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 import { Response } from 'express';
 import APIResponse from 'src/common/utils/response';
 import { NotificationQueueDTO } from './dto/notificationQueue.dto';
@@ -8,6 +8,7 @@ import { Repository } from 'typeorm';
 import { SearchQueueDTO } from './dto/searchQueue.dto';
 import { UpdateQueueDTO } from './dto/updateQueue.dto';
 import { APIID } from 'src/common/utils/api-id.config';
+import { ERROR_MESSAGES, SUCCESS_MESSAGES } from 'src/common/utils/constant.util';
 
 @Injectable()
 export class NotificationQueueService {
@@ -18,59 +19,38 @@ export class NotificationQueueService {
 
     async create(notificationQueueDTO: NotificationQueueDTO, response) {
         const apiId = APIID.QUEUE_CREATE;
-        try {
-            const result = await this.notificationQueueRepo.save(notificationQueueDTO);
-            return APIResponse.success(response, apiId, { result: result.id }, HttpStatus.CREATED, 'Queue Created')
-        }
-        catch (e) {
-            const errorMessage = e.message || 'Internal server error';
-            return APIResponse.error(response, apiId, "Internal Server Error", errorMessage, HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+        const result = await this.notificationQueueRepo.save(notificationQueueDTO);
+        return response
+            .status(HttpStatus.CREATED)
+            .json(APIResponse.success(apiId, result, SUCCESS_MESSAGES.CREATED));
     }
 
     async getList(searchQueueDTO: SearchQueueDTO, response: Response) {
         const apiId = APIID.QUEUE_LIST;
-        try {
-            const { channel, context, status } = searchQueueDTO;
-            const result = await this.notificationQueueRepo.find({
-                where: { channel: channel, context: context, status: status }
-            })
-            if (result.length === 0) {
-                return APIResponse.error(
-                    response,
-                    apiId,
-                    `No data found in queue`,
-                    'No records found.',
-                    HttpStatus.NOT_FOUND
-                )
-
-            }
-            return APIResponse.success(response, apiId, result, HttpStatus.OK, 'fetched successful')
+        const { channel, context, status } = searchQueueDTO;
+        const result = await this.notificationQueueRepo.find({
+            where: { channel: channel, context: context, status: status }
+        })
+        if (result.length === 0) {
+            throw new NotFoundException(ERROR_MESSAGES.QUEUE_NOTFOUND)
         }
-        catch (e) {
-            const errorMessage = e.message || 'Internal server error';
-            return APIResponse.error(response, apiId, "Internal Server Error", errorMessage, HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+        return response
+            .status(HttpStatus.OK)
+            .json(APIResponse.success(apiId, result, 'OK'));
     }
 
     async updateQueue(id: string, updateQueueDTO: UpdateQueueDTO) {
         const apiId = APIID.QUEUE_UPDATE
-        try {
-            const queue = await this.notificationQueueRepo.findOne({ where: { id } });
-            if (!queue) {
-                throw new BadRequestException(`No notification queue found for: ${id}`)
-            }
-            Object.assign(queue, updateQueueDTO);
-            const updateResult = await this.notificationQueueRepo.save(queue);
-            if (!updateResult) {
-                throw new BadRequestException('Event update failed');
-            }
-            return { updateResult, status: HttpStatus.OK }
+        const queue = await this.notificationQueueRepo.findOne({ where: { id } });
+        if (!queue) {
+            throw new BadRequestException(ERROR_MESSAGES.QUEUE_UPDATE(id))
         }
-        catch (e) {
-            const errorMessage = e.message || 'Internal server error';
-            return errorMessage;
+        Object.assign(queue, updateQueueDTO);
+        const updateResult = await this.notificationQueueRepo.save(queue);
+        if (!updateResult) {
+            throw new BadRequestException(ERROR_MESSAGES.EVENT_UPDATE_FAILED);
         }
+        return { updateResult, status: HttpStatus.OK }
 
     }
 }
