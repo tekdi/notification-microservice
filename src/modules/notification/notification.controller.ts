@@ -25,12 +25,12 @@ export class NotificationController {
   @ApiBadRequestResponse({ description: 'Invalid Request' })
   @ApiBody({ type: NotificationDto })
   async sendNotification(
-    @Body() notificationDto: NotificationDto, @Res() response: Response, @Query('userid') userid: string | null
+    @Body() notificationDto: NotificationDto, @Res() response: Response, @Query('userId') userId: string | null
   ) {
     if (!notificationDto.email && !notificationDto.push && !notificationDto.sms) {
       throw new BadRequestException('At least one of email, push, or sms is required.');
     }
-    return this.notificationService.sendNotification(notificationDto, userid, response);
+    return this.notificationService.sendNotification(notificationDto, userId, response);
   }
 
   // @Post('subscribetotopic')
