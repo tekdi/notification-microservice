@@ -83,28 +83,51 @@ export class NotificationService {
       // Process all notification promises
       const results = await Promise.allSettled(promises.map(p => p.promise));
       // Map each result back to the appropriate channel
-      results.forEach((result, index) => {
-        const channel = promises[index].channel;
-        if (result.status === 'fulfilled') {
-          const notifications = result.value;
-          notifications.forEach(notification => {
-            if (notification.status === 200) {
-              serverResponses[channel].data.push(notification);
+      if (notificationDto.isQueue) {
+        results.forEach((result, index) => {
+          const channel = promises[index].channel;
+          if (result.status === 'fulfilled') {
+            const notifications = result.value;
+            if (notifications.status === 200) {
+              serverResponses[channel].data.push(notifications);
             } else {
               serverResponses[channel].errors.push({
-                recipient: notification.recipient,
-                error: notification.error || notification.result,
-                code: notification.status
+                recipient: notifications.recipient,
+                error: notifications.error || notifications.result,
+                code: notifications.status
               });
             }
-          });
-        } else {
-          serverResponses[channel].errors.push({
-            error: result.reason?.message,
-            code: result.reason?.status
-          });
-        }
-      });
+          } else {
+            serverResponses[channel].errors.push({
+              error: result.reason?.message,
+              code: result.reason?.status
+            });
+          }
+        });
+      } else {
+        results.forEach((result, index) => {
+          const channel = promises[index].channel;
+          if (result.status === 'fulfilled') {
+            const notifications = result.value;
+            notifications.forEach(notification => {
+              if (notification.status === 200) {
+                serverResponses[channel].data.push(notification);
+              } else {
+                serverResponses[channel].errors.push({
+                  recipient: notification.recipient,
+                  error: notification.error || notification.result,
+                  code: notification.status
+                });
+              }
+            });
+          } else {
+            serverResponses[channel].errors.push({
+              error: result.reason?.message,
+              code: result.reason?.status
+            });
+          }
+        });
+      }
       // Only return channels with data or errors
       const finalResponses = Object.fromEntries(
         Object.entries(serverResponses).filter(([_, { data, errors }]) => data.length > 0 || errors.length > 0)
