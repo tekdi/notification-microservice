@@ -203,7 +203,7 @@ export class NotificationService {
           }
           return { status: 200, message: SUCCESS_MESSAGES.NOTIFICATION_QUEUE_SAVE_SUCCESSFULLY };
         } catch (error) {
-          LoggerUtil.error(ERROR_MESSAGES.NOTIFICATION_QUEUE_SAVE_FAILED, error, 'Saving in Qaueue', userId);
+          LoggerUtil.error(ERROR_MESSAGES.NOTIFICATION_QUEUE_SAVE_FAILED, error, SUCCESS_MESSAGES.MESSAGES_SAVING_IN_QUEUE, userId);
           throw new Error(ERROR_MESSAGES.NOTIFICATION_QUEUE_SAVE_FAILED);
         }
       } else {

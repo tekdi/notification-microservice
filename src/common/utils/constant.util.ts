@@ -20,7 +20,8 @@ export const SUCCESS_MESSAGES = {
     SMS_NOTIFICATION_SEND_SUCCESSFULLY: 'SMS notification sent successfully',
     TEMPLATE_CREATED_SUCESSFULLY: (userId) => `Template created successfully by userId: ${userId}`,
     GET_TEMPLATE: (userId) => `Get Template successfully by userId: ${userId}`,
-    DELETE_TEMPLATE: (userId) => `Delete Template successfully by userId: ${userId}`
+    DELETE_TEMPLATE: (userId) => `Delete Template successfully by userId: ${userId}`,
+    MESSAGES_SAVING_IN_QUEUE: 'Notification saving in queue'
 };
 export const ERROR_MESSAGES = {
     INVALID_REQUEST: "Invalid request",
