@@ -111,10 +111,9 @@ export class EmailAdapter implements NotificationServiceInterface {
             if (result.status === 'success') {
                 notificationLogs.status = true;
                 await this.notificationServices.saveNotificationLogs(notificationLogs);
-                LoggerUtil.error(SUCCESS_MESSAGES.EMAIL_NOTIFICATION_SEND_SUCCESSFULLY);
+                LoggerUtil.log(SUCCESS_MESSAGES.EMAIL_NOTIFICATION_SEND_SUCCESSFULLY);
                 return result;
             }
-
             else {
                 throw new Error(`Email not send ${JSON.stringify(result.errors)}`)
             }

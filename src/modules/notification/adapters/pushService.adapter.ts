@@ -93,7 +93,7 @@ export class PushAdapter implements NotificationServiceInterface {
             });
 
             if (result.status === 200 && result.data.name) {
-                LoggerUtil.error(SUCCESS_MESSAGES.PUSH_NOTIFICATION_SEND_SUCCESSFULLY);
+                LoggerUtil.log(SUCCESS_MESSAGES.PUSH_NOTIFICATION_SEND_SUCCESSFULLY);
                 notificationLogs.status = true;
                 await this.notificationServices.saveNotificationLogs(notificationLogs);
                 return result;

@@ -59,7 +59,7 @@ export class NotificationService {
       // Check if notification template exists
       const notification_event = await this.notificationActions.findOne({ where: { context, key } });
       if (!notification_event) {
-        LoggerUtil.log(apiId, SUCCESS_MESSAGES.UPDATE_TEMPLATE_API, ERROR_MESSAGES.TEMPLATE_NOT_EXIST, userId);
+        LoggerUtil.error(`template not found with this ${context} and ${key}`, ERROR_MESSAGES.TEMPLATE_NOTFOUND, apiId, userId);
         throw new BadRequestException(ERROR_MESSAGES.TEMPLATE_NOTFOUND);
       }
 
@@ -137,7 +137,12 @@ export class NotificationService {
         .status(HttpStatus.OK)
         .json(APIResponse.success(apiId, finalResponses, 'OK'));
     } catch (e) {
-      LoggerUtil.error(apiId, SUCCESS_MESSAGES.UPDATE_TEMPLATE_API, ERROR_MESSAGES.TEMPLATE_NOT_EXIST, userId);
+      LoggerUtil.error(
+        `Error: ${e}`,
+        e,
+        apiId,
+        userId
+      );
       throw e;
     }
   }
@@ -146,7 +151,7 @@ export class NotificationService {
     if (recipients && recipients.length > 0 && Object.keys(recipients).length > 0) {
       const notification_details = await this.notificationActionTemplates.find({ where: { actionId: notification_event.actionId, type } });
       if (notification_details.length === 0) {
-        LoggerUtil.error(`/Send ${channel} Notification`, SUCCESS_MESSAGES.UPDATE_TEMPLATE_API, ERROR_MESSAGES.TEMPLATE_NOT_EXIST, userId);
+        LoggerUtil.error(ERROR_MESSAGES.TEMPLATE_CONFIG_NOTFOUND, `/Send ${channel} Notification`, userId);
         throw new BadRequestException(`${ERROR_MESSAGES.TEMPLATE_CONFIG_NOTFOUND} ${type}`);
       }
       let bodyText;
@@ -198,7 +203,7 @@ export class NotificationService {
           }
           return { status: 200, message: SUCCESS_MESSAGES.NOTIFICATION_QUEUE_SAVE_SUCCESSFULLY };
         } catch (error) {
-          LoggerUtil.error('/send', SUCCESS_MESSAGES.UPDATE_TEMPLATE_API, ERROR_MESSAGES.TEMPLATE_NOT_EXIST, userId);
+          LoggerUtil.error(ERROR_MESSAGES.NOTIFICATION_QUEUE_SAVE_FAILED, error, 'Saving in Qaueue', userId);
           throw new Error(ERROR_MESSAGES.NOTIFICATION_QUEUE_SAVE_FAILED);
         }
       } else {
@@ -228,7 +233,6 @@ export class NotificationService {
   // Function to validate that all placeholders have corresponding replacements
   validatePlaceholders(placeholders: string[], replacements: { [key: string]: string }): void {
     const missingReplacements = placeholders.filter((placeholder) => !replacements.hasOwnProperty(placeholder));
-
     if (missingReplacements.length > 0) {
       throw new BadRequestException(`Missing replacements for placeholders: ${missingReplacements.join(', ')}`);
     }
@@ -359,7 +363,7 @@ export class NotificationService {
       await this.notificationLogRepository.save(notificationLogs);
     }
     catch (e) {
-      LoggerUtil.error(SUCCESS_MESSAGES.SAVE_NOTIFICATION_LOG, `error ${e}`, ERROR_MESSAGES.NOTIFICATION_LOG_SAVE_FAILED);
+      LoggerUtil.error(`error ${e}`, ERROR_MESSAGES.NOTIFICATION_LOG_SAVE_FAILED);
       throw new Error(ERROR_MESSAGES.NOTIFICATION_LOG_SAVE_FAILED);
     }
   }

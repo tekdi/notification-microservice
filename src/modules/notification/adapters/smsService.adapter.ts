@@ -89,7 +89,7 @@ export class SmsAdapter implements NotificationServiceInterface {
                 to: `+91${notificationData.recipient}`,
                 body: notificationData.body,
             });
-            LoggerUtil.error(SUCCESS_MESSAGES.SMS_NOTIFICATION_SEND_SUCCESSFULLY);
+            LoggerUtil.log(SUCCESS_MESSAGES.SMS_NOTIFICATION_SEND_SUCCESSFULLY);
             notificationLogs.status = true;
             await this.notificationServices.saveNotificationLogs(notificationLogs);
             return message;
