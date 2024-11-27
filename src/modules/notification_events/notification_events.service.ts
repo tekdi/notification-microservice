@@ -28,7 +28,7 @@ export class NotificationEventsService {
                 where: { context: data.context, key: data.key },
             });
         if (existingTemplate) {
-            LoggerUtil.log(apiId, SUCCESS_MESSAGES.CREATE_TEMPLATE_API, ERROR_MESSAGES.TEMPLATE_ALREADY_EXIST, userId);
+            LoggerUtil.error(ERROR_MESSAGES.TEMPLATE_ALREADY_EXIST, ERROR_MESSAGES.NOT_FOUND, apiId, userId);
             throw new BadRequestException(ERROR_MESSAGES.TEMPLATE_ALREADY_EXIST);
         }
 
@@ -70,7 +70,7 @@ export class NotificationEventsService {
         if (data.sms && Object.keys(data.sms).length > 0) {
             await createConfig('sms', data.sms);
         }
-        LoggerUtil.log(SUCCESS_MESSAGES.TEMPLATE_CREATED_SUCESSFULLY(userId), `templateId: ${notificationTemplateResult.actionId}`, '/create/template');
+        LoggerUtil.log(SUCCESS_MESSAGES.TEMPLATE_CREATED_SUCESSFULLY(userId), apiId, userId);
         return response
             .status(HttpStatus.CREATED)
             .json(APIResponse.success(apiId, notificationTemplateResult, 'Created'));
@@ -89,7 +89,7 @@ export class NotificationEventsService {
             where: { actionId: id },
         });
         if (!existingTemplate) {
-            LoggerUtil.log(apiId, SUCCESS_MESSAGES.UPDATE_TEMPLATE_API, ERROR_MESSAGES.TEMPLATE_NOT_EXIST, userId);
+            LoggerUtil.error(ERROR_MESSAGES.TEMPLATE_NOT_EXIST, ERROR_MESSAGES.NOT_FOUND, apiId, userId);
             throw new BadRequestException(ERROR_MESSAGES.TEMPLATE_NOT_EXIST);
         }
         //check key already exist for this context
@@ -99,7 +99,7 @@ export class NotificationEventsService {
                     where: { context: existingTemplate.context, key: updateEventDto.key },
                 });
             if (checkKeyAlreadyExist) {
-                LoggerUtil.error(apiId, ERROR_MESSAGES.ALREADY_EXIST_KEY_FOR_CONTEXT, `requested By  ${userId}`);
+                LoggerUtil.error(ERROR_MESSAGES.ALREADY_EXIST_KEY_FOR_CONTEXT, ERROR_MESSAGES.INVALID_REQUEST, apiId, `${userId}`);
                 throw new BadRequestException(ERROR_MESSAGES.ALREADY_EXIST_KEY_FOR_CONTEXT_ENTER_ANOTHER);
             }
         }
@@ -160,7 +160,7 @@ export class NotificationEventsService {
                 }
             });
         }
-        LoggerUtil.log(`Template updated successfully by userId: ${userId}`, `Id: ${id}`, '/update/template');
+        LoggerUtil.log(`Template updated successfully by userId: ${userId}`, apiId, userId);
         return response
             .status(HttpStatus.OK)
             .json(APIResponse.success(apiId, { id: id }, 'OK'));
@@ -192,7 +192,7 @@ export class NotificationEventsService {
             }, {});
             return { ...rest, templates: formattedTemplateConfig };
         });
-        LoggerUtil.log(SUCCESS_MESSAGES.GET_TEMPLATE(userId), '/get/template');
+        LoggerUtil.log(SUCCESS_MESSAGES.GET_TEMPLATE(userId), apiId, userId,);
         return response
             .status(HttpStatus.OK)
             .json(APIResponse.success(apiId, finalResult, 'OK'));
@@ -202,14 +202,14 @@ export class NotificationEventsService {
         const apiId = APIID.TEMPLATE_DELETE;
         const templateId = await this.notificationTemplatesRepository.findOne({ where: { actionId } });
         if (!templateId) {
-            LoggerUtil.log(apiId, SUCCESS_MESSAGES.UPDATE_TEMPLATE_API, ERROR_MESSAGES.TEMPLATE_NOT_EXIST, userId);
+            LoggerUtil.error(ERROR_MESSAGES.TEMPLATE_NOT_EXIST, ERROR_MESSAGES.NOT_FOUND, apiId, userId);
             throw new NotFoundException(ERROR_MESSAGES.TEMPLATE_ID_NOTFOUND(actionId))
         }
         const deleteTemplate = await this.notificationTemplatesRepository.delete({ actionId });
         if (deleteTemplate.affected !== 1) {
             throw new BadRequestException(ERROR_MESSAGES.TEMPLATE_NOT_DELETED);
         }
-        LoggerUtil.log(SUCCESS_MESSAGES.DELETE_TEMPLATE(userId), '/delete/template');
+        LoggerUtil.log(SUCCESS_MESSAGES.DELETE_TEMPLATE(userId), apiId, userId);
         return response
             .status(HttpStatus.OK)
             .json(APIResponse.success(apiId, { id: actionId }, 'OK'));

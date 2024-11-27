@@ -29,8 +29,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
         let errorMessage =
             exception?.message || ERROR_MESSAGES.INTERNAL_SERVER_ERROR;
 
-        LoggerUtil.error(`Error occurred on API: ${request.url} Method : ${request.method}`,
-            errorMessage, 'Notification Service', `requested by userId: ${userId}`,
+        LoggerUtil.error(errorMessage, `Error occurred on API: ${request.url} Method : ${request.method}`, 'Notification Service', `requested by userId: ${userId}`,
         )
 
         if (exception instanceof HttpException) {
@@ -51,9 +50,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
                 statusCode.toString(),
             );
             LoggerUtil.error(`Database Query Failed on API: ${request.url} requested by userId: ${userId}`,
-                request.method,
                 (exception as QueryFailedError).message,
-                'QueryFailedError')
+                'Notification Service', `${userId}`)
 
             return response.status(statusCode).json(errorResponse);
         }
