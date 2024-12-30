@@ -13,6 +13,7 @@ import { NotificationService } from './notification.service';
 import { NotificationQueue } from '../notification-queue/entities/notificationQueue.entity';
 import { RabbitmqModule } from '../rabbitmq/rabbitmq.module';
 import { NotificationQueueService } from '../notification-queue/notificationQueue.service';
+import { TypeormService } from '../typeorm/typeorm.service';
 
 
 @Module({
@@ -20,7 +21,8 @@ import { NotificationQueueService } from '../notification-queue/notificationQueu
     TypeOrmModule.forFeature([NotificationActions, NotificationActionTemplates, NotificationLog, NotificationQueue]), // import entity here
     NotificationEventsModule, RabbitmqModule
   ],
-  providers: [NotificationAdapterFactory, PushAdapter, SmsAdapter, EmailAdapter, NotificationService, NotificationQueueService],
+
+  providers: [NotificationAdapterFactory, PushAdapter, SmsAdapter, EmailAdapter, NotificationService, NotificationQueueService, TypeormService],
   controllers: [NotificationController],
   exports: [NotificationService]
 })

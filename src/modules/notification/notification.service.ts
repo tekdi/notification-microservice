@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 import axios from 'axios';
 import { NotificationDto } from './dto/notificationDto.dto';
 import { NotificationAdapterFactory } from './notificationadapters';
-import APIResponse from 'src/common/utils/response';
+import APIResponse from '../../common/utils/response';
 // import * as FCM from 'fcm-node';
 // import { SubscribeToDeviceTopicDto } from './dto/subscribtotopic.dto';
 import { ConfigService } from '@nestjs/config';
@@ -16,9 +16,10 @@ import { NotificationActionTemplates } from '../notification_events/entity/notif
 import { NotificationQueue } from '../notification-queue/entities/notificationQueue.entity';
 import { AmqpConnection, RabbitSubscribe } from '@nestjs-plus/rabbitmq';
 import { NotificationQueueService } from '../notification-queue/notificationQueue.service';
-import { APIID } from 'src/common/utils/api-id.config';
-import { SUCCESS_MESSAGES, ERROR_MESSAGES } from 'src/common/utils/constant.util';
-import { LoggerUtil } from 'src/common/logger/LoggerUtil';
+import { APIID } from '../../common/utils/api-id.config';
+import { SUCCESS_MESSAGES, ERROR_MESSAGES } from '../../common/utils/constant.util';
+import { LoggerUtil } from '../../common/logger/LoggerUtil';
+import { TypeormService } from '../typeorm/typeorm.service';
 
 @Injectable()
 export class NotificationService {
@@ -40,6 +41,7 @@ export class NotificationService {
     private readonly adapterFactory: NotificationAdapterFactory,
     private readonly configService: ConfigService,
     private readonly amqpConnection: AmqpConnection,
+    private readonly typeormService: TypeormService
   ) {
     this.fcmkey = this.configService.get('FCM_KEY');
     this.fcmurl = this.configService.get('FCM_URL')
@@ -57,7 +59,7 @@ export class NotificationService {
     try {
       const { email, push, sms, context, replacements, key } = notificationDto;
       // Check if notification template exists
-      const notification_event = await this.notificationActions.findOne({ where: { context, key } });
+      const notification_event = await this.typeormService.findOne(NotificationActions, { where: { context, key } });
       if (!notification_event) {
         LoggerUtil.error(`template not found with this ${context} and ${key}`, ERROR_MESSAGES.TEMPLATE_NOTFOUND, apiId, userId);
         throw new BadRequestException(ERROR_MESSAGES.TEMPLATE_NOTFOUND);
@@ -149,7 +151,7 @@ export class NotificationService {
   // Helper function to handle sending notifications for a specific channel
   async notificationHandler(channel, recipients, type, replacements, notificationDto, notification_event, userId) {
     if (recipients && recipients.length > 0 && Object.keys(recipients).length > 0) {
-      const notification_details = await this.notificationActionTemplates.find({ where: { actionId: notification_event.actionId, type } });
+      const notification_details: any = await this.typeormService.find(NotificationActionTemplates, { where: { actionId: notification_event.actionId, type } });
       if (notification_details.length === 0) {
         LoggerUtil.error(ERROR_MESSAGES.TEMPLATE_CONFIG_NOTFOUND, `/Send ${channel} Notification`, userId);
         throw new BadRequestException(`${ERROR_MESSAGES.TEMPLATE_CONFIG_NOTFOUND} ${type}`);
@@ -242,7 +244,7 @@ export class NotificationService {
 
   //Provider which store in Queue 
   async saveNotificationQueue(notificationDataArray) {
-    const arrayofResult = await this.notificationQueue.save(notificationDataArray);
+    const arrayofResult: any = await this.typeormService.save(NotificationQueue, notificationDataArray);
     if (arrayofResult) {
       if (this.amqpConnection) {
         try {
@@ -360,7 +362,7 @@ export class NotificationService {
 
   async saveNotificationLogs(notificationLogs: NotificationLog) {
     try {
-      await this.notificationLogRepository.save(notificationLogs);
+      await this.typeormService.save(NotificationLog, notificationLogs);
     }
     catch (e) {
       LoggerUtil.error(`error ${e}`, ERROR_MESSAGES.NOTIFICATION_LOG_SAVE_FAILED);

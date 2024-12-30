@@ -4,13 +4,14 @@ import { NotificationEventsController } from './notification_events.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { NotificationActions } from './entity/notificationActions.entity';
 import { NotificationActionTemplates } from './entity/notificationActionTemplates.entity';
+import { TypeormService } from '../typeorm/typeorm.service';
 
 @Module(
   {
     imports: [
       TypeOrmModule.forFeature([NotificationActions, NotificationActionTemplates])
     ],
-    providers: [NotificationEventsService],
+    providers: [NotificationEventsService, TypeormService],
     controllers: [NotificationEventsController],
     exports: [NotificationEventsService]
   })

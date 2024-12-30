@@ -10,10 +10,10 @@ export class NotificationActionTemplates {
     @Column()
     language: string;
 
-    @Column()
+    @Column({ nullable: false })
     subject: string;
 
-    @Column()
+    @Column({ nullable: false })
     body: string;
 
     @CreateDateColumn({ type: 'timestamp' })
@@ -38,7 +38,7 @@ export class NotificationActionTemplates {
     @Column({ type: 'uuid', nullable: true })
     updatedBy: string;
 
-    @Column()
+    @Column({ nullable: false })
     actionId: number;
 
     @ManyToOne(() => NotificationActions, template => template.templateconfig)
