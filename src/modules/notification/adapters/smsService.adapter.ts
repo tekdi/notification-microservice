@@ -1,15 +1,15 @@
 import { BadRequestException, Inject, Injectable, forwardRef } from "@nestjs/common";
 import { NotificationServiceInterface } from "../interface/notificationService";
 import { NotificationDto } from "../dto/notificationDto.dto";
-import { NotificationActions } from "src/modules/notification_events/entity/notificationActions.entity";
+import { NotificationActions } from "../../notification_events/entity/notificationActions.entity";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { NotificationActionTemplates } from "src/modules/notification_events/entity/notificationActionTemplates.entity"
+import { NotificationActionTemplates } from "../../notification_events/entity/notificationActionTemplates.entity"
 import { ConfigService } from "@nestjs/config";
 import { NotificationLog } from "../entity/notificationLogs.entity";
 import { NotificationService } from "../notification.service";
-import { LoggerUtil } from "src/common/logger/LoggerUtil";
-import { ERROR_MESSAGES, SUCCESS_MESSAGES } from "src/common/utils/constant.util";
+import { LoggerUtil } from "../../../common/logger/LoggerUtil";
+import { ERROR_MESSAGES, SUCCESS_MESSAGES } from "../../../common/utils/constant.util";
 @Injectable()
 export class SmsAdapter implements NotificationServiceInterface {
 

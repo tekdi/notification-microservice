@@ -8,8 +8,8 @@ import { NotificationActionTemplates } from "src/modules/notification_events/ent
 import NotifmeSdk from 'notifme-sdk';
 import { NotificationLog } from "../entity/notificationLogs.entity";
 import { NotificationService } from "../notification.service";
-import { LoggerUtil } from "src/common/logger/LoggerUtil";
-import { ERROR_MESSAGES, SUCCESS_MESSAGES } from "src/common/utils/constant.util";
+import { LoggerUtil } from "../../../common/logger/LoggerUtil";
+import { ERROR_MESSAGES, SUCCESS_MESSAGES } from "../../../common/utils/constant.util";
 
 
 @Injectable()

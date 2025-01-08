@@ -5,8 +5,8 @@ import * as admin from "firebase-admin";
 import { ConfigService } from "@nestjs/config";
 import { NotificationLog } from "../entity/notificationLogs.entity";
 import { NotificationService } from "../notification.service";
-import { ERROR_MESSAGES, SUCCESS_MESSAGES } from "src/common/utils/constant.util";
-import { LoggerUtil } from "src/common/logger/LoggerUtil";
+import { ERROR_MESSAGES, SUCCESS_MESSAGES } from "../../../common/utils/constant.util";
+import { LoggerUtil } from "../../../common/logger/LoggerUtil";
 @Injectable()
 export class PushAdapter implements NotificationServiceInterface {
     private readonly fcmurl: string;

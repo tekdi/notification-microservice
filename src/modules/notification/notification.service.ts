@@ -18,7 +18,7 @@ import { AmqpConnection, RabbitSubscribe } from '@nestjs-plus/rabbitmq';
 import { NotificationQueueService } from '../notification-queue/notificationQueue.service';
 import { APIID } from '../../common/utils/api-id.config';
 import { SUCCESS_MESSAGES, ERROR_MESSAGES } from '../../common/utils/constant.util';
-import { LoggerUtil } from '../../common/logger/LoggerUtil';
+import { LoggerUtil } from '../../common/logger/LoggerUtil'
 import { TypeormService } from '../typeorm/typeorm.service';
 
 @Injectable()
@@ -29,14 +29,14 @@ export class NotificationService {
   private readonly fcmurl;
 
   constructor(
-    @InjectRepository(NotificationLog)
-    private readonly notificationLogRepository: Repository<NotificationLog>,
-    @InjectRepository(NotificationActions)
-    private readonly notificationActions: Repository<NotificationActions>,
-    @InjectRepository(NotificationActionTemplates)
-    private readonly notificationActionTemplates: Repository<NotificationActionTemplates>,
-    @InjectRepository(NotificationQueue)
-    private readonly notificationQueue: Repository<NotificationQueue>,
+    // @InjectRepository(NotificationLog)
+    // private readonly notificationLogRepository: Repository<NotificationLog>,
+    // @InjectRepository(NotificationActions)
+    // private readonly notificationActions: Repository<NotificationActions>,
+    // @InjectRepository(NotificationActionTemplates)
+    // private readonly notificationActionTemplates: Repository<NotificationActionTemplates>,
+    // @InjectRepository(NotificationQueue)
+    // private readonly notificationQueue: Repository<NotificationQueue>,
     private readonly notificationQueueService: NotificationQueueService,
     private readonly adapterFactory: NotificationAdapterFactory,
     private readonly configService: ConfigService,
@@ -55,7 +55,6 @@ export class NotificationService {
       sms: { data: [], errors: [] },
       push: { data: [], errors: [] },
     };
-
     try {
       const { email, push, sms, context, replacements, key } = notificationDto;
       // Check if notification template exists
@@ -239,8 +238,6 @@ export class NotificationService {
       throw new BadRequestException(`Missing replacements for placeholders: ${missingReplacements.join(', ')}`);
     }
   }
-
-
 
   //Provider which store in Queue 
   async saveNotificationQueue(notificationDataArray) {
