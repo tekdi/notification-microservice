@@ -52,6 +52,9 @@ describe('NotificationEventsService', () => {
         // Explicitly initialize TypeormService
         await typeormService.initialize();
     });
+    afterEach(() => {
+        jest.clearAllMocks();
+    });
 
     it('should be defined', () => {
         expect(service).toBeDefined();
@@ -81,7 +84,6 @@ describe('NotificationEventsService', () => {
         //     await expect(result).rejects.toThrow(
         //         new BadRequestException('Template with this context and key already exists.')
         //     );
-        //     console.log(result, "result");
         // });
 
         // create  if not exist template - Success
@@ -108,31 +110,29 @@ describe('NotificationEventsService', () => {
         // });
 
         // //Get API sucesss
-        // it("should fetch template", async () => {
-        //     const searchFilterDto: SearchFilterDto = {
-        //         filters: {
-        //             context: 'TEST',
-        //             key: ''
-        //         }
-        //     };
-        //     const userId = '9991759f-e829-46f7-9350-68e11c8af2f2';
+        it("should fetch template", async () => {
+            const searchFilterDto: SearchFilterDto = {
+                filters: {
+                    context: 'TEST',
+                    key: ''
+                }
+            };
+            const userId = '9991759f-e829-46f7-9350-68e11c8af2f2';
 
-        //     const jsonSpy = jest.spyOn(responseMock, 'json').mockImplementation((result) => {
-        //         return result; // Just return the result passed to json
-        //     });
-        //     await service.getTemplates(searchFilterDto, userId, responseMock as Response);
-        //     const result = jsonSpy.mock.calls[0][0].result; // Get the result array from the json response
-        //     console.log(result, "result"); // Log the result to verify
-        //     // Check if the result array length is greater than 0
-        //     expect(result.length).toBeGreaterThan(0); // Pass if result length is greater than 0
-        // });
+            const jsonSpy = jest.spyOn(responseMock, 'json').mockImplementation((result) => {
+                return result; // Just return the result passed to json
+            });
+            await service.getTemplates(searchFilterDto, userId, responseMock as Response);
+            const result = jsonSpy.mock.calls[0][0].result; // Get the result array from the json response
+            expect(result.length).toBeGreaterThan(0); // Pass if result length is greater than 0
+        });
 
         //getting error if template is not found
-        // it('should throw a NotFoundException if the template does not exist', async () => {
-        //     await expect(
-        //         service.deleteTemplate(77, '3d7f0cb6-0dbd-4ae2-b937-61b9708baa0c', responseMock as Response)
-        //     ).rejects.toThrow(new NotFoundException(`No template id found: 77`));
-        // });
+        it('should throw a NotFoundException if the template does not exist', async () => {
+            await expect(
+                service.deleteTemplate(1111, '3d7f0cb6-0dbd-4ae2-b937-61b9708baa0c', responseMock as Response)
+            ).rejects.toThrow(new NotFoundException(`No template id found: 1111`));
+        });
 
         //update API
         //error -> not exist acrtion id

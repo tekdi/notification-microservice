@@ -62,46 +62,51 @@ describe('NotificationService', () => {
         await typeormService.initialize();
     });
 
+    afterEach(() => {
+        jest.clearAllMocks();
+    });
+
+
     it('should be defined', () => {
         expect(service).toBeDefined();
     });
 
-    //error when template is not found for send notification
-    // it('should throw BadRequestException when notification template is not found', async () => {
-    //     const userId = '6e828f36-0d53-4f62-b34c-8a94e165ceed';
-    //     const notificationDto: NotificationDto = {
-    //         isQueue: false,
-    //         context: 'TEST_CONTEXT1',
-    //         key: 'TEST_KEY1',
-    //         replacements: {
-    //         },
-    //         email: {
-    //             receipients: ["example@example.com"],
-    //         },
-    //         push: new PushDTO,
-    //         sms: new SMSDTO
-    //     };
-    //     // Mock any dependencies required by the service
-    //     // jest.spyOn(service['typeormService'], 'findOne').mockResolvedValue(null);
+    // Test case - when template is not found for send notification
+    it('should throw BadRequestException when notification template is not found', async () => {
+        const userId = '6e828f36-0d53-4f62-b34c-8a94e165ceed';
+        const notificationDto: NotificationDto = {
+            isQueue: false,
+            context: 'OTP1',
+            key: 'Reset_OTP1',
+            replacements: {
+                '{OTP}': '445566',
+                '{otpExpiry}': '2',
+                '{programName}': 'SCP',
+                '{username}': 'Tets'
+            },
+            email: {
+                receipients: ["example@example.com"],
+            },
+            push: new PushDTO,
+            sms: new SMSDTO
+        };
 
-    //     // Assert that the method throws the expected exception
-    //     await expect(service.sendNotification(notificationDto, userId, responseMock as Response))
-    //         .rejects.toThrow(new BadRequestException('Template not found'));
-    //     // expect(service['typeormService'].findOne).toHaveBeenCalledWith(
-    //     //     NotificationActions,
-    //     //     { where: { context: 'TEST_CONTEXT1', key: 'TEST_KEY1' } }
-    //     // );
-    // });
-    // //sucess
+        // Assert that the method throws the expected exception
+        await expect(service.sendNotification(notificationDto, userId, responseMock as Response))
+            .rejects.toThrow(new BadRequestException('Template not found'));
+    });
+    //sucess -> Email
     it('should send email notification successfully and return expected response structure', async () => {
         const userId = '6e828f36-0d53-4f62-b34c-8a94e165ceed';
         const notificationDto: NotificationDto = {
             isQueue: false,
-            context: 'TEST_CONTEXT',
-            key: 'TEST_KEY',
+            context: 'OTP',
+            key: 'Reset_OTP',
             replacements: {
-                '{programName}': 'Event Reminder',
-                '{username}': 'John Doe'
+                '{OTP}': '445566',
+                '{otpExpiry}': '2',
+                '{programName}': 'SCP',
+                '{username}': 'Tets'
             },
             email: {
                 receipients: ["example@example.com"],
@@ -131,16 +136,15 @@ describe('NotificationService', () => {
             },
         });
     });
-    // //sucess
+    // //sucess  -> push -> it eill be fail beacuse device Id we are not set atual for security reason
     // it('should send Push notification successfully and return expected response structure', async () => {
     //     const userId = '6e828f36-0d53-4f62-b34c-8a94e165ceed';
     //     const notificationDto: NotificationDto = {
     //         isQueue: false,
-    //         context: 'TEST_CONTEXT',
-    //         key: 'TEST_KEY',
+    //         context: 'USER',
+    //         key: 'SESSION_UPDATE_NOTIFICATION',
     //         replacements: {
-    //             '{programName}': 'Event Reminder',
-    //             '{username}': 'John Doe'
+    //             '{sessionName}': 'Math',
     //         },
     //         push: {
     //             receipients: ['fcmDeviceId123:APA91bGfEXAMPLEr123EXAMPLEoHuEXAMPLE'],
@@ -169,7 +173,7 @@ describe('NotificationService', () => {
     //         },
     //     });
     // });
-    // //sucess
+    // //sucess -> SMS -
     // it('should send SMS notification successfully and return expected response structure', async () => {
     //     const userId = '6e828f36-0d53-4f62-b34c-8a94e165ceed';
     //     const notificationDto: NotificationDto = {
@@ -276,59 +280,60 @@ describe('NotificationService', () => {
     // });
 
     //test case for occure one sucess for one notification and error for another notification
-    // it('should filter out channels with no data or errors in the final response', async () => {
-    //     const userId = '6e828f36-0d53-4f62-b34c-8a94e165ceed';
-    //     const notificationDto: NotificationDto = {
-    //         isQueue: false,
-    //         context: 'TEST_CONTEXT',
-    //         key: 'TEST_KEY',
-    //         replacements: {
-    //             '{otp}': '4444',
-    //             '{otpExpiry}': '10MIN'
-    //         },
-    //         email: {
-    //             receipients: ["example@example.com"],
-    //         },
-    //         push: {
-    //             receipients: [
-    //                 "fcmDeviceId123:APA91bGfEXAMPLEr123EXAMPLEoHuEXAMPLE"
-    //             ]
-    //         },
-    //         sms: new SMSDTO,
-    //     };
-    //     const jsonSpy = jest.spyOn(responseMock, 'json').mockImplementation((result) => {
-    //         return result; // Just return the result passed to json
-    //     });
-    //     await service.sendNotification(notificationDto, userId, responseMock as Response);
-    //     const status = jest.spyOn(responseMock, 'status').mockReturnThis();
-    //     const result = jsonSpy.mock.calls[0][0].result;
+    it('should filter out channels with no data or errors in the final response', async () => {
+        const userId = '6e828f36-0d53-4f62-b34c-8a94e165ceed';
+        const notificationDto: NotificationDto = {
+            isQueue: false,
+            context: 'OTP',
+            key: 'Reset_OTP',
+            replacements: {
+                '{OTP}': '445566',
+                '{otpExpiry}': '2',
+                '{programName}': 'SCP',
+                '{username}': 'Tets'
+            },
+            email: {
+                receipients: ["example@example.com"],
+            },
+            push: {
+                receipients: [
+                    "fcmDeviceId123:APA91bGfEXAMPLEr123EXAMPLEoHuEXAMPLE"
+                ]
+            },
+            sms: new SMSDTO,
+        };
+        const jsonSpy = jest.spyOn(responseMock, 'json').mockImplementation((result) => {
+            return result; // Just return the result passed to json
+        });
+        await service.sendNotification(notificationDto, userId, responseMock as Response);
+        const status = jest.spyOn(responseMock, 'status').mockReturnThis();
+        const result = jsonSpy.mock.calls[0][0].result;
 
-    //     expect(status).toHaveBeenCalledWith(HttpStatus.OK);
-    //     // Use toEqual or toMatchObject to verify the structure
-    //     expect(result).toEqual({
-    //         email: {
-    //             data: [
-    //                 {
-    //                     recipient: "example@example.com",
-    //                     status: 200,
-    //                     result: 'Email notification sent successfully',
-    //                 },
-    //             ],
-    //             errors: [],
-    //         },
-    //         push: {
-    //             data: [
-    //             ],
-    //             errors: [
-    //                 {
-    //                     "recipient":  "fcmDeviceId123:APA91bGfEXAMPLEr123EXAMPLEoHuEXAMPLE",
-    //                     "error": "AxiosError: Request failed with status code 400",
-    //                     "code": "error"
-    //                 }
-    //             ],
-    //         },
-    //     });
-    // });
+        expect(status).toHaveBeenCalledWith(HttpStatus.OK);
+        // Use toEqual or toMatchObject to verify the structure
+        expect(result).toEqual({
+            email: {
+                data: [
+                    {
+                        recipient: "example@example.com",
+                        status: 200,
+                        result: 'Email notification sent successfully',
+                    },
+                ],
+                errors: [],
+            },
+            push: {
+                data: [
+                ],
+                errors: [
+                    {
+                        "error": "Template Config not found for this context:  push",
+                        "code": 400
+                    }
+                ],
+            },
+        });
+    });
 
     //getting error need to resolve not able to send notification  -> rabbitmq error
     // it('should return appropriate response structure when isQueue is true', async () => {
