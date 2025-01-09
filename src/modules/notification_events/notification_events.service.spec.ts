@@ -16,6 +16,7 @@ dotenv.config();
 
 
 describe('NotificationEventsService', () => {
+    let createdTemplateId: number;
     let service: NotificationEventsService;
     let req: Request;
     let responseMock: Partial<Response>;
@@ -61,59 +62,57 @@ describe('NotificationEventsService', () => {
     });
 
     describe('NotificationTemplate', () => {
-        //error alrady exist tempate 
-        // it('should throw an error if the template already exists', async () => {
-        //     const userId = '3d7f0cb6-0dbd-4ae2-b937-61b9708baa0c';
-        //     const data: CreateEventDto = {
-        //         title: 'Test Template',
-        //         key: 'TEST_KEY1',
-        //         status: 'ACTIVE',
-        //         context: 'TEST_CONTEXT',
-        //         replacementTags: [
-        //             { name: 'campaign.first_name', description: 'Name of Campaign Promoter' },
-        //             { name: 'campaign.last_name', description: 'Last Name of Campaign Promoter' },
-        //         ],
-        //         email: { subject: 'Test Email Subject', body: 'Test Email Body' },
-        //         push: { subject: 'Test Push Subject', body: 'Test Push Body', image: 'image.png', link: 'http://example.com' },
-        //         sms: { subject: 'Test SMS Subject', body: 'Test SMS Body' },
-        //     };
-
-
-        //     const result = await service.createTemplate(userId, data, responseMock as Response);
-        //     // Assert that the service throws a BadRequestException
-        //     await expect(result).rejects.toThrow(
-        //         new BadRequestException('Template with this context and key already exists.')
-        //     );
-        // });
-
         // create  if not exist template - Success
-        // it('should successfully create a new template', async () => {
-        //     const userId = '3d7f0cb6-0dbd-4ae2-b937-61b9708baa0c';
-        //     const data: CreateEventDto = {
-        //         title: 'Test Template',
-        //         key: 'TEST_KEY',
-        //         status: 'ACTIVE',
-        //         context: 'TEST_CONTEXT',
-        //         replacementTags: [
-        //             { name: 'campaign.first_name', description: 'Name of Campaign Promoter' },
-        //             { name: 'campaign.last_name', description: 'Last Name of Campaign Promoter' },
-        //         ],
-        //         email: { subject: 'Test Email Subject', body: 'Test Email Body' },
-        //         push: { subject: 'Test Push Subject', body: 'Test Push Body', image: 'image.png', link: 'http://example.com' },
-        //         sms: { subject: 'Test SMS Subject', body: 'Test SMS Body' },
-        //     };
+        it('should successfully create a new template', async () => {
+            const userId = '3d7f0cb6-0dbd-4ae2-b937-61b9708baa0c';
+            const data: CreateEventDto = {
+                title: 'Test Template',
+                key: 'TEST_KEY',
+                status: 'ACTIVE',
+                context: 'TEST_CONTEXT',
+                replacementTags: [
+                    { name: 'campaign.first_name', description: 'Name of Campaign Promoter' },
+                    { name: 'campaign.last_name', description: 'Last Name of Campaign Promoter' },
+                ],
+                email: { subject: 'Test Email Subject', body: 'Test Email Body' },
+                push: { subject: 'Test Push Subject', body: 'Test Push Body', image: 'image.png', link: 'http://example.com' },
+                sms: { subject: 'Test SMS Subject', body: 'Test SMS Body' },
+            };
+            const createdTemplate = jest.spyOn(responseMock, 'json').mockImplementation((result) => {
+                return result; // Just return the result passed to json
+            });
+            await service.createTemplate(userId, data, responseMock as Response);
+            const result = createdTemplate.mock.calls[0][0].result;
+            createdTemplateId = result.actionId;
+            expect(responseMock.status).toHaveBeenCalledWith(HttpStatus.CREATED);
+        });
 
-        //     const result = await service.createTemplate(userId, data, responseMock as Response);
-        //     console.log(result, "result");
-        //     expect(responseMock.status).toHaveBeenCalledWith(HttpStatus.CREATED);
-        //     // expect(responseMock.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
-        // });
+        //error alrady exist tempate 
+        it('should throw an error if the template already exists', async () => {
+            const userId = '3d7f0cb6-0dbd-4ae2-b937-61b9708baa0c';
+            const data: CreateEventDto = {
+                title: 'Test Template',
+                key: 'TEST_KEY',
+                status: 'ACTIVE',
+                context: 'TEST_CONTEXT',
+                replacementTags: [
+                    { name: 'campaign.first_name', description: 'Name of Campaign Promoter' },
+                    { name: 'campaign.last_name', description: 'Last Name of Campaign Promoter' },
+                ],
+                email: { subject: 'Test Email Subject', body: 'Test Email Body' },
+                push: { subject: 'Test Push Subject', body: 'Test Push Body', image: 'image.png', link: 'http://example.com' },
+                sms: { subject: 'Test SMS Subject', body: 'Test SMS Body' },
+            };
+            await expect(service.createTemplate(userId, data, responseMock as Response)).rejects.toThrow(
+                new NotFoundException('Template already exist')
+            );
+        });
 
         // //Get API sucesss
         it("should fetch template", async () => {
             const searchFilterDto: SearchFilterDto = {
                 filters: {
-                    context: 'TEST',
+                    context: 'TEST_CONTEXT',
                     key: ''
                 }
             };
@@ -127,14 +126,26 @@ describe('NotificationEventsService', () => {
             expect(result.length).toBeGreaterThan(0); // Pass if result length is greater than 0
         });
 
-        //getting error if template is not found
-        it('should throw a NotFoundException if the template does not exist', async () => {
-            await expect(
-                service.deleteTemplate(1111, '3d7f0cb6-0dbd-4ae2-b937-61b9708baa0c', responseMock as Response)
-            ).rejects.toThrow(new NotFoundException(`No template id found: 1111`));
+        it('should delete if the template exist', async () => {
+            const jsonSpy = jest.spyOn(responseMock, 'json').mockImplementation((result) => {
+                return result; // Just return the result passed to json
+            });
+            await service.deleteTemplate(createdTemplateId, '3d7f0cb6-0dbd-4ae2-b937-61b9708baa0c', responseMock as Response)
+            // Extract the JSON response
+            const jsonResult = jsonSpy.mock.calls[0][0]; // Get the first call's first argument
+            expect(jsonResult.result).toEqual({
+                id: createdTemplateId,
+            });
         });
 
-        //update API
+        //getting error if template is not found -> delete the template
+        it('should throw a NotFoundException if the template does not exist', async () => {
+            await expect(
+                service.deleteTemplate(createdTemplateId, '3d7f0cb6-0dbd-4ae2-b937-61b9708baa0c', responseMock as Response)
+            ).rejects.toThrow(new NotFoundException(`No template id found: ${createdTemplateId}`));
+        });
+
+        //update API -> pending to run
         //error -> not exist acrtion id
         // it('should successfully update an existing template', async () => {
         //     const userId = '3d7f0cb6-0dbd-4ae2-b937-61b9708baa0c';

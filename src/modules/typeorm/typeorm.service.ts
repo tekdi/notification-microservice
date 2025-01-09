@@ -9,9 +9,6 @@ import { NotificationQueue } from '../notification-queue/entities/notificationQu
 
 @Injectable()
 export class TypeormService {
-    // constructor(
-    //   @InjectEntityManager() private readonly entityManager: EntityManager
-    // ) {}
     private dataSource: DataSource;
     private entityManager: EntityManager;
 
@@ -35,12 +32,11 @@ export class TypeormService {
 
             // Initialize DataSource
             await this.dataSource.initialize();
-
             // After DataSource is initialized, set the entity manager
             this.entityManager = this.dataSource.manager;
-            console.log("DataSource initialized and EntityManager set.");
+            // console.log("DataSource initialized and EntityManager set.");
         } catch (error) {
-            console.error("Error initializing DataSource:", error);
+            // console.error("Error initializing DataSource:", error);
             throw new Error("TypeORM DataSource initialization failed.");
         }
     }
