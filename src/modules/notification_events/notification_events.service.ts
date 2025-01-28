@@ -3,14 +3,15 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { NotificationActions } from './entity/notificationActions.entity';
 import { SearchFilterDto } from './dto/searchTemplateType.dto';
-import APIResponse from 'src/common/utils/response';
+import APIResponse from '../../common/utils/response';
 import { Response } from 'express';
 import { CreateEventDto } from './dto/createTemplate.dto';
 import { NotificationActionTemplates } from './entity/notificationActionTemplates.entity';
 import { UpdateEventDto } from './dto/updateEventTemplate.dto';
-import { APIID } from 'src/common/utils/api-id.config';
-import { ERROR_MESSAGES, SUCCESS_MESSAGES } from 'src/common/utils/constant.util';
-import { LoggerUtil } from 'src/common/logger/LoggerUtil';
+import { APIID } from '../..//common/utils/api-id.config';
+import { ERROR_MESSAGES, SUCCESS_MESSAGES } from '../../common/utils/constant.util';
+import { LoggerUtil } from '../../common/logger/LoggerUtil';
+import { TypeormService } from '../typeorm/typeorm.service';
 @Injectable()
 export class NotificationEventsService {
 
@@ -18,13 +19,14 @@ export class NotificationEventsService {
         @InjectRepository(NotificationActions)
         private notificationTemplatesRepository: Repository<NotificationActions>,
         @InjectRepository(NotificationActionTemplates)
-        private notificationTemplateConfigRepository: Repository<NotificationActionTemplates>
+        private notificationTemplateConfigRepository: Repository<NotificationActionTemplates>,
+        private typeormService: TypeormService
     ) { }
 
     async createTemplate(userId: string, data: CreateEventDto, response: Response): Promise<Response> {
         const apiId = APIID.TEMPLATE_CREATE;
         const existingTemplate =
-            await this.notificationTemplatesRepository.findOne({
+            await this.typeormService.findOne(NotificationActions, {
                 where: { context: data.context, key: data.key },
             });
         if (existingTemplate) {
@@ -40,7 +42,7 @@ export class NotificationEventsService {
         notificationTemplate.replacementTags = data.replacementTags;
         notificationTemplate.createdBy = userId;
         notificationTemplate.updatedBy = userId;
-        const notificationTemplateResult = await this.notificationTemplatesRepository.save(notificationTemplate);
+        const notificationTemplateResult: NotificationActions = await this.typeormService.save(NotificationActions, notificationTemplate);
         // create config details
         const createConfig = async (type: string, configData: any) => {
             const templateConfig = new NotificationActionTemplates();
@@ -56,7 +58,7 @@ export class NotificationEventsService {
                 image: type === 'push' ? configData?.image || null : null,
                 link: type === 'push' ? configData?.link || null : null
             });
-            return await this.notificationTemplateConfigRepository.save(templateConfig);
+            return await this.typeormService.save(NotificationActionTemplates, templateConfig);
         };
 
         if (data.email && Object.keys(data.email).length > 0) {
@@ -85,7 +87,7 @@ export class NotificationEventsService {
         const apiId = APIID.TEMPLATE_UPDATE;
         updateEventDto.updatedBy = userId;
         //check actionId exist or not
-        const existingTemplate = await this.notificationTemplatesRepository.findOne({
+        const existingTemplate = await this.typeormService.findOne(NotificationActions, {
             where: { actionId: id },
         });
         if (!existingTemplate) {
@@ -95,7 +97,7 @@ export class NotificationEventsService {
         //check key already exist for this context
         if (updateEventDto.key) {
             const checkKeyAlreadyExist =
-                await this.notificationTemplatesRepository.findOne({
+                await this.typeormService.findOne(NotificationActions, {
                     where: { context: existingTemplate.context, key: updateEventDto.key },
                 });
             if (checkKeyAlreadyExist) {
@@ -106,22 +108,23 @@ export class NotificationEventsService {
 
         Object.assign(existingTemplate, updateEventDto);
 
-        const result = await this.notificationTemplatesRepository.save(existingTemplate);
+        const result: NotificationActions = await this.typeormService.save(NotificationActions, existingTemplate);
+
         const createConfig = async (type: string, configData?: any) => {
             if (configData && Object.keys(configData).length > 0) {
-                let existingConfig = await this.notificationTemplateConfigRepository.findOne({
+                let existingConfig = await this.typeormService.findOne(NotificationActionTemplates, {
                     where: { actionId: id, type: type },
                 });
                 if (existingConfig) {
                     Object.assign(existingConfig, configData);
                     existingConfig.updatedBy = userId
-                    return await this.notificationTemplateConfigRepository.save(existingConfig);
+                    return await this.typeormService.save(NotificationActionTemplates, existingConfig);
                 }
                 else {
                     if (!configData.subject || !configData.body) {
                         throw new BadRequestException(ERROR_MESSAGES.NOT_EMPTY_SUBJECT_OR_BODY);
                     }
-                    const newConfig = this.notificationTemplateConfigRepository.create({
+                    const newConfig = {
                         actionId: id,
                         type: type,
                         subject: configData.subject,
@@ -132,8 +135,8 @@ export class NotificationEventsService {
                         createdBy: userId, // getting null constraint error
                         image: configData.image || null,
                         link: configData.link || null
-                    });
-                    return await this.notificationTemplateConfigRepository.save(newConfig);
+                    };
+                    return await this.typeormService.save(NotificationActionTemplates, newConfig);
                 }
             }
         };
@@ -150,13 +153,13 @@ export class NotificationEventsService {
         }
 
         if (updateEventDto.status) {
-            let existingConfig = await this.notificationTemplateConfigRepository.find({
+            let existingConfig = await this.typeormService.find(NotificationActionTemplates, {
                 where: { actionId: id },
             });
             existingConfig.forEach(async (config) => {
                 if (updateEventDto.status) {
                     config.status = updateEventDto.status;
-                    await this.notificationTemplateConfigRepository.save(config);
+                    await this.typeormService.save(NotificationActionTemplates, config);
                 }
             });
         }
@@ -175,7 +178,7 @@ export class NotificationEventsService {
         if (key) {
             whereCondition.key = key;
         }
-        const result = await this.notificationTemplatesRepository.find({
+        const result = await this.typeormService.find(NotificationActions, {
             where: whereCondition,
             relations: ["templateconfig"],
         });
@@ -200,15 +203,17 @@ export class NotificationEventsService {
 
     async deleteTemplate(actionId: number, userId: string, response: Response) {
         const apiId = APIID.TEMPLATE_DELETE;
-        const templateId = await this.notificationTemplatesRepository.findOne({ where: { actionId } });
+        const templateId = await this.typeormService.findOne(NotificationActions, {
+            where: { actionId }
+        });
         if (!templateId) {
             LoggerUtil.error(ERROR_MESSAGES.TEMPLATE_NOT_EXIST, ERROR_MESSAGES.NOT_FOUND, apiId, userId);
             throw new NotFoundException(ERROR_MESSAGES.TEMPLATE_ID_NOTFOUND(actionId))
         }
-        const deleteTemplate = await this.notificationTemplatesRepository.delete({ actionId });
-        if (deleteTemplate.affected !== 1) {
-            throw new BadRequestException(ERROR_MESSAGES.TEMPLATE_NOT_DELETED);
-        }
+        const deleteTemplate = await this.typeormService.delete(NotificationActions, actionId);
+        // if (deleteTemplate.affected !== 1) {
+        //     throw new BadRequestException(ERROR_MESSAGES.TEMPLATE_NOT_DELETED);
+        // }
         LoggerUtil.log(SUCCESS_MESSAGES.DELETE_TEMPLATE(userId), apiId, userId);
         return response
             .status(HttpStatus.OK)
