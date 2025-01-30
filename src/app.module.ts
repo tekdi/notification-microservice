@@ -1,4 +1,4 @@
-import { MiddlewareConsumer, Module } from "@nestjs/common";
+import { MiddlewareConsumer, Module } from "@nestjs/common"
 import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
 import { NotificationEventsModule } from "./modules/notification_events/notification_events.module";

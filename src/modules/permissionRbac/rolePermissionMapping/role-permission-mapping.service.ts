@@ -5,6 +5,7 @@ import { RolePermission } from "./entities/rolePermissionMapping";
 import APIResponse from "src/common/utils/response";
 import { RolePermissionCreateDto } from "./dto/role-permission-create-dto";
 import { Response } from "express";
+import { LoggerUtil } from "src/common/logger/LoggerUtil";
 
 @Injectable()
 export class RolePermissionService {
@@ -14,6 +15,21 @@ export class RolePermissionService {
   ) {}
 
   //getPermission for middleware
+  public async getPermissionForMiddleware(
+    roleTitle: string,
+    apiPath: string
+  ): Promise<any> {
+    try {
+      let result = await this.rolePermissionRepository.find({
+        where: { roleTitle: roleTitle, apiPath: apiPath },
+      });
+      LoggerUtil.log("Permission from DB: " + result);
+      return result;
+    } catch (error) {
+      return error;
+    }
+  }
+
   public async getPermission(
     roleTitle: string,
     apiPath: string,
@@ -38,8 +54,7 @@ export class RolePermissionService {
 
   //create permission
   public async createPermission(
-    permissionCreateDto: RolePermissionCreateDto,
-    response: Response
+    permissionCreateDto: RolePermissionCreateDto
   ): Promise<any> {
     const apiId = "api.create.permission";
     try {
@@ -61,8 +76,7 @@ export class RolePermissionService {
 
   //update permission by permissionId
   public async updatePermission(
-    rolePermissionCreateDto: RolePermissionCreateDto,
-    response: Response
+    rolePermissionCreateDto: RolePermissionCreateDto
   ): Promise<any> {
     const apiId = "api.update.permission";
     try {
@@ -86,10 +100,7 @@ export class RolePermissionService {
   }
 
   //delete permission by permissionId
-  public async deletePermission(
-    rolePermissionId: string,
-    response: Response
-  ): Promise<any> {
+  public async deletePermission(rolePermissionId: string): Promise<any> {
     const apiId = "api.delete.permission";
     try {
       let result = await this.rolePermissionRepository.delete(rolePermissionId);
