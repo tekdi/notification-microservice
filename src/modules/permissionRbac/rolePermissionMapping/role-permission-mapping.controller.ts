@@ -15,8 +15,7 @@ export class RolePermissionMappingController {
     @Body() permissionCreateDto: RolePermissionCreateDto
   ): Promise<Response> {
     return await this.rolePermissionService.createPermission(
-      permissionCreateDto,
-      response
+      permissionCreateDto
     );
   }
 
@@ -40,8 +39,7 @@ export class RolePermissionMappingController {
     @Body() permissionCreateDto: RolePermissionCreateDto
   ): Promise<Response> {
     return await this.rolePermissionService.updatePermission(
-      permissionCreateDto,
-      response
+      permissionCreateDto
     );
   }
   //delete permission
@@ -50,9 +48,6 @@ export class RolePermissionMappingController {
     @Res() response: Response,
     @Body() rolePermissionId: string
   ): Promise<Response> {
-    return await this.rolePermissionService.deletePermission(
-      rolePermissionId,
-      response
-    );
+    return await this.rolePermissionService.deletePermission(rolePermissionId);
   }
 }
