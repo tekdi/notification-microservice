@@ -7,6 +7,10 @@ async function bootstrap() {
   const config = new DocumentBuilder()
     .setTitle('Notification')
     .setDescription('The Notification API description')
+    .addApiKey(
+      { type: 'apiKey', name: 'Authorization', in: 'header' },
+      'access-token',
+    )
     .setVersion('1.0')
     .build();
   const document = SwaggerModule.createDocument(app, config);
