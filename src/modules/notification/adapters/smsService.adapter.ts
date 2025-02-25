@@ -4,18 +4,18 @@ import { NotificationDto } from "../dto/notificationDto.dto";
 import { NotificationActions } from "src/modules/notification_events/entity/notificationActions.entity";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { NotificationActionTemplates } from "src/modules/notification_events/entity/notificationActionTemplates.entity"
+import { NotificationActionTemplates } from "src/modules/notification_events/entity/notificationActionTemplates.entity";
 import { ConfigService } from "@nestjs/config";
 import { NotificationLog } from "../entity/notificationLogs.entity";
 import { NotificationService } from "../notification.service";
 import { LoggerUtil } from "src/common/logger/LoggerUtil";
 import { ERROR_MESSAGES, SUCCESS_MESSAGES } from "src/common/utils/constant.util";
+import { SNSClient, PublishCommand } from "@aws-sdk/client-sns";
+
 @Injectable()
 export class SmsAdapter implements NotificationServiceInterface {
-
-    private readonly accountSid;
-    private readonly authToken;
-    private readonly smsFrom;
+    private readonly snsClient: SNSClient;
+    private readonly smsSenderId;
 
     constructor(
         @Inject(forwardRef(() => NotificationService)) private readonly notificationServices: NotificationService,
@@ -25,16 +25,20 @@ export class SmsAdapter implements NotificationServiceInterface {
         @InjectRepository(NotificationActionTemplates)
         private notificationTemplateConfigRepository: Repository<NotificationActionTemplates>,
     ) {
-        this.accountSid = this.configService.get('TWILIO_ACCOUNT_SID');
-        this.authToken = this.configService.get('TWILIO_AUTH_TOKEN');
-        this.smsFrom = this.configService.get('SMS_FROM');
-        console.log("accountSid=", this.accountSid, "authToken=", this.authToken, "smsFrom=", this.smsFrom);
+        this.snsClient = new SNSClient({
+            region: this.configService.get('AWS_REGION'),
+            credentials: {
+                accessKeyId: this.configService.get('AWS_ACCESS_KEY_ID'),
+                secretAccessKey: this.configService.get('AWS_SECRET_ACCESS_KEY'),
+            },
+        });
+        this.smsSenderId = this.configService.get('AWS_SNS_SENDER_ID');
     }
+
     async sendNotification(notificationDataArray) {
         const results = [];
         for (const notificationData of notificationDataArray) {
             try {
-                console.log("accountSid1=", this.accountSid, "authToken1=", this.authToken, "smsFrom1=", this.smsFrom);
                 const recipient = notificationData.recipient;
                 if (!this.isValidMobileNumber(recipient)) {
                     throw new BadRequestException(ERROR_MESSAGES.INVALID_MOBILE_NUMBER);
@@ -47,7 +51,6 @@ export class SmsAdapter implements NotificationServiceInterface {
                     subject: notificationData.subject,
                 };
                 const result = await this.send(smsNotificationDto);
-                // return result;
                 results.push({
                     recipient: recipient,
                     status: 200,
@@ -69,30 +72,47 @@ export class SmsAdapter implements NotificationServiceInterface {
         const regexExpForMobileNumber = /^[6-9]\d{9}$/gi;
         return regexExpForMobileNumber.test(mobileNumber);
     }
-    private createNotificationLog(notificationDto: NotificationDto, subject, key, body, receipients: string): NotificationLog {
-        const notificationLogs = new NotificationLog()
+
+    private createNotificationLog(notificationDto: NotificationDto, subject, key, body, recipient: string): NotificationLog {
+        const notificationLogs = new NotificationLog();
         notificationLogs.context = notificationDto.context;
         notificationLogs.subject = subject;
         notificationLogs.body = body;
-        notificationLogs.action = key
+        notificationLogs.action = key;
         notificationLogs.type = 'sms';
-        notificationLogs.recipient = receipients;
+        notificationLogs.recipient = recipient;
         return notificationLogs;
     }
+
     async send(notificationData) {
-        const notificationLogs = this.createNotificationLog(notificationData, notificationData.subject, notificationData.key, notificationData.body, notificationData.recipient);
+        const notificationLogs = this.createNotificationLog(
+            notificationData, 
+            notificationData.subject, 
+            notificationData.key, 
+            notificationData.body, 
+            notificationData.recipient
+        );
         try {
-            const twilio = require('twilio');
-            const client = twilio(this.accountSid, this.authToken);
-            const message = await client.messages.create({
-                from: `${this.smsFrom}`,
-                to: `+91${notificationData.recipient}`,
-                body: notificationData.body,
+            const command = new PublishCommand({
+                Message: notificationData.body,
+                PhoneNumber: `+91${notificationData.recipient}`,
+                MessageAttributes: {
+                    'AWS.SNS.SMS.SenderID': {
+                        DataType: 'String',
+                        StringValue: this.smsSenderId,
+                    },
+                    'AWS.SNS.SMS.SMSType': {
+                        DataType: 'String',
+                        StringValue: 'Transactional',
+                    },
+                },
             });
+            
+            const response = await this.snsClient.send(command);
             LoggerUtil.log(SUCCESS_MESSAGES.SMS_NOTIFICATION_SEND_SUCCESSFULLY);
             notificationLogs.status = true;
             await this.notificationServices.saveNotificationLogs(notificationLogs);
-            return message;
+            return response;
         } catch (error) {
             LoggerUtil.error(ERROR_MESSAGES.SMS_NOTIFICATION_FAILED, error);
             notificationLogs.status = false;
