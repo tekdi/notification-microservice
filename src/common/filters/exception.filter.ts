@@ -4,12 +4,14 @@ import {
     ArgumentsHost,
     HttpException,
     HttpStatus,
+    UnauthorizedException,
 } from '@nestjs/common';
 import { QueryFailedError } from 'typeorm';
 import { Response, Request } from 'express';
 import APIResponse from '../utils/response';
 import { ERROR_MESSAGES } from '../utils/constant.util';
 import { LoggerUtil } from '../logger/LoggerUtil';
+import { jwtDecode } from 'jwt-decode';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -22,7 +24,22 @@ export class AllExceptionsFilter implements ExceptionFilter {
         const ctx = host.switchToHttp();
         const response = ctx.getResponse<Response>();
         const request = ctx.getRequest<Request>();
-        const userId = request?.query?.userid;
+        const authHeader = request.headers.
+            authorization;
+
+        if (!authHeader?.startsWith('Bearer ')) {
+            throw new UnauthorizedException("Invalid or missing token");
+        }
+
+        const token = authHeader.split(' ')[1]; // Extract JWT token
+        const decoded: any = jwtDecode(token); // Decode token
+
+        if (!decoded?.sub) {
+            throw new UnauthorizedException("Token missing user identifier (sub)");
+        }
+
+        const userId = decoded.sub;
+
         const status =
             exception instanceof HttpException ? exception.getStatus() : 500;
 
