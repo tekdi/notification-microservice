@@ -41,7 +41,9 @@ export class RolePermissionService {
         where: { roleTitle: roleTitle, apiPath: apiPath },
       });
       console.log("result: ", result);
-      return APIResponse.success(apiId, result, HttpStatus.OK + "");
+      return response
+        .status(HttpStatus.OK)
+        .json(APIResponse.success(apiId, result, HttpStatus.OK + ""));
     } catch (error) {
       return APIResponse.error(
         apiId,
@@ -54,7 +56,8 @@ export class RolePermissionService {
 
   //create permission
   public async createPermission(
-    permissionCreateDto: RolePermissionCreateDto
+    permissionCreateDto: RolePermissionCreateDto,
+    response: Response
   ): Promise<any> {
     const apiId = "api.create.permission";
     try {
@@ -62,8 +65,11 @@ export class RolePermissionService {
         roleTitle: permissionCreateDto.roleTitle,
         apiPath: permissionCreateDto.apiPath,
         requestType: permissionCreateDto.requestType,
+        module: permissionCreateDto.module,
       });
-      return APIResponse.success(apiId, result, HttpStatus.OK + "");
+      return response
+        .status(HttpStatus.OK)
+        .json(APIResponse.success(apiId, result, HttpStatus.OK + ""));
     } catch (error) {
       return APIResponse.error(
         apiId,
@@ -76,21 +82,25 @@ export class RolePermissionService {
 
   //update permission by permissionId
   public async updatePermission(
-    rolePermissionCreateDto: RolePermissionCreateDto
+    rolePermissionCreateDto: RolePermissionCreateDto,
+    response: Response
   ): Promise<any> {
     const apiId = "api.update.permission";
     try {
       let result = await this.rolePermissionRepository.update(
-        rolePermissionCreateDto.permissionId,
+        rolePermissionCreateDto.rolePermissionId,
         {
           roleTitle: rolePermissionCreateDto.roleTitle,
           apiPath: rolePermissionCreateDto.apiPath,
           requestType: rolePermissionCreateDto.requestType,
+          module: rolePermissionCreateDto.module,
         }
       );
-      return APIResponse.success(apiId, result, HttpStatus.OK + "");
+      return response
+        .status(HttpStatus.OK)
+        .json(APIResponse.success(apiId, result, HttpStatus.OK + ""));
     } catch (error) {
-      return APIResponse.error(
+      APIResponse.error(
         apiId,
         "Failed to update permission data.",
         error.message,
@@ -100,7 +110,7 @@ export class RolePermissionService {
   }
 
   //delete permission by permissionId
-  public async deletePermission(rolePermissionId: string): Promise<any> {
+  public async deletePermission(rolePermissionId: string, res): Promise<any> {
     const apiId = "api.delete.permission";
     try {
       let result = await this.rolePermissionRepository.delete(rolePermissionId);
