@@ -1,42 +1,19 @@
-import {
-  BadRequestException,
-  Controller,
-  Delete,
-  Param,
-  ParseUUIDPipe,
-  Patch,
-  Query,
-  Req,
-  Res,
-  UseFilters,
-  UsePipes,
-  ValidationPipe,
-} from "@nestjs/common";
-import { NotificationEventsService } from "./notification_events.service";
-import { Post, Body } from "@nestjs/common";
-import {
-  ApiBadRequestResponse,
-  ApiBody,
-  ApiCreatedResponse,
-  ApiInternalServerErrorResponse,
-  ApiOkResponse,
-  ApiQuery,
-  ApiResponse,
-  ApiTags,
-} from "@nestjs/swagger";
-import { SearchFilterDto } from "./dto/searchTemplateType.dto";
-import { Response } from "express";
-import { CreateEventDto } from "./dto/createTemplate.dto";
-import { UpdateEventDto } from "./dto/updateEventTemplate.dto";
-import { AllExceptionsFilter } from "src/common/filters/exception.filter";
-import { APIID } from "src/common/utils/api-id.config";
-import {
-  ERROR_MESSAGES,
-  SUCCESS_MESSAGES,
-} from "src/common/utils/constant.util";
+import { Controller, Delete, Param, Patch, Res, UseFilters, UsePipes, ValidationPipe } from '@nestjs/common';
+import { NotificationEventsService } from './notification_events.service';
+import { Post, Body } from '@nestjs/common';
+import { ApiBadRequestResponse, ApiBasicAuth, ApiBody, ApiCreatedResponse, ApiInternalServerErrorResponse, ApiOkResponse, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { SearchFilterDto } from './dto/searchTemplateType.dto';
+import { Response } from 'express';
+import { CreateEventDto } from './dto/createTemplate.dto';
+import { UpdateEventDto } from './dto/updateEventTemplate.dto';
+import { AllExceptionsFilter } from 'src/common/filters/exception.filter';
+import { APIID } from 'src/common/utils/api-id.config';
+import { ERROR_MESSAGES, SUCCESS_MESSAGES } from 'src/common/utils/constant.util';
+import { GetUserId } from 'src/common/decorator/userId.decorator';
 
-@Controller("notification-templates")
-@ApiTags("Notification-Templates")
+@Controller('notification-templates')
+@ApiTags('Notification-Templates')
+@ApiBasicAuth('access-token')
 export class NotificationEventsController {
   constructor(private notificationeventsService: NotificationEventsService) {}
 
@@ -52,19 +29,9 @@ export class NotificationEventsController {
   async create(
     @Body() createEventDto: CreateEventDto,
     @Res() response: Response,
-    @Req() req
+    @GetUserId() userId: string,
   ) {
-    let userId = null;
-    if (req.headers.authorization) {
-      userId = this.notificationeventsService.getUserIdFromToken(
-        req.headers.authorization
-      );
-    }
-    return this.notificationeventsService.createTemplate(
-      userId,
-      createEventDto,
-      response
-    );
+    return this.notificationeventsService.createTemplate(userId, createEventDto, response);
   }
 
   @UseFilters(new AllExceptionsFilter(APIID.TEMPLATE_LIST))
@@ -77,21 +44,11 @@ export class NotificationEventsController {
   @UsePipes(new ValidationPipe({ transform: true }))
   @ApiOkResponse({ description: SUCCESS_MESSAGES.TEMPLATE_LIST })
   async getTemplates(
-    @Body() searchFilterDto: SearchFilterDto,
-    @Res() response: Response,
-    @Req() req
+    @Body() searchFilterDto: SearchFilterDto, 
+    @Res() response: Response, 
+    @GetUserId() userId: string,
   ) {
-    let userId = null;
-    if (req.headers.authorization) {
-      userId = this.notificationeventsService.getUserIdFromToken(
-        req.headers.authorization
-      );
-    }
-    return this.notificationeventsService.getTemplates(
-      searchFilterDto,
-      userId,
-      response
-    );
+    return this.notificationeventsService.getTemplates(searchFilterDto, userId, response)
   }
 
   @UseFilters(new AllExceptionsFilter(APIID.TEMPLATE_GET))
@@ -107,14 +64,9 @@ export class NotificationEventsController {
     @Param("id") id: number,
     @Body() updateEventDto: UpdateEventDto,
     @Res() response: Response,
-    @Req() req
+    @GetUserId() userId: string,
+
   ) {
-    let userId = null;
-    if (req.headers.authorization) {
-      userId = this.notificationeventsService.getUserIdFromToken(
-        req.headers.authorization
-      );
-    }
     return this.notificationeventsService.updateNotificationTemplate(
       id,
       updateEventDto,
@@ -129,16 +81,10 @@ export class NotificationEventsController {
   @ApiResponse({ status: 200, description: SUCCESS_MESSAGES.TEMPLATE_DELETE })
   @ApiResponse({ status: 404, description: ERROR_MESSAGES.TEMPLATE_NOTFOUND })
   deleteTemplate(
-    @Param("id") id: number,
-    @Res() response: Response,
-    @Req() req
+    @Param('id') id: number, 
+    @Res() response: Response, 
+    @GetUserId() userId: string,
   ) {
-    let userId = null;
-    if (req.headers.authorization) {
-      userId = this.notificationeventsService.getUserIdFromToken(
-        req.headers.authorization
-      );
-    }
-    return this.notificationeventsService.deleteTemplate(id, userId, response);
+    return this.notificationeventsService.deleteTemplate(id, userId, response)
   }
 }
