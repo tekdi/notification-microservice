@@ -15,12 +15,14 @@ import { GetUserId } from 'src/common/decorator/userId.decorator';
 @ApiTags('Notification-Templates')
 @ApiBasicAuth('access-token')
 export class NotificationEventsController {
-  constructor(private notificationeventsService: NotificationEventsService) { }
+  constructor(private notificationeventsService: NotificationEventsService) {}
 
   @UseFilters(new AllExceptionsFilter(APIID.TEMPLATE_CREATE))
   @Post()
   @ApiCreatedResponse({ description: SUCCESS_MESSAGES.TEMPLATE_CREATE })
-  @ApiInternalServerErrorResponse({ description: ERROR_MESSAGES.INTERNAL_SERVER_ERROR })
+  @ApiInternalServerErrorResponse({
+    description: ERROR_MESSAGES.INTERNAL_SERVER_ERROR,
+  })
   @ApiBadRequestResponse({ description: ERROR_MESSAGES.INVALID_REQUEST })
   @UsePipes(new ValidationPipe({ transform: true }))
   @ApiBody({ type: CreateEventDto })
@@ -33,9 +35,11 @@ export class NotificationEventsController {
   }
 
   @UseFilters(new AllExceptionsFilter(APIID.TEMPLATE_LIST))
-  @Post('/list')
+  @Post("/list")
   @ApiBody({ type: SearchFilterDto })
-  @ApiInternalServerErrorResponse({ description: ERROR_MESSAGES.INTERNAL_SERVER_ERROR })
+  @ApiInternalServerErrorResponse({
+    description: ERROR_MESSAGES.INTERNAL_SERVER_ERROR,
+  })
   @ApiBadRequestResponse({ description: ERROR_MESSAGES.INVALID_REQUEST })
   @UsePipes(new ValidationPipe({ transform: true }))
   @ApiOkResponse({ description: SUCCESS_MESSAGES.TEMPLATE_LIST })
@@ -50,7 +54,10 @@ export class NotificationEventsController {
   @UseFilters(new AllExceptionsFilter(APIID.TEMPLATE_GET))
   @Patch("/:id")
   @ApiBody({ type: UpdateEventDto })
-  @ApiResponse({ status: 200, description: SUCCESS_MESSAGES.UPDATE_TEMPLATE_API })
+  @ApiResponse({
+    status: 200,
+    description: SUCCESS_MESSAGES.UPDATE_TEMPLATE_API,
+  })
   @ApiResponse({ status: 400, description: ERROR_MESSAGES.BAD_REQUEST })
   @UsePipes(new ValidationPipe({ transform: true }))
   updateEvent(
@@ -68,9 +75,8 @@ export class NotificationEventsController {
     );
   }
 
-
   @UseFilters(new AllExceptionsFilter(APIID.TEMPLATE_DELETE))
-  @Delete('/:id')
+  @Delete("/:id")
   @UsePipes(new ValidationPipe({ transform: true }))
   @ApiResponse({ status: 200, description: SUCCESS_MESSAGES.TEMPLATE_DELETE })
   @ApiResponse({ status: 404, description: ERROR_MESSAGES.TEMPLATE_NOTFOUND })
