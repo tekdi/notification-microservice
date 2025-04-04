@@ -8,18 +8,19 @@ import { NotificationService } from '../notification/notification.service';
 import { NotificationAdapterFactory } from '../notification/notificationadapters';
 import { EmailAdapter } from '../notification/adapters/emailService.adapter';
 import { PushAdapter } from '../notification/adapters/pushService.adapter';
-import { SmsAdapter } from '../notification/adapters/smsService.adapter';
 import { NotificationActionTemplates } from '../notification_events/entity/notificationActionTemplates.entity';
 import { NotificationActions } from '../notification_events/entity/notificationActions.entity';
 import { NotificationLog } from '../notification/entity/notificationLogs.entity';
 import { RabbitmqModule } from '../rabbitmq/rabbitmq.module';
+import { TwilioSmsAdapter } from '../notification/adapters/sms/twilioSmsService.adapter';
+import { AwsSmsAdapter } from '../notification/adapters/sms/awsSmsService.adapter';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([NotificationQueue, NotificationActionTemplates, NotificationActions, NotificationLog]),
     RabbitmqModule
   ],
-  providers: [NotificationQueueService, NotificationService, NotificationAdapterFactory, EmailAdapter, SmsAdapter, PushAdapter],
+  providers: [NotificationQueueService, NotificationService, NotificationAdapterFactory, EmailAdapter, PushAdapter, TwilioSmsAdapter, AwsSmsAdapter],
   controllers: [NotificationQueueController],
   exports: [NotificationQueueService]
 })

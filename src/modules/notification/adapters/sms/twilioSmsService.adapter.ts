@@ -1,22 +1,21 @@
 import { BadRequestException, Inject, Injectable, forwardRef } from "@nestjs/common";
-import { NotificationServiceInterface } from "../interface/notificationService";
-import { NotificationDto } from "../dto/notificationDto.dto";
+import { NotificationServiceInterface } from "../../interface/notificationService";
+import { NotificationDto } from "../../dto/notificationDto.dto";
 import { NotificationActions } from "src/modules/notification_events/entity/notificationActions.entity";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { NotificationActionTemplates } from "src/modules/notification_events/entity/notificationActionTemplates.entity";
 import { ConfigService } from "@nestjs/config";
-import { NotificationLog } from "../entity/notificationLogs.entity";
-import { NotificationService } from "../notification.service";
+import { NotificationLog } from "../../entity/notificationLogs.entity";
+import { NotificationService } from "../../notification.service";
 import { LoggerUtil } from "src/common/logger/LoggerUtil";
 import { ERROR_MESSAGES, SUCCESS_MESSAGES } from "src/common/utils/constant.util";
-import { SNSClient, PublishCommand } from "@aws-sdk/client-sns";
 
 @Injectable()
-export class SmsAdapter implements NotificationServiceInterface {
-    private readonly snsClient: SNSClient;
-    private readonly smsSenderId;
-
+export class TwilioSmsAdapter implements NotificationServiceInterface {
+    private readonly accountSid;
+    private readonly authToken;
+    private readonly smsFrom;
     constructor(
         @Inject(forwardRef(() => NotificationService)) private readonly notificationServices: NotificationService,
         private readonly configService: ConfigService,
@@ -25,14 +24,9 @@ export class SmsAdapter implements NotificationServiceInterface {
         @InjectRepository(NotificationActionTemplates)
         private notificationTemplateConfigRepository: Repository<NotificationActionTemplates>,
     ) {
-        this.snsClient = new SNSClient({
-            region: this.configService.get('AWS_REGION'),
-            credentials: {
-                accessKeyId: this.configService.get('AWS_ACCESS_KEY_ID'),
-                secretAccessKey: this.configService.get('AWS_SECRET_ACCESS_KEY'),
-            },
-        });
-        this.smsSenderId = this.configService.get('AWS_SNS_SENDER_ID');
+        this.accountSid = this.configService.get('TWILIO_ACCOUNT_SID');
+        this.authToken = this.configService.get('TWILIO_AUTH_TOKEN');
+        this.smsFrom = this.configService.get('SMS_FROM');
     }
 
     async sendNotification(notificationDataArray) {
@@ -86,33 +80,25 @@ export class SmsAdapter implements NotificationServiceInterface {
 
     async send(notificationData) {
         const notificationLogs = this.createNotificationLog(
-            notificationData, 
-            notificationData.subject, 
-            notificationData.key, 
-            notificationData.body, 
+            notificationData,
+            notificationData.subject,
+            notificationData.key,
+            notificationData.body,
             notificationData.recipient
         );
         try {
-            const command = new PublishCommand({
-                Message: notificationData.body,
-                PhoneNumber: `+91${notificationData.recipient}`,
-                MessageAttributes: {
-                    'AWS.SNS.SMS.SenderID': {
-                        DataType: 'String',
-                        StringValue: this.smsSenderId,
-                    },
-                    'AWS.SNS.SMS.SMSType': {
-                        DataType: 'String',
-                        StringValue: 'Transactional',
-                    },
-                },
+            const twilio = require('twilio');
+            const client = twilio(this.accountSid, this.authToken);
+            const message = await client.messages.create({
+                from: `${this.smsFrom}`,
+                to: `+91${notificationData.recipient}`,
+                body: notificationData.body,
             });
-            
-            const response = await this.snsClient.send(command);
+
             LoggerUtil.log(SUCCESS_MESSAGES.SMS_NOTIFICATION_SEND_SUCCESSFULLY);
             notificationLogs.status = true;
             await this.notificationServices.saveNotificationLogs(notificationLogs);
-            return response;
+            return message;
         } catch (error) {
             LoggerUtil.error(ERROR_MESSAGES.SMS_NOTIFICATION_FAILED, error);
             notificationLogs.status = false;

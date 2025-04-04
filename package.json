@@ -21,6 +21,7 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
+    "@aws-sdk/client-sns": "^3.777.0",
     "@golevelup/nestjs-rabbitmq": "^5.3.0",
     "@nestjs-plus/rabbitmq": "^1.4.4",
     "@nestjs/common": "^9.0.0",
@@ -36,6 +37,7 @@
     "class-validator": "^0.14.1",
     "dotenv": "^16.0.1",
     "firebase-admin": "^12.6.0",
+    "jwt-decode": "^4.0.0",
     "notifme-sdk": "^1.11.0",
     "pg": "^8.11.3",
     "reflect-metadata": "^0.1.13",
