@@ -1,28 +1,30 @@
-import { BadRequestException, HttpStatus, Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import axios from 'axios';
-import { NotificationDto } from './dto/notificationDto.dto';
-import { NotificationAdapterFactory } from './notificationadapters';
-import APIResponse from 'src/common/utils/response';
+import { BadRequestException, HttpStatus, Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import axios from "axios";
+import { NotificationDto } from "./dto/notificationDto.dto";
+import { NotificationAdapterFactory } from "./notificationadapters";
+import APIResponse from "src/common/utils/response";
 // import * as FCM from 'fcm-node';
 // import { SubscribeToDeviceTopicDto } from './dto/subscribtotopic.dto';
-import { ConfigService } from '@nestjs/config';
-import { TopicNotification } from './dto/topicnotification .dto';
-import { NotificationLog } from './entity/notificationLogs.entity';
-import { Response } from 'express';
-import { NotificationActions } from '../notification_events/entity/notificationActions.entity';
-import { NotificationActionTemplates } from '../notification_events/entity/notificationActionTemplates.entity';
-import { NotificationQueue } from '../notification-queue/entities/notificationQueue.entity';
-import { AmqpConnection, RabbitSubscribe } from '@nestjs-plus/rabbitmq';
-import { NotificationQueueService } from '../notification-queue/notificationQueue.service';
-import { APIID } from 'src/common/utils/api-id.config';
-import { SUCCESS_MESSAGES, ERROR_MESSAGES } from 'src/common/utils/constant.util';
-import { LoggerUtil } from 'src/common/logger/LoggerUtil';
+import { ConfigService } from "@nestjs/config";
+import { TopicNotification } from "./dto/topicnotification .dto";
+import { NotificationLog } from "./entity/notificationLogs.entity";
+import { Response } from "express";
+import { NotificationActions } from "../notification_events/entity/notificationActions.entity";
+import { NotificationActionTemplates } from "../notification_events/entity/notificationActionTemplates.entity";
+import { NotificationQueue } from "../notification-queue/entities/notificationQueue.entity";
+import { AmqpConnection, RabbitSubscribe } from "@nestjs-plus/rabbitmq";
+import { NotificationQueueService } from "../notification-queue/notificationQueue.service";
+import { APIID } from "src/common/utils/api-id.config";
+import {
+  SUCCESS_MESSAGES,
+  ERROR_MESSAGES,
+} from "src/common/utils/constant.util";
+import { LoggerUtil } from "src/common/logger/LoggerUtil";
 
 @Injectable()
 export class NotificationService {
-
   // private readonly fcm: FCM;
   private readonly fcmkey;
   private readonly fcmurl;
@@ -39,16 +41,20 @@ export class NotificationService {
     private readonly notificationQueueService: NotificationQueueService,
     private readonly adapterFactory: NotificationAdapterFactory,
     private readonly configService: ConfigService,
-    private readonly amqpConnection: AmqpConnection,
+    private readonly amqpConnection: AmqpConnection
   ) {
-    this.fcmkey = this.configService.get('FCM_KEY');
-    this.fcmurl = this.configService.get('FCM_URL')
+    this.fcmkey = this.configService.get("FCM_KEY");
+    this.fcmurl = this.configService.get("FCM_URL");
     // this.fcm = new FCM(this.fcmkey);
   }
 
-  async sendNotification(notificationDto: NotificationDto, userId: string, response: Response): Promise<APIResponse> {
+  async sendNotification(
+    notificationDto: NotificationDto,
+    userId: string,
+    response: Response
+  ): Promise<APIResponse> {
     const apiId = APIID.SEND_NOTIFICATION;
-    const serverResponses: Record<string, { data: any[], errors: any[] }> = {
+    const serverResponses: Record<string, { data: any[]; errors: any[] }> = {
       email: { data: [], errors: [] },
       sms: { data: [], errors: [] },
       push: { data: [], errors: [] },
@@ -57,9 +63,16 @@ export class NotificationService {
     try {
       const { email, push, sms, context, replacements, key } = notificationDto;
       // Check if notification template exists
-      const notification_event = await this.notificationActions.findOne({ where: { context, key } });
+      const notification_event = await this.notificationActions.findOne({
+        where: { context, key },
+      });
       if (!notification_event) {
-        LoggerUtil.error(`template not found with this ${context} and ${key}`, ERROR_MESSAGES.TEMPLATE_NOTFOUND, apiId, userId);
+        LoggerUtil.error(
+          `template not found with this ${context} and ${key}`,
+          ERROR_MESSAGES.TEMPLATE_NOTFOUND,
+          apiId,
+          userId
+        );
         throw new BadRequestException(ERROR_MESSAGES.TEMPLATE_NOTFOUND);
       }
 
@@ -67,26 +80,50 @@ export class NotificationService {
       const promises: Array<{ promise: Promise<any>; channel: string }> = [];
 
       if (email && email.receipients && email.receipients.length > 0) {
-        const promise = this.notificationHandler('email', email.receipients, 'email', replacements, notificationDto, notification_event, userId);
-        promises.push({ promise, channel: 'email' });
+        const promise = this.notificationHandler(
+          "email",
+          email.receipients,
+          "email",
+          replacements,
+          notificationDto,
+          notification_event,
+          userId
+        );
+        promises.push({ promise, channel: "email" });
       }
 
       if (sms && sms.receipients && sms.receipients.length > 0) {
-        const promise = this.notificationHandler('sms', sms.receipients, 'sms', replacements, notificationDto, notification_event, userId);
-        promises.push({ promise, channel: 'sms' });
+        const promise = this.notificationHandler(
+          "sms",
+          sms.receipients,
+          "sms",
+          replacements,
+          notificationDto,
+          notification_event,
+          userId
+        );
+        promises.push({ promise, channel: "sms" });
       }
 
       if (push && push.receipients && push.receipients.length > 0) {
-        const promise = this.notificationHandler('push', push.receipients, 'push', replacements, notificationDto, notification_event, userId);
-        promises.push({ promise, channel: 'push' });
+        const promise = this.notificationHandler(
+          "push",
+          push.receipients,
+          "push",
+          replacements,
+          notificationDto,
+          notification_event,
+          userId
+        );
+        promises.push({ promise, channel: "push" });
       }
       // Process all notification promises
-      const results = await Promise.allSettled(promises.map(p => p.promise));
+      const results = await Promise.allSettled(promises.map((p) => p.promise));
       // Map each result back to the appropriate channel
       if (notificationDto.isQueue) {
         results.forEach((result, index) => {
           const channel = promises[index].channel;
-          if (result.status === 'fulfilled') {
+          if (result.status === "fulfilled") {
             const notifications = result.value;
             if (notifications.status === 200) {
               serverResponses[channel].data.push(notifications);
@@ -94,65 +131,82 @@ export class NotificationService {
               serverResponses[channel].errors.push({
                 recipient: notifications.recipient,
                 error: notifications.error || notifications.result,
-                code: notifications.status
+                code: notifications.status,
               });
             }
           } else {
             serverResponses[channel].errors.push({
               error: result.reason?.message,
-              code: result.reason?.status
+              code: result.reason?.status,
             });
           }
         });
       } else {
         results.forEach((result, index) => {
           const channel = promises[index].channel;
-          if (result.status === 'fulfilled') {
+          if (result.status === "fulfilled") {
             const notifications = result.value;
-            notifications.forEach(notification => {
+            notifications.forEach((notification) => {
               if (notification.status === 200) {
                 serverResponses[channel].data.push(notification);
               } else {
                 serverResponses[channel].errors.push({
                   recipient: notification.recipient,
                   error: notification.error || notification.result,
-                  code: notification.status
+                  code: notification.status,
                 });
               }
             });
           } else {
             serverResponses[channel].errors.push({
               error: result.reason?.message,
-              code: result.reason?.status
+              code: result.reason?.status,
             });
           }
         });
       }
       // Only return channels with data or errors
       const finalResponses = Object.fromEntries(
-        Object.entries(serverResponses).filter(([_, { data, errors }]) => data.length > 0 || errors.length > 0)
+        Object.entries(serverResponses).filter(
+          ([_, { data, errors }]) => data.length > 0 || errors.length > 0
+        )
       );
 
       return response
         .status(HttpStatus.OK)
-        .json(APIResponse.success(apiId, finalResponses, 'OK'));
+        .json(APIResponse.success(apiId, finalResponses, "OK"));
     } catch (e) {
-      LoggerUtil.error(
-        `Error: ${e}`,
-        e,
-        apiId,
-        userId
-      );
+      LoggerUtil.error(`Error: ${e}`, e, apiId, userId);
       throw e;
     }
   }
   // Helper function to handle sending notifications for a specific channel
-  async notificationHandler(channel, recipients, type, replacements, notificationDto, notification_event, userId) {
-    if (recipients && recipients.length > 0 && Object.keys(recipients).length > 0) {
-      const notification_details = await this.notificationActionTemplates.find({ where: { actionId: notification_event.actionId, type } });
+  async notificationHandler(
+    channel,
+    recipients,
+    type,
+    replacements,
+    notificationDto,
+    notification_event,
+    userId
+  ) {
+    if (
+      recipients &&
+      recipients.length > 0 &&
+      Object.keys(recipients).length > 0
+    ) {
+      const notification_details = await this.notificationActionTemplates.find({
+        where: { actionId: notification_event.actionId, type },
+      });
       if (notification_details.length === 0) {
-        LoggerUtil.error(ERROR_MESSAGES.TEMPLATE_CONFIG_NOTFOUND, `/Send ${channel} Notification`, userId);
-        throw new BadRequestException(`${ERROR_MESSAGES.TEMPLATE_CONFIG_NOTFOUND} ${type}`);
+        LoggerUtil.error(
+          ERROR_MESSAGES.TEMPLATE_CONFIG_NOTFOUND,
+          `/Send ${channel} Notification`,
+          userId
+        );
+        throw new BadRequestException(
+          `${ERROR_MESSAGES.TEMPLATE_CONFIG_NOTFOUND} ${type}`
+        );
       }
       let bodyText;
       let subject;
@@ -161,11 +215,10 @@ export class NotificationService {
       bodyText = notification_details[0].body;
       subject = notification_details[0].subject;
       image = notification_details[0]?.image;
-      link = notification_details[0]?.link
-
+      link = notification_details[0]?.link;
 
       // Ensure replacements are in the correct format
-      if (typeof replacements !== 'object' || replacements === null) {
+      if (typeof replacements !== "object" || replacements === null) {
         replacements = {};
       }
 
@@ -174,14 +227,16 @@ export class NotificationService {
       const bodyPlaceholders = this.extractPlaceholders(bodyText);
 
       // Validate that all placeholders are present in the replacements object
-      this.validatePlaceholders([...subjectPlaceholders, ...bodyPlaceholders], replacements);
-
+      this.validatePlaceholders(
+        [...subjectPlaceholders, ...bodyPlaceholders],
+        replacements
+      );
 
       // Replace placeholders in subject and bodyText
       subject = this.replacePlaceholders(subject, replacements);
       bodyText = this.replacePlaceholders(bodyText, replacements);
 
-      const notificationDataArray = recipients.map(recipient => {
+      const notificationDataArray = recipients.map((recipient) => {
         return {
           subject: subject,
           body: bodyText,
@@ -191,19 +246,29 @@ export class NotificationService {
           channel: type,
           context_id: notification_event.actionId,
           image: image || null,
-          link: link || null
+          link: link || null,
         };
       });
 
       if (notificationDto.isQueue) {
         try {
-          const saveQueue = await this.saveNotificationQueue(notificationDataArray);
+          const saveQueue = await this.saveNotificationQueue(
+            notificationDataArray
+          );
           if (saveQueue.length === 0) {
             throw new Error(ERROR_MESSAGES.NOTIFICATION_QUEUE_SAVE_FAILED);
           }
-          return { status: 200, message: SUCCESS_MESSAGES.NOTIFICATION_QUEUE_SAVE_SUCCESSFULLY };
+          return {
+            status: 200,
+            message: SUCCESS_MESSAGES.NOTIFICATION_QUEUE_SAVE_SUCCESSFULLY,
+          };
         } catch (error) {
-          LoggerUtil.error(ERROR_MESSAGES.NOTIFICATION_QUEUE_SAVE_FAILED, error, SUCCESS_MESSAGES.MESSAGES_SAVING_IN_QUEUE, userId);
+          LoggerUtil.error(
+            ERROR_MESSAGES.NOTIFICATION_QUEUE_SAVE_FAILED,
+            error,
+            SUCCESS_MESSAGES.MESSAGES_SAVING_IN_QUEUE,
+            userId
+          );
           throw new Error(ERROR_MESSAGES.NOTIFICATION_QUEUE_SAVE_FAILED);
         }
       } else {
@@ -211,7 +276,7 @@ export class NotificationService {
         return adapter.sendNotification(notificationDataArray);
       }
     }
-  };
+  }
 
   replacePlaceholders(template, replacements) {
     return template.replace(/{(\w+)}/g, (match, key) => {
@@ -231,27 +296,43 @@ export class NotificationService {
   }
 
   // Function to validate that all placeholders have corresponding replacements
-  validatePlaceholders(placeholders: string[], replacements: { [key: string]: string }): void {
-    const missingReplacements = placeholders.filter((placeholder) => !replacements.hasOwnProperty(placeholder));
+  validatePlaceholders(
+    placeholders: string[],
+    replacements: { [key: string]: string }
+  ): void {
+    const missingReplacements = placeholders.filter(
+      (placeholder) => !replacements.hasOwnProperty(placeholder)
+    );
     if (missingReplacements.length > 0) {
-      throw new BadRequestException(`Missing replacements for placeholders: ${missingReplacements.join(', ')}`);
+      throw new BadRequestException(
+        `Missing replacements for placeholders: ${missingReplacements.join(
+          ", "
+        )}`
+      );
     }
   }
 
-
-
-  //Provider which store in Queue 
+  //Provider which store in Queue
   async saveNotificationQueue(notificationDataArray) {
-    const arrayofResult = await this.notificationQueue.save(notificationDataArray);
+    const arrayofResult = await this.notificationQueue.save(
+      notificationDataArray
+    );
     if (arrayofResult) {
       if (this.amqpConnection) {
         try {
           for (const result of arrayofResult) {
-            this.amqpConnection.publish('notification.exchange', 'notification.route', result, { persistent: true });
+            this.amqpConnection.publish(
+              "notification.exchange",
+              "notification.route",
+              result,
+              { persistent: true }
+            );
           }
-        }
-        catch (e) {
-          LoggerUtil.error(ERROR_MESSAGES.NOTIFICATION_SAVE_ERROR_IN_RABBITMQ, e);
+        } catch (e) {
+          LoggerUtil.error(
+            ERROR_MESSAGES.NOTIFICATION_SAVE_ERROR_IN_RABBITMQ,
+            e
+          );
           throw e;
         }
       }
@@ -260,25 +341,34 @@ export class NotificationService {
   }
 
   @RabbitSubscribe({
-    exchange: 'notification.exchange',
-    routingKey: 'notification.route',
-    queue: 'notification.queue',
+    exchange: "notification.exchange",
+    routingKey: "notification.route",
+    queue: "notification.queue",
   })
   async handleNotification(notification, message: any, retryCount = 3) {
     try {
       const adapter = this.adapterFactory.getAdapter(notification.channel);
-      await adapter.sendNotification([notification])
-      const updateQueueDTO = { status: true, retries: 3 - retryCount, last_attempted: new Date() };
-      await this.notificationQueueService.updateQueue(notification.id, updateQueueDTO)
-    }
-    catch (error) {
+      await adapter.sendNotification([notification]);
+      const updateQueueDTO = {
+        status: true,
+        retries: 3 - retryCount,
+        last_attempted: new Date(),
+      };
+      await this.notificationQueueService.updateQueue(
+        notification.id,
+        updateQueueDTO
+      );
+    } catch (error) {
       if (retryCount > 0) {
         setTimeout(async () => {
           await this.handleNotification(notification, message, retryCount - 1);
         }, 2000);
       } else {
         const updateQueueDTO = { last_attempted: new Date(), retries: 3 };
-        await this.notificationQueueService.updateQueue(notification.id, updateQueueDTO)
+        await this.notificationQueueService.updateQueue(
+          notification.id,
+          updateQueueDTO
+        );
       }
     }
   }
@@ -340,30 +430,35 @@ export class NotificationService {
 
       const response = await axios.post(fcmUrl, notificationData, {
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
           Authorization: `key=${fcmKey}`,
         },
       });
       return {
         message: SUCCESS_MESSAGES.NOTIFICATION_SENT_SUCCESSFULLY,
-        status: response.status
-      }
-    }
-    catch (e) {
-      LoggerUtil.error(ERROR_MESSAGES.NOTIFICATION_SEND_FAILED(requestBody.topic_name), e.toString(), ERROR_MESSAGES.TOPIC_NOTIFICATION_FAILED);
+        status: response.status,
+      };
+    } catch (e) {
+      LoggerUtil.error(
+        ERROR_MESSAGES.NOTIFICATION_SEND_FAILED(requestBody.topic_name),
+        e.toString(),
+        ERROR_MESSAGES.TOPIC_NOTIFICATION_FAILED
+      );
       return {
         message: ERROR_MESSAGES.TOPIC_NOTIFICATION_FAILED,
-        status: e.response.status
-      }
+        status: e.response.status,
+      };
     }
   }
 
   async saveNotificationLogs(notificationLogs: NotificationLog) {
     try {
       await this.notificationLogRepository.save(notificationLogs);
-    }
-    catch (e) {
-      LoggerUtil.error(`error ${e}`, ERROR_MESSAGES.NOTIFICATION_LOG_SAVE_FAILED);
+    } catch (e) {
+      LoggerUtil.error(
+        `error ${e}`,
+        ERROR_MESSAGES.NOTIFICATION_LOG_SAVE_FAILED
+      );
       throw new Error(ERROR_MESSAGES.NOTIFICATION_LOG_SAVE_FAILED);
     }
   }
@@ -457,4 +552,12 @@ export class NotificationService {
   //     service: 'SIP-Notification-Service',
   //   },
   // });
+
+  //fetch sub as userId from token
+  getUserIdFromToken(token: string) {
+    const payloadBase64 = token.split(".")[1]; // Get the payload part
+    const payloadJson = Buffer.from(payloadBase64, "base64").toString("utf-8"); // Decode Base64
+    const payload = JSON.parse(payloadJson); // Convert to JSON
+    return payload.sub;
+  }
 }
