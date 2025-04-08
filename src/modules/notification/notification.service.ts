@@ -247,6 +247,7 @@ export class NotificationService {
           context_id: notification_event.actionId,
           image: image || null,
           link: link || null,
+          replacements: replacements,
         };
       });
 
@@ -278,7 +279,7 @@ export class NotificationService {
     }
   }
 
-  replacePlaceholders(template, replacements) {
+  replacePlaceholders(template, replacements) : string {
     return template.replace(/{(\w+)}/g, (match, key) => {
       return replacements[match] || match; // Replace with the value or keep the placeholder
     });

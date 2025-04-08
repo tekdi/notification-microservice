@@ -5,6 +5,7 @@ import { PushAdapter } from './adapters/pushService.adapter';
 import { ConfigService } from '@nestjs/config';
 import { TwilioSmsAdapter } from './adapters/sms/twilioSmsService.adapter';
 import { AwsSmsAdapter } from './adapters/sms/awsSmsService.adapter';
+import { Msg91SmsServiceAdapter } from './adapters/sms/msg91SmsService.adapter';
 
 @Injectable()
 export class NotificationAdapterFactory {
@@ -14,6 +15,7 @@ export class NotificationAdapterFactory {
         private readonly pushAdapter: PushAdapter,
         private readonly twilioSmsAdapter: TwilioSmsAdapter,
         private readonly awsSmsAdapter: AwsSmsAdapter,
+        private readonly msg91SmsAdapter: Msg91SmsServiceAdapter,
     ) { }
 
     getAdapter(notificationType: string): NotificationServiceInterface {
@@ -34,10 +36,12 @@ export class NotificationAdapterFactory {
         const provider = this.configService.get('SMS_ADAPTER'); // set in env
 
         switch (provider) {
-            case 'twilio':
+            case 'TWILIO':
                 return this.twilioSmsAdapter;
-            case 'aws':
+            case 'AWS':
                 return this.awsSmsAdapter;
+            case 'MSG91':
+                return this.msg91SmsAdapter;
             default:
                 throw new Error('Invalid SMS provider.');
         }
