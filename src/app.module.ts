@@ -24,24 +24,24 @@ import { RolePermissionModule } from "./modules/permissionRbac/rolePermissionMap
   providers: [AppService, ConfigService],
 })
 export class AppModule {
-  configure(consumer: MiddlewareConsumer) {
-    consumer
-      .apply(PermissionMiddleware)
-      .exclude(
-        {
-          path: "notification/v1/role-permission/create",
-          method: RequestMethod.POST,
-        }, // Exclude POST /auth/login
-        {
-          path: "notification/v1/role-permission/get",
-          method: RequestMethod.POST,
-        }, // Exclude POST /auth/login
-        {
-          path: "notification/v1/role-permission/update",
-          method: RequestMethod.POST,
-        } // Exclude POST /auth/login
-        // Exclude GET /health
-      )
-      .forRoutes("*"); // Apply middleware to the all routes
-  }
+  // configure(consumer: MiddlewareConsumer) {
+  //   consumer
+  //     .apply(PermissionMiddleware)
+  //     .exclude(
+  //       {
+  //         path: "notification/v1/role-permission/create",
+  //         method: RequestMethod.POST,
+  //       }, // Exclude POST /auth/login
+  //       {
+  //         path: "notification/v1/role-permission/get",
+  //         method: RequestMethod.POST,
+  //       }, // Exclude POST /auth/login
+  //       {
+  //         path: "notification/v1/role-permission/update",
+  //         method: RequestMethod.POST,
+  //       } // Exclude POST /auth/login
+  //       // Exclude GET /health
+  //     )
+  //     .forRoutes("*"); // Apply middleware to the all routes
+  // }
 }
