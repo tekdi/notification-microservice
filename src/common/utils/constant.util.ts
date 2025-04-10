@@ -60,5 +60,6 @@ export const ERROR_MESSAGES = {
 
 export const SMS_PROVIDER = {
     TWILIO: 'TWILIO',
-    AWS_SNS: 'AWSSNS'
+    AWS_SNS: 'AWSSNS',
+    MSG_91: 'MSG91',
 }
