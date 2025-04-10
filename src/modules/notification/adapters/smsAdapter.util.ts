@@ -5,7 +5,8 @@ export function isValidMobileNumber(mobileNumber: string) {
 }
 
 function removeCurlyBraces(str: string): string {
-    const match = str.match(/^{(.+)}$/);
+    const regex = /^{(.+)}$/;
+    const match = regex.exec(str);
     return match ? match[1] : null;
 }
 
