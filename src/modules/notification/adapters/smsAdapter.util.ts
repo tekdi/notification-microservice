@@ -12,6 +12,7 @@ function removeCurlyBraces(str: string): string {
 
 export function createReplacementsForMsg91(replacementObj) {
     // Create replacements compatible with Msg91
+    if (!replacementObj) return;
     Object.keys(replacementObj).forEach((key) => {
         delete Object.assign(replacementObj, { [removeCurlyBraces(key)]: replacementObj[key] })[key];
     })
