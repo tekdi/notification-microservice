@@ -247,6 +247,7 @@ export class NotificationService {
           context_id: notification_event.actionId,
           image: image || null,
           link: link || null,
+          replacements: replacements,
         };
       });
 
