@@ -12,20 +12,25 @@ import { LoggerUtil } from "src/common/logger/LoggerUtil";
 import { ERROR_MESSAGES, SUCCESS_MESSAGES } from "src/common/utils/constant.util";
 import { SNSClient, PublishCommand } from "@aws-sdk/client-sns";
 import { SMS_PROVIDER } from "src/common/utils/constant.util";
-
+import axios from "axios";
+import { createReplacementsForMsg91, isValidMobileNumber } from "./smsAdapter.util";
 
 @Injectable()
 export class SmsAdapter implements NotificationServiceInterface {
     private readonly smsProvider: string;
-    
+
     // For twillio
     private readonly twilioAccountSid: string;
     private readonly twilioAuthToken: string;
     private readonly twilioSmsFrom: string;
-    
+
     // For AWS SNS 
     private readonly snsClient: SNSClient;
     private readonly awsSmsSenderId: string;
+
+    // For MSG91
+    private readonly authKey;
+    private readonly msg91url;
 
     constructor(
         @Inject(forwardRef(() => NotificationService)) private readonly notificationServices: NotificationService,
@@ -37,7 +42,7 @@ export class SmsAdapter implements NotificationServiceInterface {
     ) {
         // Determine SMS provider from environment
         this.smsProvider = this.configService.get('SMS_PROVIDER', SMS_PROVIDER.AWS_SNS); // Default to AWS if not specified
-        
+
         // Initialize provider-specific configurations
         if (this.smsProvider === SMS_PROVIDER.TWILIO) {
             this.twilioAccountSid = this.configService.get('TWILIO_ACCOUNT_SID');
@@ -54,6 +59,9 @@ export class SmsAdapter implements NotificationServiceInterface {
             });
             this.awsSmsSenderId = this.configService.get('AWS_SNS_SENDER_ID');
             LoggerUtil.log(`SMS Provider configured: AWS SNS`);
+        } else if (this.smsProvider === SMS_PROVIDER.MSG_91) {
+            this.authKey = this.configService.get('MSG91_AUTH_KEY');
+            this.msg91url = this.configService.get('MSG91_URL');
         } else {
             LoggerUtil.error(`Invalid SMS provider configured: ${this.smsProvider}`);
             throw new Error(`Invalid SMS provider: ${this.smsProvider}. Supported providers are TWILIO and AWS_SNS.`);
@@ -65,20 +73,21 @@ export class SmsAdapter implements NotificationServiceInterface {
         for (const notificationData of notificationDataArray) {
             try {
                 const recipient = notificationData.recipient;
-                if (!this.isValidMobileNumber(recipient)) {
+                if (!isValidMobileNumber(recipient)) {
                     throw new BadRequestException(ERROR_MESSAGES.INVALID_MOBILE_NUMBER);
                 }
-                
+
                 const smsNotificationDto = {
                     body: notificationData.body,
                     recipient: recipient,
                     context: notificationData.context,
                     key: notificationData.key,
                     subject: notificationData.subject,
+                    replacements: notificationData.replacements,
                 };
-                
+
                 const result = await this.send(smsNotificationDto);
-                
+
                 results.push({
                     recipient: recipient,
                     status: 200,
@@ -96,11 +105,6 @@ export class SmsAdapter implements NotificationServiceInterface {
         return results;
     }
 
-    private isValidMobileNumber(mobileNumber: string) {
-        const regexExpForMobileNumber = /^[6-9]\d{9}$/gi;
-        return regexExpForMobileNumber.test(mobileNumber);
-    }
-
     private createNotificationLog(notificationDto: NotificationDto, subject, key, body, recipient: string): NotificationLog {
         const notificationLogs = new NotificationLog();
         notificationLogs.context = notificationDto.context;
@@ -114,22 +118,24 @@ export class SmsAdapter implements NotificationServiceInterface {
 
     async send(notificationData) {
         const notificationLogs = this.createNotificationLog(
-            notificationData, 
-            notificationData.subject, 
-            notificationData.key, 
-            notificationData.body, 
+            notificationData,
+            notificationData.subject,
+            notificationData.key,
+            notificationData.body,
             notificationData.recipient
         );
-        
+
         try {
             let response;
-            
+
             if (this.smsProvider === SMS_PROVIDER.TWILIO) {
                 response = await this.sendViaTwilio(notificationData);
             } else if (this.smsProvider === SMS_PROVIDER.AWS_SNS) {
                 response = await this.sendViaAwsSns(notificationData);
+            } else if (this.smsProvider === SMS_PROVIDER.MSG_91) {
+                createReplacementsForMsg91(notificationData.replacements);
+                response = await this.sendViaMsg91(notificationData);
             }
-            
             LoggerUtil.log(SUCCESS_MESSAGES.SMS_NOTIFICATION_SEND_SUCCESSFULLY);
             notificationLogs.status = true;
             await this.notificationServices.saveNotificationLogs(notificationLogs);
@@ -142,20 +148,20 @@ export class SmsAdapter implements NotificationServiceInterface {
             throw error;
         }
     }
-    
+
     private async sendViaTwilio(notificationData) {
         const twilio = require('twilio');
         const client = twilio(this.twilioAccountSid, this.twilioAuthToken);
-        
+
         const message = await client.messages.create({
             from: `${this.twilioSmsFrom}`,
             to: `+91${notificationData.recipient}`,
             body: notificationData.body,
         });
-        
+
         return message;
     }
-    
+
     private async sendViaAwsSns(notificationData) {
         const command = new PublishCommand({
             Message: notificationData.body,
@@ -171,7 +177,27 @@ export class SmsAdapter implements NotificationServiceInterface {
                 },
             },
         });
-        
+
         return await this.snsClient.send(command);
+    }
+
+    private async sendViaMsg91(notificationData) {
+        const response = await axios.post(this.msg91url, {
+            template_id: notificationData.key,
+            recipients: [
+                {
+                    mobiles: `91${notificationData.recipient}`,
+                    ...notificationData.replacements
+                }
+            ]
+        }, {
+            headers: {
+                "Content-Type": "application/json",
+                accept: "application/json",
+                authkey: this.authKey,
+            },
+        });
+        LoggerUtil.log(SUCCESS_MESSAGES.SMS_NOTIFICATION_SEND_SUCCESSFULLY);
+        return response;
     }
 }
