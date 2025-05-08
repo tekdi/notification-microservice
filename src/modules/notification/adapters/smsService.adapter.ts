@@ -15,6 +15,13 @@ import { SMS_PROVIDER } from "src/common/utils/constant.util";
 import axios from "axios";
 import { createReplacementsForMsg91, isValidMobileNumber } from "./smsAdapter.util";
 
+
+export interface RawSmsData {
+    to: string;
+    body: string;
+    from?: string;
+  }
+
 @Injectable()
 export class SmsAdapter implements NotificationServiceInterface {
     private readonly smsProvider: string;
@@ -180,6 +187,99 @@ export class SmsAdapter implements NotificationServiceInterface {
 
         return await this.snsClient.send(command);
     }
+
+    private async sendRawSms(smsData: RawSmsData) {
+        const notificationLog = new NotificationLog();
+        notificationLog.context = 'raw-sms';
+        notificationLog.body = smsData.body;
+        notificationLog.action = 'send-raw-sms';
+        notificationLog.type = 'sms';
+        notificationLog.recipient = smsData.to;
+      
+        try {
+          let response;
+      
+          const notificationData = {
+            recipient: smsData.to,
+            body: smsData.body,
+          };
+      
+          if (this.smsProvider === SMS_PROVIDER.TWILIO) {
+            response = await this.sendViaTwilio(notificationData);
+          } else if (this.smsProvider === SMS_PROVIDER.AWS_SNS) {
+            response = await this.sendViaAwsSns(notificationData);
+          } else if (this.smsProvider === SMS_PROVIDER.MSG_91) {
+            const data = response = await axios.post(this.msg91url, {
+              template_id: null, // no template
+              recipients: [{
+                mobiles: `91${smsData.to}`,
+                body: smsData.body,
+              }],
+            }, {
+              headers: {
+                "Content-Type": "application/json",
+                accept: "application/json",
+                authkey: this.authKey,
+              },
+            });
+          }
+      
+          notificationLog.status = true;
+          await this.notificationServices.saveNotificationLogs(notificationLog);
+          return response;
+        } catch (error) {
+          notificationLog.status = false;
+          notificationLog.error = error.toString();
+          await this.notificationServices.saveNotificationLogs(notificationLog);
+          throw error;
+        }
+    
+    }
+
+    async sendRawSmsMessages(smsData) {
+        const results = [];
+        
+        // Convert to array if not already an array
+        const smsDataArray = Array.isArray(smsData) ? smsData : [smsData];
+        
+        for (const singleSmsData of smsDataArray) {
+          try {
+            // if (!singleSmsData.to || !this.isValidPhoneNumber(singleSmsData.to)) {
+            //   throw new BadRequestException(ERROR_MESSAGES.INVALID_PHONE_NUMBER);
+            // }
+            
+            if (!singleSmsData.body) {
+              throw new BadRequestException("SMS body is required");
+            }
+            
+            const result = await this.sendRawSms(singleSmsData);
+            if(result?.$metadata?.httpStatusCode === 200 && result?.MessageId) {
+              results.push({
+                to: singleSmsData.to,
+                status: 200,
+                result: SUCCESS_MESSAGES.SMS_NOTIFICATION_SEND_SUCCESSFULLY,
+                messageId: result.MessageId || `sms-${Date.now()}`
+              });
+            } else {
+              results.push({
+                to: singleSmsData.to,
+                status: 400,
+                error: `SMS not sent: ${JSON.stringify(result)}`
+              });
+            }
+          }
+          catch (error) {
+            LoggerUtil.error(ERROR_MESSAGES.SMS_NOTIFICATION_FAILED, error);
+            results.push({
+              recipient: singleSmsData.to,
+              status: 500,
+              error: error.message || error.toString()
+            });
+          }
+        }
+        return results;
+    }
+
 
     private async sendViaMsg91(notificationData) {
         const response = await axios.post(this.msg91url, {

@@ -2,7 +2,7 @@ import { BadRequestException, HttpStatus, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import axios from "axios";
-import { NotificationDto } from "./dto/notificationDto.dto";
+import { NotificationDto,RawNotificationDto } from "./dto/notificationDto.dto";
 import { NotificationAdapterFactory } from "./notificationadapters";
 import APIResponse from "src/common/utils/response";
 // import * as FCM from 'fcm-node';
@@ -17,6 +17,8 @@ import { NotificationQueue } from "../notification-queue/entities/notificationQu
 import { AmqpConnection, RabbitSubscribe } from "@nestjs-plus/rabbitmq";
 import { NotificationQueueService } from "../notification-queue/notificationQueue.service";
 import { APIID } from "src/common/utils/api-id.config";
+import {EmailAdapter} from "src/modules/notification/adapters/emailService.adapter";
+import {SmsAdapter} from "src/modules/notification/adapters/smsService.adapter"
 import {
   SUCCESS_MESSAGES,
   ERROR_MESSAGES,
@@ -41,7 +43,9 @@ export class NotificationService {
     private readonly notificationQueueService: NotificationQueueService,
     private readonly adapterFactory: NotificationAdapterFactory,
     private readonly configService: ConfigService,
-    private readonly amqpConnection: AmqpConnection
+    private readonly amqpConnection: AmqpConnection,
+    private emailService: EmailAdapter,
+    private smsService: SmsAdapter,
   ) {
     this.fcmkey = this.configService.get("FCM_KEY");
     this.fcmurl = this.configService.get("FCM_URL");
@@ -560,5 +564,113 @@ export class NotificationService {
     const payloadJson = Buffer.from(payloadBase64, "base64").toString("utf-8"); // Decode Base64
     const payload = JSON.parse(payloadJson); // Convert to JSON
     return payload.sub;
+  }
+
+  async sendRawNotification(
+    rawNotificationDto: RawNotificationDto,
+    userId: string,
+    response: Response
+  ): Promise<APIResponse> {
+    const apiId = APIID.SEND_NOTIFICATION;
+    const serverResponses: Record<string, { data: any[]; errors: any[] }> = {
+      email: { data: [], errors: [] },
+      sms: { data: [], errors: [] },
+    };
+  
+    try {
+      const { email, sms } = rawNotificationDto;
+      
+      const promises: Array<{ promise: Promise<any>; channel: string }> = [];
+  
+      if (email && email.to && email.to.length > 0) {
+        if (!email.subject || !email.body) {
+          throw new BadRequestException('Email subject and body are required');
+        }
+        const emailPromises = email.to.map(to => {
+          const singleEmailData = {
+            to: to,
+            from: email.from || process.env.DEFAULT_EMAIL_SENDER,
+            subject: email.subject,
+            body: email.body,
+            isHtml: true,
+          };
+          return this.emailService.sendRawEmails(singleEmailData);
+        });
+        
+        promises.push({ 
+          promise: Promise.all(emailPromises), 
+          channel: 'email' 
+        });
+      }
+  
+      if (sms && sms.to && sms.to.length > 0) {
+        if (!sms.body) {
+          throw new BadRequestException('SMS body is required');
+        }
+        
+        // Fixed: Use sms properties instead of email properties
+        const smsPromises = sms.to.map(recipient => {
+          const singleSmsData = {
+            to: recipient,
+            from: sms.from || process.env.DEFAULT_SMS_SENDER,
+            body: sms.body,
+          };
+          return this.smsService.sendRawSmsMessages(singleSmsData);
+        });
+        
+        promises.push({ 
+          promise: Promise.all(smsPromises), 
+          channel: 'sms' 
+        });
+      }
+  
+      const results = await Promise.allSettled(promises.map(p => p.promise));
+      
+       results.forEach((result, index) => {
+        const channel = promises[index].channel;
+      
+        if (!serverResponses[channel]) {
+          serverResponses[channel] = { data: [], errors: [] };
+        }
+      
+        if (result.status === 'fulfilled') {
+          const notifications = (result.value || []).flat();
+          console.log(result.value,"Shubham");
+          notifications.forEach(notification => {
+            const status = notification.status;
+            
+            if (status === 200) {
+              serverResponses[channel].data.push(notification);
+            } else {
+              serverResponses[channel].errors.push({
+                recipient: notification.recipient || notification.to || 'unknown',
+                error: notification.error || notification.message || 'Unknown error',
+                code: status || 500,
+              });
+            }
+          });
+        } else {
+          serverResponses[channel].errors.push({
+            error: result.reason?.message || 'Unhandled rejection',
+            code: result.reason?.status || 500,
+          });
+        }
+      });
+      
+      // Filter empty channels
+      const finalResponses = Object.fromEntries(
+        Object.entries(serverResponses).filter(
+          ([_, { data, errors }]) => data.length > 0 || errors.length > 0
+        )
+      );
+      
+      return response
+        .status(HttpStatus.OK)
+        .json(APIResponse.success(apiId, finalResponses, 'OK'));
+      
+    } catch (e) {
+      LoggerUtil.error(`Error: ${e}`, e, apiId, userId);
+      throw e;
+    }
   }
 }
