@@ -1,7 +1,7 @@
 import { Body, Controller, Post, Get, UsePipes, ValidationPipe, BadRequestException, Res, UseFilters } from '@nestjs/common';
 import { NotificationService } from './notification.service';
 import { ApiBadRequestResponse, ApiBasicAuth, ApiBody, ApiCreatedResponse, ApiInternalServerErrorResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
-import { NotificationDto } from './dto/notificationDto.dto';
+import { NotificationDto,RawNotificationDto } from './dto/notificationDto.dto';
 import { TopicNotification } from './dto/topicnotification .dto';
 import { Response } from 'express';
 import { AllExceptionsFilter } from 'src/common/filters/exception.filter';
@@ -77,4 +77,25 @@ export class NotificationController {
   // async sendTelegramMessage(@Body() notificationData: NotificationTelegram) {
   //   return this.notificationService.sendTelegramMessage(notificationData);
   // }
+
+  // @UseFilters(new AllExceptionsFilter(APIID.SEND_RAW_NOTIFICATION))
+  @Post('send-raw')
+  @ApiOkResponse({ description: 'Notifications sent successfully' })
+  @ApiBadRequestResponse({ description: 'Bad request' })
+  @ApiInternalServerErrorResponse({ description: 'Internal server error' })
+  @ApiBody({ type: RawNotificationDto })
+  @UsePipes(new ValidationPipe({ transform: true }))
+  async sendRawNotification(
+    @Body() rawNotificationDto,
+    @Res() response: Response,
+    @GetUserId() userId: string,
+  ) {
+    return await this.notificationService.sendRawNotification(
+      rawNotificationDto,
+      userId,
+      response,
+    );
+  }
+
+  
 }

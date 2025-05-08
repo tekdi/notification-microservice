@@ -1,4 +1,4 @@
-import { IsString, IsEmail, IsArray, ValidateNested, IsObject, IsNotEmpty, ArrayMinSize, IsBoolean, IsOptional } from 'class-validator';
+import { IsString, IsEmail, IsArray, ValidateNested, IsObject, IsNotEmpty, ArrayMinSize, IsBoolean, IsOptional, IS_ARRAY } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -83,6 +83,62 @@ export class NotificationDto {
     @Type(() => SMSDTO)
     sms: SMSDTO;
 }
+
+export class RawEmailDto {
+    @ApiProperty({ description: 'email recipients', example: 'user@example.com' })
+    @IsNotEmpty()
+    @IsArray()
+    @IsEmail()
+    to: string[];
+  
+    @ApiPropertyOptional({ description: 'Email sender address', example: 'noreply@company.com' })
+    @IsOptional()
+    @IsEmail()
+    from?: string;
+  
+    @ApiProperty({ description: 'Email subject', example: 'Your account has been created' })
+    @IsNotEmpty()
+    @IsString()
+    subject: string;
+  
+    @ApiProperty({ description: 'Email body (HTML or text)', example: '<p>Welcome to our service!</p>' })
+    @IsNotEmpty()
+    @IsString()
+    body: string;
+  
+  }
+  
+  export class RawSmsDto {
+    @ApiProperty({ description: 'Phone number of recipient', example: '+15551234567' })
+    @IsNotEmpty()
+    @IsArray()
+    @IsString()
+    to: string[];
+  
+    @ApiPropertyOptional({ description: 'SMS sender ID', example: 'COMPANY' })
+    @IsOptional()
+    @IsString()
+    from?: string;
+  
+    @ApiProperty({ description: 'SMS message content', example: 'Your verification code is 123456' })
+    @IsNotEmpty()
+    @IsString()
+    body: string;
+  }
+  
+  export class RawNotificationDto {
+    @ApiPropertyOptional({ description: 'Email notification details' })
+    @IsOptional()
+    @ValidateNested()
+    @Type(() => RawEmailDto)
+    email?: RawEmailDto;
+  
+    @ApiPropertyOptional({ description: 'SMS notification details' })
+    @IsOptional()
+    @ValidateNested()
+    @Type(() => RawSmsDto)
+    sms?: RawSmsDto;
+  }
 
 
 
