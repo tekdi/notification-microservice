@@ -195,45 +195,59 @@ export class SmsAdapter implements NotificationServiceInterface {
         notificationLog.action = 'send-raw-sms';
         notificationLog.type = 'sms';
         notificationLog.recipient = smsData.to;
-      
-        try {
-          let response;
-      
-          const notificationData = {
-            recipient: smsData.to,
-            body: smsData.body,
-          };
-      
-          if (this.smsProvider === SMS_PROVIDER.TWILIO) {
-            response = await this.sendViaTwilio(notificationData);
-          } else if (this.smsProvider === SMS_PROVIDER.AWS_SNS) {
-            response = await this.sendViaAwsSns(notificationData);
-          } else if (this.smsProvider === SMS_PROVIDER.MSG_91) {
-            const data = response = await axios.post(this.msg91url, {
-              template_id: null, // no template
-              recipients: [{
-                mobiles: `91${smsData.to}`,
-                body: smsData.body,
-              }],
-            }, {
-              headers: {
-                "Content-Type": "application/json",
-                accept: "application/json",
-                authkey: this.authKey,
-              },
-            });
-          }
-      
-          notificationLog.status = true;
-          await this.notificationServices.saveNotificationLogs(notificationLog);
-          return response;
-        } catch (error) {
-          notificationLog.status = false;
-          notificationLog.error = error.toString();
-          await this.notificationServices.saveNotificationLogs(notificationLog);
-          throw error;
-        }
     
+        try {
+            let response;
+    
+            const notificationData = {
+                recipient: smsData.to,
+                body: smsData.body,
+            };
+    
+            if (this.smsProvider === SMS_PROVIDER.TWILIO) {
+                response = await this.sendViaTwilio(notificationData);
+            } else if (this.smsProvider === SMS_PROVIDER.AWS_SNS) {
+                response = await this.sendViaAwsSns(notificationData);
+            } else if (this.smsProvider === SMS_PROVIDER.MSG_91) {
+                const axiosResponse = await axios.post(this.msg91url, {
+                    template_id: this.configService.get('MSG91_DEFAULT_TEMPLATE_ID'),
+                    recipients: [{
+                        mobiles: `91${smsData.to}`,
+                        body: smsData.body,
+                    }],
+                }, {
+                    headers: {
+                        "Content-Type": "application/json",
+                        accept: "application/json",
+                        authkey: this.authKey,
+                    },
+                });
+    
+                // Extract only the necessary data to avoid circular references
+                response = {
+                    data: axiosResponse.data,
+                    status: axiosResponse.status,
+                    statusText: axiosResponse.statusText,
+                    // Create a mock structure similar to AWS SNS response for consistency
+                    $metadata: {
+                        httpStatusCode: axiosResponse.status
+                    },
+                    // Extract MessageId from MSG91 response if available
+                    MessageId: axiosResponse.data?.request_id || axiosResponse.data?.message_id || `msg91-${Date.now()}`
+                };
+            }
+    
+            console.log(response, "Shubham");
+            notificationLog.status = true;
+            await this.notificationServices.saveNotificationLogs(notificationLog);
+            return response;
+        } catch (error) {
+            notificationLog.status = false;
+            // Safe error logging - avoid circular references
+            notificationLog.error = error.message || error.toString();
+            await this.notificationServices.saveNotificationLogs(notificationLog);
+            throw error;
+        }
     }
 
     async sendRawSmsMessages(smsData) {
@@ -283,7 +297,7 @@ export class SmsAdapter implements NotificationServiceInterface {
 
     private async sendViaMsg91(notificationData) {
         const response = await axios.post(this.msg91url, {
-            template_id: notificationData.key,
+            template_id: this.configService.get('MSG91_DEFAULT_TEMPLATE_ID'),
             recipients: [
                 {
                     mobiles: `91${notificationData.recipient}`,
