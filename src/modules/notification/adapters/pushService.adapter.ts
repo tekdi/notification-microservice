@@ -65,9 +65,33 @@ export class PushAdapter implements NotificationServiceInterface {
         return notificationLogs;
     }
 
+    async validateFcmToken(token: string): Promise<boolean> {
+        try {
+            // Basic FCM token format validation
+            if (!token || typeof token !== 'string') {
+                return false;
+            }
+            
+            // FCM tokens are typically 152+ characters long and contain colons
+            if (token.length < 100 || !token.includes(':')) {
+                return false;
+            }
+            
+            return true;
+        } catch (error) {
+            return false;
+        }
+    }
+
     async send(notificationData) {
         const notificationLogs = this.createNotificationLog(notificationData.context, notificationData.subject, notificationData.key, notificationData.body, notificationData.recipient);
         try {
+            // Validate FCM token first
+            const isTokenValid = await this.validateFcmToken(notificationData.recipient);
+            if (!isTokenValid) {
+                throw new Error(`Invalid FCM token format: ${notificationData.recipient}`);
+            }
+
             const notification = {
                 message: {
                     notification: {
@@ -84,13 +108,23 @@ export class PushAdapter implements NotificationServiceInterface {
 
             // Retrieve OAuth 2.0 access token
             const accessToken = await this.getAccessToken();  // Function to get token
+            // console.log("accessToken",accessToken);
 
-            const result = await axios.post(this.fcmurl, notification, {
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${accessToken}`,
-                },
-            });
+            // Enhanced error handling for FCM API call
+            let result;
+            try {                
+                result = await axios.post(this.fcmurl, notification, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${accessToken}`,
+                    },
+                });
+                                
+            } catch (axiosError) {                
+                // Re-throw with more context
+                const errorMessage = axiosError.response?.data?.error?.message || axiosError.message;
+                throw new Error(`FCM API Error: ${errorMessage} (Status: ${axiosError.response?.status})`);
+            }
 
             if (result.status === 200 && result.data.name) {
                 LoggerUtil.log(SUCCESS_MESSAGES.PUSH_NOTIFICATION_SEND_SUCCESSFULLY);
@@ -99,7 +133,7 @@ export class PushAdapter implements NotificationServiceInterface {
                 return result;
             } else {
                 LoggerUtil.error(ERROR_MESSAGES.PUSH_NOTIFICATION_FAILED);
-                throw new Error(ERROR_MESSAGES.PUSH_NOTIFICATION_FAILED);
+                throw new Error(`FCM Request Failed: Status ${result.status}, Response: ${JSON.stringify(result.data)}`);
             }
         } catch (error) {
             notificationLogs.status = false;
