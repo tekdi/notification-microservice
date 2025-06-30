@@ -18,38 +18,46 @@ import {
 import axios from "axios";
 
 /**
- * Interface for raw WhatsApp data
+ * Interface for raw WhatsApp data via Gupshup
  */
-export interface RawWhatsappData {
+export interface RawWhatsappGupshupData {
     to: string; // WhatsApp number in international format
     body: string;
     from?: string;
+    templateId?: string; // For template messages
+    templateParams?: any[]; // For template parameters
+}
+
+/**
+ * Interface for Gupshup API response
+ */
+interface GupshupApiResponse {
+    status: string;
+    messageId?: string;
+    error?: string;
+    details?: any;
 }
 
 @Injectable()
-export class WhatsappAdapter implements NotificationServiceInterface {
-    private readonly whatsappProvider: string;
-    private readonly whatsappAccessToken: string;
-    private readonly whatsappPhoneNumberId: string;
-    private readonly whatsappApiVersion: string;
-    private readonly whatsappApiBaseUrl: string;
+export class WhatsappViaGupshupAdapter implements NotificationServiceInterface {
+    private readonly gupshupApiKey: string;
+    private readonly gupshupChannelId: string;
+    private readonly gupshupSource: string;
+    private readonly gupshupApiUrl: string;
 
     constructor(
         @Inject(forwardRef(() => NotificationService))
         private readonly notificationServices: NotificationService,
         private readonly configService: ConfigService
     ) {
-        // Determine WhatsApp provider from environment
-        this.whatsappProvider = this.configService.get('WHATSAPP_PROVIDER', WHATSAPP_PROVIDER.META);
+        // Initialize Gupshup configuration
+        this.gupshupApiKey = this.configService.get('GUPSHUP_API_KEY');
+        this.gupshupChannelId = this.configService.get('GUPSHUP_CHANNEL_ID');
+        this.gupshupSource = this.configService.get('GUPSHUP_SOURCE');
+        this.gupshupApiUrl = this.configService.get('GUPSHUP_API_URL', 'https://api.gupshup.io/wa/api/v1');
         
-        // Initialize WhatsApp Business API configuration
-        this.whatsappAccessToken = this.configService.get('WHATSAPP_ACCESS_TOKEN');
-        this.whatsappPhoneNumberId = this.configService.get('WHATSAPP_PHONE_NUMBER_ID');
-        this.whatsappApiVersion = this.configService.get('WHATSAPP_API_VERSION', 'v18.0');
-        this.whatsappApiBaseUrl = `https://graph.facebook.com/${this.whatsappApiVersion}`;
-        
-        if (!this.whatsappAccessToken || !this.whatsappPhoneNumberId) {
-            LoggerUtil.error('WhatsApp Business API credentials not configured properly');
+        if (!this.gupshupApiKey || !this.gupshupChannelId || !this.gupshupSource) {
+            LoggerUtil.error('Gupshup WhatsApp API credentials not configured properly');
         }
     }
 
@@ -112,7 +120,7 @@ export class WhatsappAdapter implements NotificationServiceInterface {
                         to: singleMessageData.to,
                         status: 200,
                         result: SUCCESS_MESSAGES.WHATSAPP_NOTIFICATION_SEND_SUCCESSFULLY,
-                        messageId: (result && 'messageId' in result && result.messageId) || (result && 'id' in result && result.id) || `whatsapp-${Date.now()}`,
+                        messageId: (result && 'messageId' in result && result.messageId) || (result && 'id' in result && result.id) || `whatsapp-gupshup-${Date.now()}`,
                     });
                 } else {
                     results.push({
@@ -146,7 +154,7 @@ export class WhatsappAdapter implements NotificationServiceInterface {
         notificationLogs.subject = null;
         notificationLogs.body = bodyText;
         notificationLogs.action = notificationDto.key;
-        notificationLogs.type = "whatsapp";
+        notificationLogs.type = "whatsapp-gupshup";
         notificationLogs.recipient = recipient;
         return notificationLogs;
     }
@@ -159,11 +167,11 @@ export class WhatsappAdapter implements NotificationServiceInterface {
         recipient: string
     ): NotificationLog {
         const notificationLogs = new NotificationLog();
-        notificationLogs.context = "raw-whatsapp";
+        notificationLogs.context = "raw-whatsapp-gupshup";
         notificationLogs.subject = null;
         notificationLogs.body = bodyText;
-        notificationLogs.action = "send-raw-whatsapp";
-        notificationLogs.type = "whatsapp";
+        notificationLogs.action = "send-raw-whatsapp-gupshup";
+        notificationLogs.type = "whatsapp-gupshup";
         notificationLogs.recipient = recipient;
         return notificationLogs;
     }
@@ -186,7 +194,7 @@ export class WhatsappAdapter implements NotificationServiceInterface {
             notificationData.recipient
         );
         try {
-            const result = await this.sendViaWhatsappProvider({
+            const result = await this.sendViaGupshupProvider({
                 to: notificationData.recipient,
                 body: notificationData.body,
                 from: this.configService.get('WHATSAPP_FROM'),
@@ -216,16 +224,18 @@ export class WhatsappAdapter implements NotificationServiceInterface {
     /**
     * Sends raw WhatsApp message without template
     */
-    async sendRawMessage(messageData: RawWhatsappData) {
+    async sendRawMessage(messageData: RawWhatsappGupshupData) {
         const notificationLogs = this.createRawNotificationLog(
             messageData.body,
             messageData.to
         );
         try {
-            const result = await this.sendViaWhatsappProvider({
+            const result = await this.sendViaGupshupProvider({
                 to: messageData.to,
                 body: messageData.body,
                 from: messageData.from || this.configService.get('WHATSAPP_FROM'),
+                templateId: messageData.templateId,
+                templateParams: messageData.templateParams,
             });
             if (result.status === "success") {
                 notificationLogs.status = true;
@@ -235,7 +245,7 @@ export class WhatsappAdapter implements NotificationServiceInterface {
                 );
                 return {
                     ...result,
-                    messageId: result.id || `whatsapp-${Date.now()}`,
+                    messageId: result.id || `whatsapp-gupshup-${Date.now()}`,
                 };
             } else {
                 throw new Error(`WhatsApp not sent: ${JSON.stringify(result.errors)}`);
@@ -253,54 +263,74 @@ export class WhatsappAdapter implements NotificationServiceInterface {
     }
 
     /**
-    * Send WhatsApp message using official WhatsApp Business API
+    * Send WhatsApp message using Gupshup API
     */
-    private async sendViaWhatsappProvider({ to, body, from }) {
+    private async sendViaGupshupProvider({ to, body, from, templateId, templateParams }) {
         try {
-            // Get WhatsApp credentials from environment
-            const whatsappAccessToken = this.configService.get('WHATSAPP_ACCESS_TOKEN');
-            const whatsappPhoneNumberId = this.configService.get('WHATSAPP_PHONE_NUMBER_ID');
-            const whatsappApiVersion = this.configService.get('WHATSAPP_API_VERSION', 'v18.0');
-            
-            if (!whatsappAccessToken || !whatsappPhoneNumberId) {
-                throw new Error('WhatsApp Business API credentials not configured. Please set WHATSAPP_ACCESS_TOKEN and WHATSAPP_PHONE_NUMBER_ID environment variables.');
+            if (!this.gupshupApiKey || !this.gupshupChannelId || !this.gupshupSource) {
+                throw new Error('Gupshup WhatsApp API credentials not configured. Please set GUPSHUP_API_KEY, GUPSHUP_CHANNEL_ID, and GUPSHUP_SOURCE environment variables.');
             }
 
             // Format phone number (remove + if present and ensure proper format)
             const formattedPhone = to.startsWith('+') ? to.substring(1) : to;
 
-            // Prepare the message payload for WhatsApp Business API
-            const messagePayload = {
-                messaging_product: "whatsapp",
-                to: formattedPhone,
-                type: "text",
-                text: {
-                    body: body
+            // Prepare the message payload for Gupshup API
+            let messagePayload: any = {
+                channelId: this.gupshupChannelId,
+                source: this.gupshupSource,
+                destination: formattedPhone,
+                message: {
+                    type: "text",
+                    text: body
                 }
             };
 
-            const apiUrl = `https://graph.facebook.com/${whatsappApiVersion}/${whatsappPhoneNumberId}/messages`;
+            // If template ID is provided, use template message
+            if (templateId) {
+                messagePayload.message = {
+                    type: "template",
+                    template: {
+                        id: templateId,
+                        params: templateParams || []
+                    }
+                };
+            }
 
-            // Make API call to WhatsApp Business API
+            // Add optional parameters
+            if (from) {
+                messagePayload.source = from;
+            }
+
+            const apiUrl = `${this.gupshupApiUrl}/msg`;
+
+            // Make API call to Gupshup WhatsApp API
             const response = await axios.post(apiUrl, messagePayload, {
                 headers: {
-                    'Authorization': `Bearer ${whatsappAccessToken}`,
-                    'Content-Type': 'application/json'
+                    'apikey': this.gupshupApiKey,
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'no-cache'
                 }
             });
 
             if (response.status === 200 && response.data) {
-                LoggerUtil.log('WhatsApp message sent successfully via Business API');
-                return {
-                    status: 'success',
-                    id: response.data.messages?.[0]?.id || `whatsapp-${Date.now()}`,
-                    data: response.data
-                };
+                const responseData = response.data;
+                
+                // Check if the response indicates success
+                if (responseData.status === 'submitted' || responseData.status === 'success') {
+                    LoggerUtil.log('WhatsApp message sent successfully via Gupshup API');
+                    return {
+                        status: 'success',
+                        id: responseData.messageId || `gupshup-${Date.now()}`,
+                        data: responseData
+                    };
+                } else {
+                    throw new Error(`Gupshup API returned status: ${responseData.status}`);
+                }
             } else {
-                throw new Error(`WhatsApp API returned status: ${response.status}`);
+                throw new Error(`Gupshup API returned status: ${response.status}`);
             }
         } catch (error) {
-            LoggerUtil.error('WhatsApp Business API error:', error);
+            LoggerUtil.error('Gupshup WhatsApp API error:', error);
             
             // Handle different types of errors
             if (error.response) {
@@ -309,15 +339,15 @@ export class WhatsappAdapter implements NotificationServiceInterface {
                 return {
                     status: 'error',
                     errors: [
-                        `WhatsApp API Error: ${errorData.error?.message || errorData.error?.type || 'Unknown error'}`,
-                        `Code: ${errorData.error?.code || error.response.status}`
+                        `Gupshup API Error: ${errorData.message || errorData.error || 'Unknown error'}`,
+                        `Status: ${errorData.status || error.response.status}`
                     ]
                 };
             } else if (error.request) {
                 // Network error
                 return {
                     status: 'error',
-                    errors: ['Network error: Unable to reach WhatsApp API']
+                    errors: ['Network error: Unable to reach Gupshup API']
                 };
             } else {
                 // Other error
@@ -328,4 +358,50 @@ export class WhatsappAdapter implements NotificationServiceInterface {
             }
         }
     }
-}
+
+    /**
+     * Send template message via Gupshup
+     */
+    async sendTemplateMessage(templateData: {
+        to: string;
+        templateId: string;
+        templateParams: any[];
+        from?: string;
+    }) {
+        const notificationLogs = this.createRawNotificationLog(
+            `Template: ${templateData.templateId}`,
+            templateData.to
+        );
+        
+        try {
+            const result = await this.sendViaGupshupProvider({
+                to: templateData.to,
+                body: '', // Not used for templates
+                from: templateData.from || this.configService.get('WHATSAPP_FROM'),
+                templateId: templateData.templateId,
+                templateParams: templateData.templateParams,
+            });
+            
+            if (result.status === "success") {
+                notificationLogs.status = true;
+                await this.notificationServices.saveNotificationLogs(notificationLogs);
+                LoggerUtil.log('WhatsApp template message sent successfully via Gupshup');
+                return {
+                    ...result,
+                    messageId: result.id || `gupshup-template-${Date.now()}`,
+                };
+            } else {
+                throw new Error(`WhatsApp template not sent: ${JSON.stringify(result.errors)}`);
+            }
+        } catch (e) {
+            LoggerUtil.error('WhatsApp template message failed:', e);
+            notificationLogs.status = false;
+            notificationLogs.error = e.toString();
+            await this.notificationServices.saveNotificationLogs(notificationLogs);
+            return {
+                status: "error",
+                errors: [e.message || e.toString()],
+            };
+        }
+    }
+} 
