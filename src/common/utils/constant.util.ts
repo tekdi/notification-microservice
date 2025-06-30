@@ -21,7 +21,8 @@ export const SUCCESS_MESSAGES = {
     TEMPLATE_CREATED_SUCESSFULLY: (userId) => `Template created successfully by userId: ${userId}`,
     GET_TEMPLATE: (userId) => `Get Template successfully by userId: ${userId}`,
     DELETE_TEMPLATE: (userId) => `Delete Template successfully by userId: ${userId}`,
-    MESSAGES_SAVING_IN_QUEUE: 'Notification saving in queue'
+    MESSAGES_SAVING_IN_QUEUE: 'Notification saving in queue',
+    WHATSAPP_NOTIFICATION_SEND_SUCCESSFULLY: 'WhatsApp notification sent successfully',
 };
 export const ERROR_MESSAGES = {
     INVALID_REQUEST: "Invalid request",
@@ -55,7 +56,9 @@ export const ERROR_MESSAGES = {
     SMS_NOTIFICATION_FAILED: 'Failed to Send SMS Notification',
     ALREADY_EXIST_KEY_FOR_CONTEXT: 'Already Exist key with this context',
     ALREADY_EXIST_KEY_FOR_CONTEXT_ENTER_ANOTHER: 'Key already exist for this context. Please enter another key',
-    NOT_EMPTY_SUBJECT_OR_BODY: 'Subject and body cannot be empty.'
+    NOT_EMPTY_SUBJECT_OR_BODY: 'Subject and body cannot be empty.',
+    WHATSAPP_NOTIFICATION_FAILED: 'Failed to send WhatsApp notification',
+    INVALID_PHONE: 'Invalid phone number format. Please provide a valid international format phone number.',
 }
 
 export const SMS_PROVIDER = {
