@@ -57,3 +57,9 @@ export const ERROR_MESSAGES = {
     ALREADY_EXIST_KEY_FOR_CONTEXT_ENTER_ANOTHER: 'Key already exist for this context. Please enter another key',
     NOT_EMPTY_SUBJECT_OR_BODY: 'Subject and body cannot be empty.'
 }
+
+export const SMS_PROVIDER = {
+    TWILIO: 'TWILIO',
+    AWS_SNS: 'AWSSNS',
+    MSG_91: 'MSG91',
+}
