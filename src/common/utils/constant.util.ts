@@ -55,7 +55,9 @@ export const ERROR_MESSAGES = {
     SMS_NOTIFICATION_FAILED: 'Failed to Send SMS Notification',
     ALREADY_EXIST_KEY_FOR_CONTEXT: 'Already Exist key with this context',
     ALREADY_EXIST_KEY_FOR_CONTEXT_ENTER_ANOTHER: 'Key already exist for this context. Please enter another key',
-    NOT_EMPTY_SUBJECT_OR_BODY: 'Subject and body cannot be empty.'
+    NOT_EMPTY_SUBJECT_OR_BODY: 'Subject and body cannot be empty.',
+    PUSH_ADAPTER_NOT_INITIALIZED: 'PushAdapter is not initialized. Check Firebase configuration.',
+    EMAIL_ADAPTER_NOT_CONFIGURED: 'EmailAdapter is not configured. Check Email configuration.'
 }
 
 export const SMS_PROVIDER = {
