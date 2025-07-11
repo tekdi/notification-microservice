@@ -7,29 +7,47 @@ import { NotificationLog } from "../entity/notificationLogs.entity";
 import { NotificationService } from "../notification.service";
 import { ERROR_MESSAGES, SUCCESS_MESSAGES } from "src/common/utils/constant.util";
 import { LoggerUtil } from "src/common/logger/LoggerUtil";
-@Injectable()
 export class PushAdapter implements NotificationServiceInterface {
     private readonly fcmurl: string;
+    private isInitialized = false;
     constructor(
         @Inject(forwardRef(() => NotificationService)) private readonly notificationServices: NotificationService,
         private readonly configService: ConfigService
     ) {
         this.fcmurl = this.configService.get('FCM_URL');
+        if (this.hasRequiredConfig()) {
+            //Initialize Firebase Admin SDK with environment variables
+            const serviceAccount = {
+                projectId: this.configService.get('FIREBASE_PROJECT_ID'),
+                clientEmail: this.configService.get('FIREBASE_CLIENT_EMAIL'),
+                privateKey: this.configService.get('FIREBASE_PRIVATE_KEY').replace(/\\n/g, '\n'), // Replace escaped newlines
+            };
 
-        // Initialize Firebase Admin SDK with environment variables
-        const serviceAccount = {
-            projectId: this.configService.get('FIREBASE_PROJECT_ID'),
-            clientEmail: this.configService.get('FIREBASE_CLIENT_EMAIL'),
-            privateKey: this.configService.get('FIREBASE_PRIVATE_KEY').replace(/\\n/g, '\n'), // Replace escaped newlines
-        };
-
-        if (admin.apps.length === 0) {
-            admin.initializeApp({
-                credential: admin.credential.cert(serviceAccount),
-            });
+            if (admin.apps.length === 0) {
+                admin.initializeApp({
+                    credential: admin.credential.cert(serviceAccount),
+                });
+            }
+            this.isInitialized = true;
+        }
+        else {
+            console.warn('PushAdapter not initialized: Missing Firebase config.');
+            LoggerUtil.error(ERROR_MESSAGES.PUSH_ADAPTER_NOT_INITIALIZED);
         }
     }
+
+    private hasRequiredConfig(): boolean {
+        return !!(
+        this.configService.get('FIREBASE_PROJECT_ID') &&
+        this.configService.get('FIREBASE_CLIENT_EMAIL') &&
+        this.configService.get('FIREBASE_PRIVATE_KEY')
+        );
+    }
     async sendNotification(notificationDataArray) {
+        if (!this.isInitialized) {
+            LoggerUtil.error(ERROR_MESSAGES.PUSH_ADAPTER_NOT_INITIALIZED);
+            throw new Error('PushAdapter is not initialized. Check Firebase configuration.');
+        }
         const results = [];
         for (const notificationData of notificationDataArray) {
             try {
