@@ -44,7 +44,7 @@ export class EmailAdapter implements NotificationServiceInterface {
 
         if (!this.isConfigured) {
             console.warn('EmailAdapter not configured: Missing required settings.');
-            LoggerUtil
+            LoggerUtil.error(ERROR_MESSAGES.EMAIL_ADAPTER_NOT_CONFIGURED); 
         }
     }
 
