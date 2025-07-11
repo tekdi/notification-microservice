@@ -14,7 +14,7 @@ import { Response } from "express";
 import { NotificationActions } from "../notification_events/entity/notificationActions.entity";
 import { NotificationActionTemplates } from "../notification_events/entity/notificationActionTemplates.entity";
 import { NotificationQueue } from "../notification-queue/entities/notificationQueue.entity";
-import { AmqpConnection, RabbitSubscribe } from "@nestjs-plus/rabbitmq";
+import { AmqpConnection, RabbitSubscribe } from "@golevelup/nestjs-rabbitmq";
 import { NotificationQueueService } from "../notification-queue/notificationQueue.service";
 import { APIID } from "src/common/utils/api-id.config";
 import {EmailAdapter} from "src/modules/notification/adapters/emailService.adapter";

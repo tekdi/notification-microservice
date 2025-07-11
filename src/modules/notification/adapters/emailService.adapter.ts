@@ -10,6 +10,8 @@ import { NotificationLog } from "../entity/notificationLogs.entity";
 import { NotificationService } from "../notification.service";
 import { LoggerUtil } from "src/common/logger/LoggerUtil";
 import { ERROR_MESSAGES, SUCCESS_MESSAGES } from "src/common/utils/constant.util";
+import { ConfigService } from "@nestjs/config";
+import * as sgMail from '@sendgrid/mail';
 
 /**
  * Interface for raw email data
@@ -24,10 +26,44 @@ export interface RawEmailData {
 
 @Injectable()
 export class EmailAdapter implements NotificationServiceInterface {
+    private provider: 'smtp' | 'sendgrid' = 'smtp';
+    private isConfigured = false;
     constructor(
-        @Inject(forwardRef(() => NotificationService)) private readonly notificationServices: NotificationService
-    ) { }
+        @Inject(forwardRef(() => NotificationService)) private readonly notificationServices: NotificationService,
+        private readonly configService: ConfigService
+    ) { 
+        this.provider = (this.configService.get('EMAIL_PROVIDER') || 'smtp') as 'smtp' | 'sendgrid';
+        if (this.provider === 'smtp' && this.hasSmtpConfig()) {
+            this.isConfigured = true;
+        }
 
+        if (this.provider === 'sendgrid' && this.hasSendGridConfig()) {
+            sgMail.setApiKey(this.configService.get('SENDGRID_API_KEY'));
+            this.isConfigured = true;
+        }
+
+        if (!this.isConfigured) {
+            console.warn('EmailAdapter not configured: Missing required settings.');
+            LoggerUtil
+        }
+    }
+
+
+    private hasSmtpConfig(): boolean {
+        return (
+        !!this.configService.get('EMAIL_HOST') &&
+        !!this.configService.get('EMAIL_PORT') &&
+        !!this.configService.get('EMAIL_USER') &&
+        !!this.configService.get('EMAIL_PASS')
+        );
+    }
+
+    private hasSendGridConfig(): boolean {
+        return !!(
+        this.configService.get('SENDGRID_API_KEY') &&
+        this.configService.get('EMAIL_FROM')
+        );
+    }
     /**
      * Sends notifications using template-based approach
      * @param notificationDataArray Array of notification data objects
@@ -155,7 +191,7 @@ export class EmailAdapter implements NotificationServiceInterface {
                 email: {
                     providers: [
                         {
-                            type: process.env.EMAIL_TYPE,
+                            type: process.env.EMAIL_PROVIDER || 'smtp',
                             host: process.env.EMAIL_HOST,
                             port: process.env.EMAIL_PORT,
                             secure: false,
@@ -186,17 +222,34 @@ export class EmailAdapter implements NotificationServiceInterface {
      */
     async send(notificationData) {
         const notificationLogs = this.createNotificationLog(notificationData, notificationData.subject, notificationData.key, notificationData.body, notificationData.recipient);
+        let result;
         try {
-            const emailConfig = this.getEmailConfig(notificationData.context);
-            const notifmeSdk = new NotifmeSdk(emailConfig);
-            const result = await notifmeSdk.send({
-                email: {
-                    from: emailConfig.email.from,
+            if (this.provider === 'smtp') {
+                const emailConfig = this.getEmailConfig(notificationData.context);
+                const notifmeSdk = new NotifmeSdk(emailConfig);
+                result = await notifmeSdk.send({
+                    email: {
+                        from: emailConfig.email.from,
+                        to: notificationData.recipient,
+                        subject: notificationData.subject,
+                        html: notificationData.body,
+                    },
+                });
+            }
+            else if (this.provider === 'sendgrid') {
+                const msg = {
                     to: notificationData.recipient,
+                    from: this.configService.get('EMAIL_FROM'),
                     subject: notificationData.subject,
                     html: notificationData.body,
-                },
-            });
+                };
+                const sgResponse = await sgMail.send(msg);
+                result = {
+                    status: sgResponse[0]?.statusCode === 202 ? 'success' : 'error',
+                    id: sgResponse[0]?.headers['x-message-id'] || null,
+                    errors: sgResponse[0]?.statusCode !== 202 ? sgResponse[0]?.body : undefined,
+                };
+            }
             if (result.status === 'success') {
                 notificationLogs.status = true;
                 await this.notificationServices.saveNotificationLogs(notificationLogs);
