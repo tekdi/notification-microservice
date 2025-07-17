@@ -198,8 +198,8 @@ export class WhatsappViaGupshupAdapter implements NotificationServiceInterface {
                 to: notificationData.recipient,
                 body: notificationData.body,
                 from: this.configService.get('WHATSAPP_FROM'),
-                templateId: "ddd5f61e-0004-4f57-9ecf-6f52aa55ac1a",
-                templateParams: ["123456"],
+                templateId: notificationData.templateId,
+                templateParams: notificationData.templateParams,
             });
             if (result.status === "success") {
                 notificationLogs.status = true;
@@ -376,11 +376,11 @@ export class WhatsappViaGupshupAdapter implements NotificationServiceInterface {
             if (result.status === "success") {
                 notificationLogs.status = true;
                 await this.notificationServices.saveNotificationLogs(notificationLogs);
-                LoggerUtil.log('WhatsApp template message sent successfully via Gupshup');
+                LoggerUtil.log('WhatsApp template message submitted successfully via Gupshup');
                 return {
                     status: 200,
                     to: templateData.to,
-                    result: 'WhatsApp template message sent successfully via Gupshup',
+                    result: 'WhatsApp template message submitted successfully via Gupshup',
                     messageId: result.id || `gupshup-template-${Date.now()}`,
                 };
             } else {

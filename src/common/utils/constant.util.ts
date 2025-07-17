@@ -22,7 +22,7 @@ export const SUCCESS_MESSAGES = {
     GET_TEMPLATE: (userId) => `Get Template successfully by userId: ${userId}`,
     DELETE_TEMPLATE: (userId) => `Delete Template successfully by userId: ${userId}`,
     MESSAGES_SAVING_IN_QUEUE: 'Notification saving in queue',
-    WHATSAPP_NOTIFICATION_SEND_SUCCESSFULLY: 'WhatsApp notification sent successfully',
+    WHATSAPP_NOTIFICATION_SEND_SUCCESSFULLY: 'WhatsApp notification submitted successfully',
 };
 export const ERROR_MESSAGES = {
     INVALID_REQUEST: "Invalid request",
