@@ -654,7 +654,7 @@ export class NotificationService {
             templateParams: whatsapp.templateParams
           };
           // Use the dedicated template sending method from the adapter
-          return this.whatsappViaGupshup  .sendTemplateMessage(singleWhatsappData);
+          return this.whatsappViaGupshup.sendTemplateMessage(singleWhatsappData);
         });
         
         promises.push({ 

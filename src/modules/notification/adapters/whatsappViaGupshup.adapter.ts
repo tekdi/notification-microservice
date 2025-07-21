@@ -180,7 +180,7 @@ export class WhatsappViaGupshupAdapter implements NotificationServiceInterface {
     * Validates phone number format (simple international format)
     */
     private isValidPhone(phone: string) {
-        const phoneRegexp = /^\+[1-9]\d{1,14}$/;
+        const phoneRegexp = /^\+?[1-9]\d{1,14}$/;
         return phoneRegexp.test(phone);
     }
 
@@ -290,8 +290,6 @@ export class WhatsappViaGupshupAdapter implements NotificationServiceInterface {
                     params: templateParams || []
                 }),
             };
-
-            messagePayload.message = JSON.stringify(messagePayload.message);
 
             const apiUrl = `${this.gupshupApiUrl}/template/msg`;
 
