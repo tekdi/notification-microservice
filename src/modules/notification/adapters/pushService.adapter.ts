@@ -17,17 +17,14 @@ export class PushAdapter implements NotificationServiceInterface {
         private readonly configService: ConfigService
     ) {
         this.fcmurl = this.configService.get('FCM_URL');
-        const projectId = this.configService.get('FIREBASE_PROJECT_ID');
-        const clientEmail = this.configService.get('FIREBASE_CLIENT_EMAIL');
-        const privateKey = this.configService.get('FIREBASE_PRIVATE_KEY');
 
         // Check if all necessary Firebase credentials are provided
-        if (projectId && clientEmail && privateKey && this.fcmurl) {
+        if (this.configService.get('FIREBASE_PROJECT_ID') && this.configService.get('FIREBASE_CLIENT_EMAIL') && this.configService.get('FIREBASE_PRIVATE_KEY') && this.fcmurl) {
             try {
                 const serviceAccount = {
-                    projectId,
-                    clientEmail,
-                    privateKey: privateKey.replace(/\\n/g, '\n'), // Replace escaped newlines
+                    projectId: this.configService.get('FIREBASE_PRIVATE_KEY'),
+                    clientEmail:this.configService.get('FIREBASE_CLIENT_EMAIL'),
+                    privateKey: this.configService.get('FIREBASE_PRIVATE_KEY').replace(/\\n/g, '\n'), // Replace escaped newlines
                 };
 
                 if (admin.apps.length === 0) {

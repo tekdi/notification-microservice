@@ -12,8 +12,7 @@ import { NotificationService } from "../notification.service";
 import { LoggerUtil } from "src/common/logger/LoggerUtil";
 import {
     ERROR_MESSAGES,
-    SUCCESS_MESSAGES,
-    WHATSAPP_PROVIDER,
+    SUCCESS_MESSAGES
 } from "src/common/utils/constant.util";
 import axios from "axios";
 
@@ -26,16 +25,6 @@ export interface RawWhatsappGupshupData {
     from?: string;
     templateId?: string; // For template messages
     templateParams?: any[]; // For template parameters
-}
-
-/**
- * Interface for Gupshup API response
- */
-interface GupshupApiResponse {
-    status: string;
-    messageId?: string;
-    error?: string;
-    details?: any;
 }
 
 @Injectable()
@@ -65,98 +54,7 @@ export class WhatsappViaGupshupAdapter implements NotificationServiceInterface {
      * Sends WhatsApp notifications using template-based approach
      */
     async sendNotification(notificationDataArray) {
-        const results = [];
-        for (const notificationData of notificationDataArray) {
-            try {
-                const recipient = notificationData.recipient;
-                if (!recipient || !this.isValidPhone(recipient)) {
-                    throw new BadRequestException(ERROR_MESSAGES.INVALID_PHONE);
-                }
-                const result = await this.send(notificationData);
-                if (result.status === "success") {
-                    results.push({
-                        recipient: recipient,
-                        status: 200,
-                        result: SUCCESS_MESSAGES.WHATSAPP_NOTIFICATION_SEND_SUCCESSFULLY,
-                    });
-                } else {
-                    results.push({
-                        recipient: recipient,
-                        status: "error",
-                        error: `WhatsApp not sent: ${JSON.stringify(result.errors)}`,
-                    });
-                }
-            } catch (error) {
-                LoggerUtil.error(ERROR_MESSAGES.WHATSAPP_NOTIFICATION_FAILED, error);
-                results.push({
-                    recipient: notificationData.recipient,
-                    status: "error",
-                    error: error.toString(),
-                });
-            }
-        }
-        return results;
-    }
-
-    /**
-     * New method for sending raw WhatsApp messages without templates
-     */
-    async sendRawMessages(messageData) {
-        const results = [];
-        const messageDataArray = Array.isArray(messageData)
-            ? messageData
-            : [messageData];
-        for (const singleMessageData of messageDataArray) {
-            try {
-                if (!singleMessageData.to || !this.isValidPhone(singleMessageData.to)) {
-                    throw new BadRequestException(ERROR_MESSAGES.INVALID_PHONE);
-                }
-                if (!singleMessageData.body) {
-                    throw new BadRequestException("Message body is required");
-                }
-                const result = await this.sendRawMessage(singleMessageData);
-                if (result.status === "success") {
-                    results.push({
-                        to: singleMessageData.to,
-                        status: 200,
-                        result: SUCCESS_MESSAGES.WHATSAPP_NOTIFICATION_SEND_SUCCESSFULLY,
-                        messageId: (result && 'messageId' in result && result.messageId) || (result && 'id' in result && result.id) || `whatsapp-gupshup-${Date.now()}`,
-                    });
-                } else {
-                    results.push({
-                        to: singleMessageData.to,
-                        status: 400,
-                        error: `WhatsApp not sent: ${JSON.stringify(result.errors)}`,
-                    });
-                }
-            } catch (error) {
-                LoggerUtil.error(ERROR_MESSAGES.WHATSAPP_NOTIFICATION_FAILED, error);
-                results.push({
-                    recipient: singleMessageData.to,
-                    status: 500,
-                    error: error.message || error.toString(),
-                });
-            }
-        }
-        return results;
-    }
-
-    /**
-    * Creates a notification log entry
-    */
-    private createNotificationLog(
-        notificationDto: NotificationDto,
-        bodyText: string,
-        recipient: string
-    ): NotificationLog {
-        const notificationLogs = new NotificationLog();
-        notificationLogs.context = notificationDto.context;
-        notificationLogs.subject = null;
-        notificationLogs.body = bodyText;
-        notificationLogs.action = notificationDto.key;
-        notificationLogs.type = "whatsapp-gupshup";
-        notificationLogs.recipient = recipient;
-        return notificationLogs;
+        
     }
 
     /**
@@ -174,94 +72,6 @@ export class WhatsappViaGupshupAdapter implements NotificationServiceInterface {
         notificationLogs.type = "whatsapp-gupshup";
         notificationLogs.recipient = recipient;
         return notificationLogs;
-    }
-
-    /**
-    * Validates phone number format (simple international format)
-    */
-    private isValidPhone(phone: string) {
-        const phoneRegexp = /^\+?[1-9]\d{1,14}$/;
-        return phoneRegexp.test(phone);
-    }
-
-    /**
-    * Sends template-based WhatsApp message
-    */
-    async send(notificationData) {
-        const notificationLogs = this.createNotificationLog(
-            notificationData,
-            notificationData.body,
-            notificationData.recipient
-        );
-        try {
-            const result = await this.sendViaGupshupProvider({
-                to: notificationData.recipient,
-                body: notificationData.body,
-                from: this.configService.get('WHATSAPP_FROM'),
-                templateId: notificationData.templateId,
-                templateParams: notificationData.templateParams,
-            });
-            if (result.status === "success") {
-                notificationLogs.status = true;
-                await this.notificationServices.saveNotificationLogs(notificationLogs);
-                LoggerUtil.log(
-                    SUCCESS_MESSAGES.WHATSAPP_NOTIFICATION_SEND_SUCCESSFULLY
-                );
-                return result;
-            } else {
-                throw new Error(`WhatsApp not sent: ${JSON.stringify(result.errors)}`);
-            }
-        } catch (e) {
-            LoggerUtil.error(ERROR_MESSAGES.WHATSAPP_NOTIFICATION_FAILED, e);
-            notificationLogs.status = false;
-            notificationLogs.error = e.toString();
-            await this.notificationServices.saveNotificationLogs(notificationLogs);
-            return {
-                status: "error",
-                errors: [e.message || e.toString()],
-            };
-        }
-    }
-
-    /**
-    * Sends raw WhatsApp message without template
-    */
-    async sendRawMessage(messageData: RawWhatsappGupshupData) {
-        const notificationLogs = this.createRawNotificationLog(
-            messageData.body,
-            messageData.to
-        );
-        try {
-            const result = await this.sendViaGupshupProvider({
-                to: messageData.to,
-                body: messageData.body,
-                from: messageData.from || this.configService.get('WHATSAPP_FROM'),
-                templateId: messageData.templateId,
-                templateParams: messageData.templateParams,
-            });
-            if (result.status === "success") {
-                notificationLogs.status = true;
-                await this.notificationServices.saveNotificationLogs(notificationLogs);
-                LoggerUtil.log(
-                    SUCCESS_MESSAGES.WHATSAPP_NOTIFICATION_SEND_SUCCESSFULLY
-                );
-                return {
-                    ...result,
-                    messageId: result.id || `whatsapp-gupshup-${Date.now()}`,
-                };
-            } else {
-                throw new Error(`WhatsApp not sent: ${JSON.stringify(result.errors)}`);
-            }
-        } catch (e) {
-            LoggerUtil.error(ERROR_MESSAGES.WHATSAPP_NOTIFICATION_FAILED, e);
-            notificationLogs.status = false;
-            notificationLogs.error = e.toString();
-            await this.notificationServices.saveNotificationLogs(notificationLogs);
-            return {
-                status: "error",
-                errors: [e.message || e.toString()],
-            };
-        }
     }
 
     /**
