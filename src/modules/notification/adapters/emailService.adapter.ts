@@ -3,6 +3,7 @@ import {
   Inject,
   Injectable,
   forwardRef,
+  Logger,
 } from '@nestjs/common';
 import { NotificationServiceInterface } from '../interface/notificationService';
 import { NotificationDto } from '../dto/notificationDto.dto';
@@ -205,7 +206,11 @@ export class EmailAdapter implements NotificationServiceInterface {
     emailFrom?: string
   ) {
     const fromName = emailFromName || process.env.EMAIL_FROM_NAME || ''; // fallback if not set
-    const fromEmail = emailFrom || process.env.EMAIL_FROM;
+    const fromEmail = emailFrom || process.env.EMAIL_FROM || ''; // fallback if not set
+    if (!fromEmail) {
+      LoggerUtil.warn(`Sender email not configured for context`);
+      return null; // Or undefined, based on your usage pattern
+    }
     return {
       useNotificationCatcher: false,
       channels: {
@@ -215,7 +220,7 @@ export class EmailAdapter implements NotificationServiceInterface {
               type: process.env.EMAIL_PROVIDER || 'smtp',
               host: process.env.EMAIL_HOST,
               port: process.env.EMAIL_PORT,
-              secure: false,
+              secure: process.env.EMAIL_SECURE === 'false', // Convert to boolean
               auth: {
                 user: process.env.EMAIL_USER,
                 pass: process.env.EMAIL_PASS,
