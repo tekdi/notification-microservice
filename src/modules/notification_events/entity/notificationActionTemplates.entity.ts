@@ -1,49 +1,64 @@
 // NotificationTemplateConfig.entity.ts
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 import { NotificationActions } from './notificationActions.entity';
 
 @Entity('NotificationActionTemplates')
 export class NotificationActionTemplates {
-    @PrimaryGeneratedColumn('uuid')
-    templateId: string;
+  @PrimaryGeneratedColumn('uuid')
+  templateId: string;
 
-    @Column()
-    language: string;
+  @Column()
+  language: string;
 
-    @Column()
-    subject: string;
+  @Column()
+  subject: string;
 
-    @Column()
-    body: string;
+  @Column()
+  body: string;
 
-    @CreateDateColumn({ type: 'timestamp' })
-    createdOn: Date;
+  @CreateDateColumn({ type: 'timestamp' })
+  createdOn: Date;
 
-    @UpdateDateColumn({ type: 'timestamp' })
-    updatedOn: Date;
+  @UpdateDateColumn({ type: 'timestamp' })
+  updatedOn: Date;
 
-    @Column()
-    status: string;
+  @Column()
+  status: string;
 
-    @Column({ type: 'uuid' })
-    createdBy: string;
+  @Column({ type: 'uuid' })
+  createdBy: string;
 
-    @Column({ nullable: true })
-    image: string;
+  @Column({ nullable: true })
+  image: string;
 
-    @Column({ nullable: true })
-    link: string;
+  @Column({ nullable: true })
+  link: string;
 
-    @Column({ type: 'uuid', nullable: true })
-    updatedBy: string;
+  @Column({ type: 'uuid', nullable: true })
+  updatedBy: string;
 
-    @Column()
-    actionId: number;
+  @Column()
+  actionId: number;
 
-    @ManyToOne(() => NotificationActions, template => template.templateconfig)
-    @JoinColumn({ name: 'actionId' })
-    template: NotificationActions;
+  @ManyToOne(() => NotificationActions, (template) => template.templateconfig)
+  @JoinColumn({ name: 'actionId' })
+  template: NotificationActions;
 
-    @Column()
-    type: string;
+  @Column()
+  type: string;
+
+  // NEW FIELDS: Email sender information from database
+  @Column({ nullable: true })
+  emailFromName: string;
+
+  @Column({ nullable: true })
+  emailFrom: string;
 }
