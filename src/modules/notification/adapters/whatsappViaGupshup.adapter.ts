@@ -5,15 +5,10 @@ import {
     forwardRef,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { NotificationServiceInterface } from "../interface/notificationService";
-import { NotificationDto } from "../dto/notificationDto.dto";
+import { NotificationServiceInterface } from "../interface/notificationService";\
 import { NotificationLog } from "../entity/notificationLogs.entity";
 import { NotificationService } from "../notification.service";
 import { LoggerUtil } from "src/common/logger/LoggerUtil";
-import {
-    ERROR_MESSAGES,
-    SUCCESS_MESSAGES
-} from "src/common/utils/constant.util";
 import axios from "axios";
 
 /**
