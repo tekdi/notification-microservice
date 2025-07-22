@@ -5,7 +5,7 @@ import {
     forwardRef,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { NotificationServiceInterface } from "../interface/notificationService";\
+import { NotificationServiceInterface } from "../interface/notificationService";
 import { NotificationLog } from "../entity/notificationLogs.entity";
 import { NotificationService } from "../notification.service";
 import { LoggerUtil } from "src/common/logger/LoggerUtil";
