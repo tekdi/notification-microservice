@@ -6,10 +6,6 @@ import {
 } from '@nestjs/common';
 import { NotificationServiceInterface } from '../interface/notificationService';
 import { NotificationDto } from '../dto/notificationDto.dto';
-import { NotificationActions } from 'src/modules/notification_events/entity/notificationActions.entity';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { NotificationActionTemplates } from 'src/modules/notification_events/entity/notificationActionTemplates.entity';
 import NotifmeSdk from 'notifme-sdk';
 import { NotificationLog } from '../entity/notificationLogs.entity';
 import { NotificationService } from '../notification.service';
