@@ -1,29 +1,29 @@
-import { BadRequestException, HttpStatus, Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import axios from "axios";
-import { NotificationDto,RawNotificationDto } from "./dto/notificationDto.dto";
-import { NotificationAdapterFactory } from "./notificationadapters";
-import APIResponse from "src/common/utils/response";
+import { BadRequestException, HttpStatus, Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import axios from 'axios';
+import { NotificationDto, RawNotificationDto } from './dto/notificationDto.dto';
+import { NotificationAdapterFactory } from './notificationadapters';
+import APIResponse from 'src/common/utils/response';
 // import * as FCM from 'fcm-node';
 // import { SubscribeToDeviceTopicDto } from './dto/subscribtotopic.dto';
-import { ConfigService } from "@nestjs/config";
-import { TopicNotification } from "./dto/topicnotification .dto";
-import { NotificationLog } from "./entity/notificationLogs.entity";
-import { Response } from "express";
-import { NotificationActions } from "../notification_events/entity/notificationActions.entity";
-import { NotificationActionTemplates } from "../notification_events/entity/notificationActionTemplates.entity";
-import { NotificationQueue } from "../notification-queue/entities/notificationQueue.entity";
-import { AmqpConnection, RabbitSubscribe } from "@golevelup/nestjs-rabbitmq";
-import { NotificationQueueService } from "../notification-queue/notificationQueue.service";
-import { APIID } from "src/common/utils/api-id.config";
-import {EmailAdapter} from "src/modules/notification/adapters/emailService.adapter";
-import {SmsAdapter} from "src/modules/notification/adapters/smsService.adapter"
+import { ConfigService } from '@nestjs/config';
+import { TopicNotification } from './dto/topicnotification .dto';
+import { NotificationLog } from './entity/notificationLogs.entity';
+import { Response } from 'express';
+import { NotificationActions } from '../notification_events/entity/notificationActions.entity';
+import { NotificationActionTemplates } from '../notification_events/entity/notificationActionTemplates.entity';
+import { NotificationQueue } from '../notification-queue/entities/notificationQueue.entity';
+import { AmqpConnection, RabbitSubscribe } from '@golevelup/nestjs-rabbitmq';
+import { NotificationQueueService } from '../notification-queue/notificationQueue.service';
+import { APIID } from 'src/common/utils/api-id.config';
+import { EmailAdapter } from 'src/modules/notification/adapters/emailService.adapter';
+import { SmsAdapter } from 'src/modules/notification/adapters/smsService.adapter';
 import {
   SUCCESS_MESSAGES,
   ERROR_MESSAGES,
-} from "src/common/utils/constant.util";
-import { LoggerUtil } from "src/common/logger/LoggerUtil";
+} from 'src/common/utils/constant.util';
+import { LoggerUtil } from 'src/common/logger/LoggerUtil';
 
 @Injectable()
 export class NotificationService {
@@ -45,10 +45,10 @@ export class NotificationService {
     private readonly configService: ConfigService,
     private readonly amqpConnection: AmqpConnection,
     private emailService: EmailAdapter,
-    private smsService: SmsAdapter,
+    private smsService: SmsAdapter
   ) {
-    this.fcmkey = this.configService.get("FCM_KEY");
-    this.fcmurl = this.configService.get("FCM_URL");
+    this.fcmkey = this.configService.get('FCM_KEY');
+    this.fcmurl = this.configService.get('FCM_URL');
     // this.fcm = new FCM(this.fcmkey);
   }
 
@@ -85,41 +85,41 @@ export class NotificationService {
 
       if (email && email.receipients && email.receipients.length > 0) {
         const promise = this.notificationHandler(
-          "email",
+          'email',
           email.receipients,
-          "email",
+          'email',
           replacements,
           notificationDto,
           notification_event,
           userId
         );
-        promises.push({ promise, channel: "email" });
+        promises.push({ promise, channel: 'email' });
       }
 
       if (sms && sms.receipients && sms.receipients.length > 0) {
         const promise = this.notificationHandler(
-          "sms",
+          'sms',
           sms.receipients,
-          "sms",
+          'sms',
           replacements,
           notificationDto,
           notification_event,
           userId
         );
-        promises.push({ promise, channel: "sms" });
+        promises.push({ promise, channel: 'sms' });
       }
 
       if (push && push.receipients && push.receipients.length > 0) {
         const promise = this.notificationHandler(
-          "push",
+          'push',
           push.receipients,
-          "push",
+          'push',
           replacements,
           notificationDto,
           notification_event,
           userId
         );
-        promises.push({ promise, channel: "push" });
+        promises.push({ promise, channel: 'push' });
       }
       // Process all notification promises
       const results = await Promise.allSettled(promises.map((p) => p.promise));
@@ -127,7 +127,7 @@ export class NotificationService {
       if (notificationDto.isQueue) {
         results.forEach((result, index) => {
           const channel = promises[index].channel;
-          if (result.status === "fulfilled") {
+          if (result.status === 'fulfilled') {
             const notifications = result.value;
             if (notifications.status === 200) {
               serverResponses[channel].data.push(notifications);
@@ -148,7 +148,7 @@ export class NotificationService {
       } else {
         results.forEach((result, index) => {
           const channel = promises[index].channel;
-          if (result.status === "fulfilled") {
+          if (result.status === 'fulfilled') {
             const notifications = result.value;
             notifications.forEach((notification) => {
               if (notification.status === 200) {
@@ -178,7 +178,7 @@ export class NotificationService {
 
       return response
         .status(HttpStatus.OK)
-        .json(APIResponse.success(apiId, finalResponses, "OK"));
+        .json(APIResponse.success(apiId, finalResponses, 'OK'));
     } catch (e) {
       LoggerUtil.error(`Error: ${e}`, e, apiId, userId);
       throw e;
@@ -216,13 +216,26 @@ export class NotificationService {
       let subject;
       let image;
       let link;
+      let emailFromName; // NEW: Email sender name from database
+      let emailFrom; // NEW: Email sender address from database
+
       bodyText = notification_details[0].body;
       subject = notification_details[0].subject;
       image = notification_details[0]?.image;
       link = notification_details[0]?.link;
 
+      // NEW: Extract email sender information from database with fallback to environment
+      if (type === 'email') {
+        emailFromName =
+          notification_details[0]?.emailFromName ||
+          process.env.EMAIL_FROM_NAME ||
+          '';
+        emailFrom =
+          notification_details[0]?.emailFrom || process.env.EMAIL_FROM;
+      }
+
       // Ensure replacements are in the correct format
-      if (typeof replacements !== "object" || replacements === null) {
+      if (typeof replacements !== 'object' || replacements === null) {
         replacements = {};
       }
 
@@ -252,6 +265,9 @@ export class NotificationService {
           image: image || null,
           link: link || null,
           replacements: replacements,
+          // NEW: Pass email sender information to adapter
+          emailFromName: emailFromName,
+          emailFrom: emailFrom,
         };
       });
 
@@ -311,7 +327,7 @@ export class NotificationService {
     if (missingReplacements.length > 0) {
       throw new BadRequestException(
         `Missing replacements for placeholders: ${missingReplacements.join(
-          ", "
+          ', '
         )}`
       );
     }
@@ -327,8 +343,8 @@ export class NotificationService {
         try {
           for (const result of arrayofResult) {
             this.amqpConnection.publish(
-              "notification.exchange",
-              "notification.route",
+              'notification.exchange',
+              'notification.route',
               result,
               { persistent: true }
             );
@@ -346,9 +362,9 @@ export class NotificationService {
   }
 
   @RabbitSubscribe({
-    exchange: "notification.exchange",
-    routingKey: "notification.route",
-    queue: "notification.queue",
+    exchange: 'notification.exchange',
+    routingKey: 'notification.route',
+    queue: 'notification.queue',
   })
   async handleNotification(notification, message: any, retryCount = 3) {
     try {
@@ -435,7 +451,7 @@ export class NotificationService {
 
       const response = await axios.post(fcmUrl, notificationData, {
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
           Authorization: `key=${fcmKey}`,
         },
       });
@@ -560,8 +576,8 @@ export class NotificationService {
 
   //fetch sub as userId from token
   getUserIdFromToken(token: string) {
-    const payloadBase64 = token.split(".")[1]; // Get the payload part
-    const payloadJson = Buffer.from(payloadBase64, "base64").toString("utf-8"); // Decode Base64
+    const payloadBase64 = token.split('.')[1]; // Get the payload part
+    const payloadJson = Buffer.from(payloadBase64, 'base64').toString('utf-8'); // Decode Base64
     const payload = JSON.parse(payloadJson); // Convert to JSON
     return payload.sub;
   }
@@ -576,17 +592,17 @@ export class NotificationService {
       email: { data: [], errors: [] },
       sms: { data: [], errors: [] },
     };
-  
+
     try {
       const { email, sms } = rawNotificationDto;
-      
+
       const promises: Array<{ promise: Promise<any>; channel: string }> = [];
-  
+
       if (email && email.to && email.to.length > 0) {
         if (!email.subject || !email.body) {
           throw new BadRequestException('Email subject and body are required');
         }
-        const emailPromises = email.to.map(to => {
+        const emailPromises = email.to.map((to) => {
           const singleEmailData = {
             to: to,
             from: email.from || process.env.DEFAULT_EMAIL_SENDER,
@@ -596,20 +612,20 @@ export class NotificationService {
           };
           return this.emailService.sendRawEmails(singleEmailData);
         });
-        
-        promises.push({ 
-          promise: Promise.all(emailPromises), 
-          channel: 'email' 
+
+        promises.push({
+          promise: Promise.all(emailPromises),
+          channel: 'email',
         });
       }
-  
+
       if (sms && sms.to && sms.to.length > 0) {
         if (!sms.body) {
           throw new BadRequestException('SMS body is required');
         }
-        
+
         // Fixed: Use sms properties instead of email properties
-        const smsPromises = sms.to.map(recipient => {
+        const smsPromises = sms.to.map((recipient) => {
           const singleSmsData = {
             to: recipient,
             from: sms.from || process.env.DEFAULT_SMS_SENDER,
@@ -617,34 +633,36 @@ export class NotificationService {
           };
           return this.smsService.sendRawSmsMessages(singleSmsData);
         });
-        
-        promises.push({ 
-          promise: Promise.all(smsPromises), 
-          channel: 'sms' 
+
+        promises.push({
+          promise: Promise.all(smsPromises),
+          channel: 'sms',
         });
       }
-  
-      const results = await Promise.allSettled(promises.map(p => p.promise));
-      
-       results.forEach((result, index) => {
+
+      const results = await Promise.allSettled(promises.map((p) => p.promise));
+
+      results.forEach((result, index) => {
         const channel = promises[index].channel;
-      
+
         if (!serverResponses[channel]) {
           serverResponses[channel] = { data: [], errors: [] };
         }
-      
+
         if (result.status === 'fulfilled') {
           const notifications = (result.value || []).flat();
-          console.log(result.value,"Shubham");
-          notifications.forEach(notification => {
+          console.log(result.value, 'Shubham');
+          notifications.forEach((notification) => {
             const status = notification.status;
-            
+
             if (status === 200) {
               serverResponses[channel].data.push(notification);
             } else {
               serverResponses[channel].errors.push({
-                recipient: notification.recipient || notification.to || 'unknown',
-                error: notification.error || notification.message || 'Unknown error',
+                recipient:
+                  notification.recipient || notification.to || 'unknown',
+                error:
+                  notification.error || notification.message || 'Unknown error',
                 code: status || 500,
               });
             }
@@ -656,18 +674,17 @@ export class NotificationService {
           });
         }
       });
-      
+
       // Filter empty channels
       const finalResponses = Object.fromEntries(
         Object.entries(serverResponses).filter(
           ([_, { data, errors }]) => data.length > 0 || errors.length > 0
         )
       );
-      
+
       return response
         .status(HttpStatus.OK)
         .json(APIResponse.success(apiId, finalResponses, 'OK'));
-      
     } catch (e) {
       LoggerUtil.error(`Error: ${e}`, e, apiId, userId);
       throw e;
