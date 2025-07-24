@@ -125,6 +125,24 @@ export class RawEmailDto {
     @IsString()
     body: string;
   }
+
+  export class RawWhatsappDto {
+    @ApiProperty({ description: 'Phone numbers of recipients', example: ['919876543210'] })
+    @IsNotEmpty()
+    @IsArray()
+    @IsString({each: true})
+    to: string[];
+  
+    @ApiProperty({ description: 'Gupshup Template ID', example: 'a0c2we11-1ff1-411b-144a-11d61d9e73e0' })
+    @IsNotEmpty()
+    @IsString()
+    templateId: string;
+  
+    @ApiProperty({ description: 'Template parameters', example: ['123456'] })
+    @IsNotEmpty()
+    @IsArray()
+    templateParams: any[];
+  }
   
   export class RawNotificationDto {
     @ApiPropertyOptional({ description: 'Email notification details' })
@@ -138,6 +156,12 @@ export class RawEmailDto {
     @ValidateNested()
     @Type(() => RawSmsDto)
     sms?: RawSmsDto;
+
+    @ApiPropertyOptional({ description: 'WhatsApp notification details' })
+    @IsOptional()
+    @ValidateNested()
+    @Type(() => RawWhatsappDto)
+    whatsapp?: RawWhatsappDto;
   }
 
 

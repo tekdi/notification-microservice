@@ -63,3 +63,7 @@ export const SMS_PROVIDER = {
     AWS_SNS: 'AWSSNS',
     MSG_91: 'MSG91',
 }
+
+export const WHATSAPP_PROVIDER = {
+    GUPSHUP: 'GUPSHUP',
+}

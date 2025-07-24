@@ -9,6 +9,7 @@ import { NotificationAdapterFactory } from '../notification/notificationadapters
 import { EmailAdapter } from '../notification/adapters/emailService.adapter';
 import { PushAdapter } from '../notification/adapters/pushService.adapter';
 import { SmsAdapter } from '../notification/adapters/smsService.adapter';
+import { WhatsappViaGupshupAdapter } from '../notification/adapters/whatsappViaGupshup.adapter';
 import { NotificationActionTemplates } from '../notification_events/entity/notificationActionTemplates.entity';
 import { NotificationActions } from '../notification_events/entity/notificationActions.entity';
 import { NotificationLog } from '../notification/entity/notificationLogs.entity';
@@ -19,7 +20,7 @@ import { RabbitmqModule } from '../rabbitmq/rabbitmq.module';
     TypeOrmModule.forFeature([NotificationQueue, NotificationActionTemplates, NotificationActions, NotificationLog]),
     RabbitmqModule
   ],
-  providers: [NotificationQueueService, NotificationService, NotificationAdapterFactory, EmailAdapter, SmsAdapter, PushAdapter],
+  providers: [NotificationQueueService, NotificationService, NotificationAdapterFactory, EmailAdapter, SmsAdapter, PushAdapter, WhatsappViaGupshupAdapter],
   controllers: [NotificationQueueController],
   exports: [NotificationQueueService]
 })

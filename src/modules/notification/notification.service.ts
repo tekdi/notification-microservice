@@ -18,7 +18,8 @@ import { AmqpConnection, RabbitSubscribe } from "@nestjs-plus/rabbitmq";
 import { NotificationQueueService } from "../notification-queue/notificationQueue.service";
 import { APIID } from "src/common/utils/api-id.config";
 import {EmailAdapter} from "src/modules/notification/adapters/emailService.adapter";
-import {SmsAdapter} from "src/modules/notification/adapters/smsService.adapter"
+import {SmsAdapter} from "src/modules/notification/adapters/smsService.adapter";
+import { WhatsappViaGupshupAdapter } from './adapters/whatsappViaGupshup.adapter';
 import {
   SUCCESS_MESSAGES,
   ERROR_MESSAGES,
@@ -46,6 +47,7 @@ export class NotificationService {
     private readonly amqpConnection: AmqpConnection,
     private emailService: EmailAdapter,
     private smsService: SmsAdapter,
+    private whatsappViaGupshup: WhatsappViaGupshupAdapter,
   ) {
     this.fcmkey = this.configService.get("FCM_KEY");
     this.fcmurl = this.configService.get("FCM_URL");
@@ -575,10 +577,11 @@ export class NotificationService {
     const serverResponses: Record<string, { data: any[]; errors: any[] }> = {
       email: { data: [], errors: [] },
       sms: { data: [], errors: [] },
+      whatsapp: { data: [], errors: [] },
     };
   
     try {
-      const { email, sms } = rawNotificationDto;
+      const { email, sms, whatsapp } = rawNotificationDto;
       
       const promises: Array<{ promise: Promise<any>; channel: string }> = [];
   
@@ -624,6 +627,27 @@ export class NotificationService {
         });
       }
   
+      if (whatsapp && whatsapp.to && whatsapp.to.length > 0) {
+        if (!whatsapp.templateId || !whatsapp.templateParams) {
+          throw new BadRequestException('WhatsApp templateId and templateParams are required for raw sending.');
+        }
+        
+        const whatsappPromises = whatsapp.to.map(recipient => {
+          const singleWhatsappData = {
+            to: recipient,
+            templateId: whatsapp.templateId,
+            templateParams: whatsapp.templateParams
+          };
+          // Use the dedicated template sending method from the adapter
+          return this.whatsappViaGupshup.sendTemplateMessage(singleWhatsappData);
+        });
+        
+        promises.push({ 
+          promise: Promise.all(whatsappPromises), 
+          channel: 'whatsapp' 
+        });
+      }
+      
       const results = await Promise.allSettled(promises.map(p => p.promise));
       
        results.forEach((result, index) => {

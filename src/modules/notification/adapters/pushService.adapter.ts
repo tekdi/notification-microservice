@@ -10,26 +10,46 @@ import { LoggerUtil } from "src/common/logger/LoggerUtil";
 @Injectable()
 export class PushAdapter implements NotificationServiceInterface {
     private readonly fcmurl: string;
+    private isFirebaseInitialized = false; 
+
     constructor(
         @Inject(forwardRef(() => NotificationService)) private readonly notificationServices: NotificationService,
         private readonly configService: ConfigService
     ) {
         this.fcmurl = this.configService.get('FCM_URL');
 
-        // Initialize Firebase Admin SDK with environment variables
-        const serviceAccount = {
-            projectId: this.configService.get('FIREBASE_PROJECT_ID'),
-            clientEmail: this.configService.get('FIREBASE_CLIENT_EMAIL'),
-            privateKey: this.configService.get('FIREBASE_PRIVATE_KEY').replace(/\\n/g, '\n'), // Replace escaped newlines
-        };
+        // Check if all necessary Firebase credentials are provided
+        if (this.configService.get('FIREBASE_PROJECT_ID') && this.configService.get('FIREBASE_CLIENT_EMAIL') && this.configService.get('FIREBASE_PRIVATE_KEY') && this.fcmurl) {
+            try {
+                const serviceAccount = {
+                    projectId: this.configService.get('FIREBASE_PRIVATE_KEY'),
+                    clientEmail:this.configService.get('FIREBASE_CLIENT_EMAIL'),
+                    privateKey: this.configService.get('FIREBASE_PRIVATE_KEY').replace(/\\n/g, '\n'), // Replace escaped newlines
+                };
 
-        if (admin.apps.length === 0) {
-            admin.initializeApp({
-                credential: admin.credential.cert(serviceAccount),
-            });
+                if (admin.apps.length === 0) {
+                    admin.initializeApp({
+                        credential: admin.credential.cert(serviceAccount),
+                    });
+                    this.isFirebaseInitialized = true;
+                } else {
+                    this.isFirebaseInitialized = true;
+                }
+            } catch (error) {
+                LoggerUtil.error('Failed to initialize Firebase Admin SDK. Push notifications will be disabled.', error.toString());
+                this.isFirebaseInitialized = false;
+            }
+        } else {
+            LoggerUtil.warn('Firebase credentials not found in .env. Push notification service is disabled. Missing one or more of: FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY, FCM_URL');
+            this.isFirebaseInitialized = false;
         }
     }
     async sendNotification(notificationDataArray) {
+        if (!this.isFirebaseInitialized) {
+            LoggerUtil.warn('Attempted to send push notification, but the service is not configured. Skipping.');
+            // Return an empty array to indicate no notifications were processed.
+            return [];
+        }
         const results = [];
         for (const notificationData of notificationDataArray) {
             try {
