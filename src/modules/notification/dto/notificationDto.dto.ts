@@ -31,14 +31,6 @@ export class PushDTO {
     receipients: string[];
 }
 
-export class WhatsappDTO {
-    @ApiProperty({ type: [String], example: ['919876543210'] })
-    @IsArray()
-    @IsString({ each: true })
-    @ArrayMinSize(1)
-    @IsNotEmpty()
-    receipients: string[];
-}
 
 export class NotificationDto {
 
@@ -90,12 +82,6 @@ export class NotificationDto {
     @ValidateNested()
     @Type(() => SMSDTO)
     sms: SMSDTO;
-
-    @ApiPropertyOptional({ type: WhatsappDTO, description: 'Whatsapp notification details' })
-    @ValidateNested()
-    @Type(() => WhatsappDTO)
-    @IsOptional()
-    whatsapp?: WhatsappDTO;
 }
 
 export class RawEmailDto {
@@ -147,12 +133,12 @@ export class RawEmailDto {
     @IsString({each: true})
     to: string[];
   
-    @ApiProperty({ description: 'Gupshup Template ID', example: 'f0c2fe17-6ff1-411b-944a-11d65d9d73e0' })
+    @ApiProperty({ description: 'Gupshup Template ID', example: 'a0c2we11-1ff1-411b-144a-11d61d9e73e0' })
     @IsNotEmpty()
     @IsString()
     templateId: string;
   
-    @ApiProperty({ description: 'Template parameters', example: ['John Doe', '123456'] })
+    @ApiProperty({ description: 'Template parameters', example: ['123456'] })
     @IsNotEmpty()
     @IsArray()
     templateParams: any[];

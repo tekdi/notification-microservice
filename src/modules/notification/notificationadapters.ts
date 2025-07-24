@@ -3,7 +3,6 @@ import { NotificationServiceInterface } from './interface/notificationService';
 import { EmailAdapter } from './adapters/emailService.adapter';
 import { PushAdapter } from './adapters/pushService.adapter';
 import { SmsAdapter } from './adapters/smsService.adapter';
-import { WhatsappViaGupshupAdapter } from './adapters/whatsappViaGupshup.adapter';
 
 @Injectable()
 export class NotificationAdapterFactory {
@@ -11,7 +10,6 @@ export class NotificationAdapterFactory {
         private readonly emailAdapter: EmailAdapter,
         private readonly pushAdapter: PushAdapter,
         private readonly smsAdapter: SmsAdapter,
-        private readonly whatsappViaGupshupAdapter: WhatsappViaGupshupAdapter,
     ) { }
 
     getAdapter(notificationType: string): NotificationServiceInterface {
@@ -22,8 +20,6 @@ export class NotificationAdapterFactory {
                 return this.pushAdapter;
             case 'sms':
                 return this.smsAdapter;
-            case 'whatsapp':
-                return this.whatsappViaGupshupAdapter;
             default:
                 throw new Error('Invalid notification type.');
         }

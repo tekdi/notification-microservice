@@ -64,11 +64,10 @@ export class NotificationService {
       email: { data: [], errors: [] },
       sms: { data: [], errors: [] },
       push: { data: [], errors: [] },
-      whatsapp: { data: [], errors: [] },
     };
 
     try {
-      const { email, push, sms, whatsapp, context, replacements, key } = notificationDto;
+      const { email, push, sms, context, replacements, key } = notificationDto;
       // Check if notification template exists
       const notification_event = await this.notificationActions.findOne({
         where: { context, key },
@@ -124,20 +123,6 @@ export class NotificationService {
         );
         promises.push({ promise, channel: "push" });
       }
-
-      if (whatsapp && whatsapp.receipients && whatsapp.receipients.length > 0) {
-        const promise = this.notificationHandler(
-          "whatsapp",
-          whatsapp.receipients,
-          "whatsapp",
-          replacements,
-          notificationDto,
-          notification_event,
-          userId
-        );
-        promises.push({ promise, channel: "whatsapp" });
-      }
-
       // Process all notification promises
       const results = await Promise.allSettled(promises.map((p) => p.promise));
       // Map each result back to the appropriate channel
