@@ -1,5 +1,4 @@
 import {
-    BadRequestException,
     Inject,
     Injectable,
     forwardRef,
@@ -20,13 +19,12 @@ export interface RawWhatsappGupshupData {
     from?: string;
     templateId?: string; // For template messages
     templateParams?: any[]; // For template parameters
+    gupshupSource?: string; // Gupshup source from request
+    gupshupApiKey?: string; // Gupshup API key from request
 }
 
 @Injectable()
 export class WhatsappViaGupshupAdapter implements NotificationServiceInterface {
-    private readonly gupshupApiKey: string;
-    private readonly gupshupChannelId: string;
-    private readonly gupshupSource: string;
     private readonly gupshupApiUrl: string;
 
     constructor(
@@ -35,14 +33,8 @@ export class WhatsappViaGupshupAdapter implements NotificationServiceInterface {
         private readonly configService: ConfigService
     ) {
         // Initialize Gupshup configuration
-        this.gupshupApiKey = this.configService.get('GUPSHUP_API_KEY');
-        this.gupshupChannelId = this.configService.get('GUPSHUP_CHANNEL_ID');
-        this.gupshupSource = this.configService.get('GUPSHUP_SOURCE');
         this.gupshupApiUrl = this.configService.get('GUPSHUP_API_URL', 'https://api.gupshup.io/wa/api/v1');
         
-        if (!this.gupshupApiKey || !this.gupshupChannelId || !this.gupshupSource) {
-            LoggerUtil.error('Gupshup WhatsApp API credentials not configured properly');
-        }
     }
 
     /**
@@ -72,14 +64,14 @@ export class WhatsappViaGupshupAdapter implements NotificationServiceInterface {
     /**
     * Send WhatsApp message using Gupshup API
     */
-    private async sendViaGupshupProvider({ to, body, from, templateId, templateParams }) {
+    private async sendViaGupshupProvider({ to, from, templateId, templateParams, gupshupSource, gupshupApiKey }) {
         try {
-            if (!this.gupshupApiKey || !this.gupshupChannelId || !this.gupshupSource) {
-                throw new Error('Gupshup WhatsApp API credentials not configured. Please set GUPSHUP_API_KEY, GUPSHUP_CHANNEL_ID, and GUPSHUP_SOURCE environment variables.');
+            if (!gupshupApiKey || !gupshupSource) {
+                throw new Error('Gupshup WhatsApp API credentials not configured. Please provide gupshupApiKey and gupshupSource in the request.');
             }
 
             if (!from) {
-                from = this.gupshupSource;
+                from = gupshupSource;
             }
 
             // Format phone number (remove + if present and ensure proper format)
@@ -101,7 +93,7 @@ export class WhatsappViaGupshupAdapter implements NotificationServiceInterface {
             // Make API call to Gupshup WhatsApp API
             const response = await axios.post(apiUrl, messagePayload, {
                 headers: {
-                    'apikey': this.gupshupApiKey,
+                    'apikey': gupshupApiKey,
                     'Content-Type': 'application/x-www-form-urlencoded'
                 }
             });
@@ -161,6 +153,8 @@ export class WhatsappViaGupshupAdapter implements NotificationServiceInterface {
         templateId: string;
         templateParams: any[];
         from?: string;
+        gupshupSource?: string;
+        gupshupApiKey?: string;
     }) {
         const notificationLogs = this.createRawNotificationLog(
             `Template: ${templateData.templateId}`,
@@ -170,10 +164,11 @@ export class WhatsappViaGupshupAdapter implements NotificationServiceInterface {
         try {
             const result = await this.sendViaGupshupProvider({
                 to: templateData.to,
-                body: '', // Not used for templates
-                from: templateData.from || this.configService.get('WHATSAPP_FROM'),
+                from: templateData.from || templateData.gupshupSource,
                 templateId: templateData.templateId,
                 templateParams: templateData.templateParams,
+                gupshupSource: templateData.gupshupSource,
+                gupshupApiKey: templateData.gupshupApiKey
             });
             
             if (result.status === "success") {
