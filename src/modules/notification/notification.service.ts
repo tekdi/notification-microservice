@@ -632,11 +632,17 @@ export class NotificationService {
           throw new BadRequestException('WhatsApp templateId and templateParams are required for raw sending.');
         }
         
+        if (!whatsapp.gupshupSource || !whatsapp.gupshupApiKey) {
+          throw new BadRequestException('WhatsApp gupshupSource and gupshupApiKey are required for raw sending.');
+        }
+
         const whatsappPromises = whatsapp.to.map(recipient => {
           const singleWhatsappData = {
             to: recipient,
             templateId: whatsapp.templateId,
-            templateParams: whatsapp.templateParams
+            templateParams: whatsapp.templateParams,
+            gupshupSource: whatsapp.gupshupSource,
+            gupshupApiKey: whatsapp.gupshupApiKey
           };
           // Use the dedicated template sending method from the adapter
           return this.whatsappViaGupshup.sendTemplateMessage(singleWhatsappData);

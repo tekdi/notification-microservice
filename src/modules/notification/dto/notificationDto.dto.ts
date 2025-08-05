@@ -142,6 +142,16 @@ export class RawEmailDto {
     @IsNotEmpty()
     @IsArray()
     templateParams: any[];
+
+    @ApiProperty({ description: 'Gupshup Source', example: '919876543210' })
+    @IsNotEmpty()
+    @IsString()
+    gupshupSource: string;
+
+    @ApiProperty({ description: 'Gupshup API Key', example: 'your-api-key' })
+    @IsNotEmpty()
+    @IsString()
+    gupshupApiKey: string;
   }
   
   export class RawNotificationDto {
