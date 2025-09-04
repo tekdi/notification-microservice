@@ -1,4 +1,4 @@
-name: Deployment Notification on the Tekdi Server
+name: Dev Deployment Notification on the Tekdi Server
 on:
   push:
     branches:
