@@ -42,6 +42,12 @@ export class NotificationActionTemplates {
   @Column({ nullable: true })
   link: string;
 
+  @Column({ nullable: true })
+  emailFromName: string;
+
+  @Column({ nullable: true })
+  emailFrom: string;
+
   @Column({ type: 'uuid', nullable: true })
   updatedBy: string;
 
