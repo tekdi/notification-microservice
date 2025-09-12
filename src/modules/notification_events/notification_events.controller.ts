@@ -6,6 +6,7 @@ import { SearchFilterDto } from './dto/searchTemplateType.dto';
 import { Response } from 'express';
 import { CreateEventDto } from './dto/createTemplate.dto';
 import { UpdateEventDto } from './dto/updateEventTemplate.dto';
+import { UpdateNotificationActionDto } from './dto/updateNotificationAction.dto';
 import { AllExceptionsFilter } from 'src/common/filters/exception.filter';
 import { APIID } from 'src/common/utils/api-id.config';
 import { ERROR_MESSAGES, SUCCESS_MESSAGES } from 'src/common/utils/constant.util';
@@ -70,6 +71,30 @@ export class NotificationEventsController {
     return this.notificationeventsService.updateNotificationTemplate(
       id,
       updateEventDto,
+      userId,
+      response
+    );
+  }
+
+  @UseFilters(new AllExceptionsFilter(APIID.TEMPLATE_UPDATE))
+  @Patch("/action/:id")
+  @ApiBody({ type: UpdateNotificationActionDto })
+  @ApiResponse({
+    status: 200,
+    description: "Notification action updated successfully",
+  })
+  @ApiResponse({ status: 400, description: ERROR_MESSAGES.BAD_REQUEST })
+  @ApiResponse({ status: 404, description: ERROR_MESSAGES.TEMPLATE_NOTFOUND })
+  @UsePipes(new ValidationPipe({ transform: true }))
+  updateNotificationAction(
+    @Param("id") id: number,
+    @Body() updateNotificationActionDto: UpdateNotificationActionDto,
+    @Res() response: Response,
+    @GetUserId() userId: string,
+  ) {
+    return this.notificationeventsService.updateNotificationAction(
+      id,
+      updateNotificationActionDto,
       userId,
       response
     );
