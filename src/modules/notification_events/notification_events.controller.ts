@@ -1,4 +1,4 @@
-import { Controller, Delete, Param, Patch, Res, UseFilters, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Controller, Delete, Get, Param, Patch, Res, UseFilters, UsePipes, ValidationPipe } from '@nestjs/common';
 import { NotificationEventsService } from './notification_events.service';
 import { Post, Body } from '@nestjs/common';
 import { ApiBadRequestResponse, ApiBasicAuth, ApiBody, ApiCreatedResponse, ApiInternalServerErrorResponse, ApiOkResponse, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
@@ -111,5 +111,21 @@ export class NotificationEventsController {
     @GetUserId() userId: string,
   ) {
     return this.notificationeventsService.deleteTemplate(id, userId, response)
+  }
+
+  @UseFilters(new AllExceptionsFilter(APIID.ACTION_GET))
+  @Get("/action/:id")
+  @UsePipes(new ValidationPipe({ transform: true }))
+  @ApiResponse({ status: 200, description: "Action details retrieved successfully" })
+  @ApiResponse({ status: 404, description: ERROR_MESSAGES.TEMPLATE_NOTFOUND })
+  @ApiInternalServerErrorResponse({
+    description: ERROR_MESSAGES.INTERNAL_SERVER_ERROR,
+  })
+  getActionDetails(
+    @Param('id') id: number,
+    @Res() response: Response,
+    @GetUserId() userId: string,
+  ) {
+    return this.notificationeventsService.getActionDetails(id, userId, response)
   }
 }

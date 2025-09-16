@@ -470,6 +470,88 @@ export class NotificationEventsService {
       );
   }
 
+  async getActionDetails(
+    actionId: number,
+    userId: string,
+    response: Response
+  ): Promise<Response> {
+    const apiId = APIID.ACTION_GET;
+
+    // Find the action with its related templates
+    const action = await this.notificationTemplatesRepository.findOne({
+      where: { actionId },
+      relations: ['templateconfig'],
+    });
+
+    if (!action) {
+      LoggerUtil.error(
+        ERROR_MESSAGES.TEMPLATE_NOT_EXIST,
+        ERROR_MESSAGES.NOT_FOUND,
+        apiId,
+        userId
+      );
+      throw new NotFoundException(ERROR_MESSAGES.TEMPLATE_ID_NOTFOUND(actionId));
+    }
+
+    // Format the response to include both tables data
+    const { templateconfig, ...actionData } = action;
+    const formattedTemplateConfig = templateconfig.reduce((acc, config) => {
+      const {
+        templateId,
+        type,
+        language,
+        subject,
+        body,
+        createdOn,
+        updatedOn,
+        status,
+        image,
+        link,
+        emailFromName,
+        emailFrom,
+        createdBy,
+        updatedBy,
+      } = config;
+      acc[type] = {
+        templateId,
+        language,
+        subject,
+        body,
+        createdOn,
+        updatedOn,
+        status,
+        image,
+        link,
+        emailFromName,
+        emailFrom,
+        createdBy,
+        updatedBy,
+      };
+      return acc;
+    }, {});
+
+    const responseData = {
+      ...actionData,
+      templates: formattedTemplateConfig,
+    };
+
+    LoggerUtil.log(
+      `Action details retrieved successfully for actionId: ${actionId} by userId: ${userId}`,
+      apiId,
+      userId
+    );
+
+    return response
+      .status(HttpStatus.OK)
+      .json(
+        APIResponse.success(
+          apiId,
+          responseData,
+          'Action details retrieved successfully'
+        )
+      );
+  }
+
   getUserIdFromToken(token: string) {
     const payloadBase64 = token.split('.')[1]; // Get the payload part
     const payloadJson = Buffer.from(payloadBase64, 'base64').toString('utf-8'); // Decode Base64
