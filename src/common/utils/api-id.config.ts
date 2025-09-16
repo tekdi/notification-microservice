@@ -4,6 +4,7 @@ export const APIID = {
     TEMPLATE_GET: "api.template.get",
     TEMPLATE_DELETE: "api.template.delete",
     TEMPLATE_UPDATE: "api.template.update",
+    ACTION_GET: "api.action.get",
     QUEUE_CREATE: "api.queue.create",
     QUEUE_LIST: "api.queue.list",
     QUEUE_GET: "api.queue.get",
