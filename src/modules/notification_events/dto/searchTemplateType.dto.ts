@@ -1,6 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { IsNotEmpty, IsOptional, IsString, ValidateNested, } from "class-validator";
+import { IsNotEmpty, IsOptional, IsString, ValidateNested, IsNumber, Min } from "class-validator";
 
 export class SearchDto {
 
@@ -14,6 +14,12 @@ export class SearchDto {
     @IsString()
     @IsNotEmpty()
     key: string;
+
+    @ApiProperty({ example: 'TITLE' })
+    @IsOptional()
+    @IsString()
+    @IsNotEmpty()
+    title: string;
 }
 
 export class SearchFilterDto {
@@ -21,5 +27,17 @@ export class SearchFilterDto {
     @ValidateNested({ each: true })
     @Type(() => SearchDto)
     @IsNotEmpty()
-    filters: SearchDto
+    filters: SearchDto;
+
+    @ApiProperty({ example: 10, description: 'Number of records to return', required: false })
+    @IsOptional()
+    @IsNumber()
+    @Min(1)
+    limit?: number;
+
+    @ApiProperty({ example: 0, description: 'Number of records to skip', required: false })
+    @IsOptional()
+    @IsNumber()
+    @Min(0)
+    offset?: number;
 }

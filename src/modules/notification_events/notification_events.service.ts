@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Like } from 'typeorm';
 import { NotificationActions } from './entity/notificationActions.entity';
 import { SearchFilterDto } from './dto/searchTemplateType.dto';
 import APIResponse from 'src/common/utils/response';
@@ -226,21 +226,43 @@ export class NotificationEventsService {
     response: Response
   ) {
     const apiId = APIID.TEMPLATE_LIST;
-    const { context } = searchFilterDto.filters;
-    const key = searchFilterDto.filters?.key;
+    const { context, key, title } = searchFilterDto.filters;
+    const { limit, offset } = searchFilterDto;
 
     let whereCondition: any = { context };
     if (key) {
       whereCondition.key = key;
     }
-    const result = await this.notificationTemplatesRepository.find({
+    if (title) {
+      whereCondition.title = Like(`%${title}%`);
+    }
+
+    // Build query options
+    const queryOptions: any = {
       where: whereCondition,
       relations: ['templateconfig'],
+    };
+
+    // Add pagination if provided
+    if (limit !== undefined) {
+      queryOptions.take = limit;
+    }
+    if (offset !== undefined) {
+      queryOptions.skip = offset;
+    }
+
+    // Get total count for pagination metadata
+    const totalCount = await this.notificationTemplatesRepository.count({
+      where: whereCondition,
     });
 
-    if (result.length === 0) {
+    const result = await this.notificationTemplatesRepository.find(queryOptions);
+
+    // Only throw error if no results AND no pagination (meaning no filters matched)
+    if (result.length === 0 && totalCount === 0) {
       throw new NotFoundException(ERROR_MESSAGES.TEMPLATE_NOTFOUND);
     }
+
     const finalResult = result.map((item) => {
       const { templateconfig, ...rest } = item;
       const formattedTemplateConfig = templateconfig.reduce((acc, config) => {
@@ -251,10 +273,22 @@ export class NotificationEventsService {
       }, {});
       return { ...rest, templates: formattedTemplateConfig };
     });
+
+    // Prepare response with pagination metadata
+    const responseData = {
+      data: finalResult,
+      pagination: {
+        totalCount,
+        limit: limit || null,
+        offset: offset || 0,
+        hasMore: limit ? (offset || 0) + limit < totalCount : false
+      }
+    };
+
     LoggerUtil.log(SUCCESS_MESSAGES.GET_TEMPLATE(userId), apiId, userId);
     return response
       .status(HttpStatus.OK)
-      .json(APIResponse.success(apiId, finalResult, 'OK'));
+      .json(APIResponse.success(apiId, responseData, 'OK'));
   }
 
   async deleteTemplate(actionId: number, userId: string, response: Response) {
