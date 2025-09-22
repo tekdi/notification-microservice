@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like } from 'typeorm';
+import { Repository, ILike } from 'typeorm';
 import { NotificationActions } from './entity/notificationActions.entity';
 import { SearchFilterDto } from './dto/searchTemplateType.dto';
 import APIResponse from 'src/common/utils/response';
@@ -234,7 +234,7 @@ export class NotificationEventsService {
       whereCondition.key = key;
     }
     if (title) {
-      whereCondition.title = Like(`%${title}%`);
+      whereCondition.title = ILike(`%${title}%`);
     }
 
     // Build query options
