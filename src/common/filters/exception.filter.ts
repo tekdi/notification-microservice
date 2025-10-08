@@ -24,21 +24,35 @@ export class AllExceptionsFilter implements ExceptionFilter {
         const ctx = host.switchToHttp();
         const response = ctx.getResponse<Response>();
         const request = ctx.getRequest<Request>();
-        const authHeader = request.headers.
-            authorization;
+        // const authHeader = request.headers.
+        //     authorization;
 
-        if (!authHeader?.startsWith('Bearer ')) {
-            throw new UnauthorizedException("Invalid or missing token");
+        // if (!authHeader?.startsWith('Bearer ')) {
+        //     throw new UnauthorizedException("Invalid or missing token");
+        // }
+
+        // const token = authHeader.split(' ')[1]; // Extract JWT token
+        // const decoded: any = jwtDecode(token); // Decode token
+
+        // if (!decoded?.sub) {
+        //     throw new UnauthorizedException("Token missing user identifier (sub)");
+        // }
+         // Only extract userId if authorization header exists
+    let userId = 'unknown';
+    const authHeader = request.headers.authorization;
+    
+    if (authHeader?.startsWith('Bearer ')) {
+        try {
+            const token = authHeader.split(' ')[1];
+            const decoded: any = jwtDecode(token);
+            userId = decoded?.sub || 'unknown';
+        } catch (error) {
+            // If token is invalid, just use 'unknown' for logging
+            userId = 'unknown';
         }
+    }
 
-        const token = authHeader.split(' ')[1]; // Extract JWT token
-        const decoded: any = jwtDecode(token); // Decode token
-
-        if (!decoded?.sub) {
-            throw new UnauthorizedException("Token missing user identifier (sub)");
-        }
-
-        const userId = decoded.sub;
+        // const userId = decoded.sub;
 
         const status =
             exception instanceof HttpException ? exception.getStatus() : 500;
