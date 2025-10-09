@@ -15,7 +15,6 @@ import { SMS_PROVIDER } from "src/common/utils/constant.util";
 import axios from "axios";
 import { createReplacementsForMsg91, isValidMobileNumber } from "./smsAdapter.util";
 
-
 export interface RawSmsData {
     to: string;
     body: string;
@@ -124,6 +123,9 @@ export class SmsAdapter implements NotificationServiceInterface {
     }
 
     async send(notificationData) {
+        LoggerUtil.log(`SMS Send called with provider: ${this.smsProvider}`);
+        LoggerUtil.log(`Original notification data: ${JSON.stringify(notificationData, null, 2)}`);
+        
         const notificationLogs = this.createNotificationLog(
             notificationData,
             notificationData.subject,
@@ -140,8 +142,22 @@ export class SmsAdapter implements NotificationServiceInterface {
             } else if (this.smsProvider === SMS_PROVIDER.AWS_SNS) {
                 response = await this.sendViaAwsSns(notificationData);
             } else if (this.smsProvider === SMS_PROVIDER.MSG_91) {
-                createReplacementsForMsg91(notificationData.replacements);
-                response = await this.sendViaMsg91(notificationData);
+                LoggerUtil.log(`MSG91 - Before replacements processing: ${JSON.stringify(notificationData.replacements, null, 2)}`);
+                
+                // FIX: Don't modify the original replacements object, create a copy
+                const processedReplacements = notificationData.replacements ? { ...notificationData.replacements } : {};
+                createReplacementsForMsg91(processedReplacements);
+                
+                LoggerUtil.log(`MSG91 - After replacements processing: ${JSON.stringify(processedReplacements, null, 2)}`);
+                
+                // Create a new notification data object with processed replacements
+                const msg91NotificationData = {
+                    ...notificationData,
+                    replacements: processedReplacements
+                };
+                
+                LoggerUtil.log(`MSG91 - Final notification data: ${JSON.stringify(msg91NotificationData, null, 2)}`);
+                response = await this.sendViaMsg91(msg91NotificationData);
             }
             LoggerUtil.log(SUCCESS_MESSAGES.SMS_NOTIFICATION_SEND_SUCCESSFULLY);
             notificationLogs.status = true;
@@ -149,6 +165,7 @@ export class SmsAdapter implements NotificationServiceInterface {
             return response;
         } catch (error) {
             LoggerUtil.error(ERROR_MESSAGES.SMS_NOTIFICATION_FAILED, error);
+            LoggerUtil.error(`Full error details: ${JSON.stringify(error, null, 2)}`);
             notificationLogs.status = false;
             notificationLogs.error = error.toString();
             await this.notificationServices.saveNotificationLogs(notificationLogs);
@@ -209,11 +226,15 @@ export class SmsAdapter implements NotificationServiceInterface {
             } else if (this.smsProvider === SMS_PROVIDER.AWS_SNS) {
                 response = await this.sendViaAwsSns(notificationData);
             } else if (this.smsProvider === SMS_PROVIDER.MSG_91) {
+                // For raw SMS with MSG91, we still need to use template-based approach
+                // but we can use a generic template or send via their flow SMS API
+                // Note: For true raw SMS, you might need to use MSG91's flow SMS API instead of template API
                 const axiosResponse = await axios.post(this.msg91url, {
                     template_id: this.configService.get('MSG91_DEFAULT_TEMPLATE_ID'),
                     recipients: [{
                         mobiles: `91${smsData.to}`,
-                        body: smsData.body,
+                        // For raw SMS, you might need to configure a generic template with {MESSAGE} variable
+                        MESSAGE: smsData.body,
                     }],
                 }, {
                     headers: {
@@ -296,22 +317,74 @@ export class SmsAdapter implements NotificationServiceInterface {
 
 
     private async sendViaMsg91(notificationData) {
-        const response = await axios.post(this.msg91url, {
-            template_id: this.configService.get('MSG91_DEFAULT_TEMPLATE_ID'),
-            recipients: [
-                {
-                    mobiles: `91${notificationData.recipient}`,
-                    ...notificationData.replacements
-                }
-            ]
-        }, {
-            headers: {
-                "Content-Type": "application/json",
-                accept: "application/json",
-                authkey: this.authKey,
-            },
-        });
-        LoggerUtil.log(SUCCESS_MESSAGES.SMS_NOTIFICATION_SEND_SUCCESSFULLY);
-        return response;
+        console.log(notificationData, "msg91");
+        
+        // Validate required configuration
+        if (!this.authKey) {
+            throw new Error('MSG91_AUTH_KEY is not configured');
+        }
+        if (!this.msg91url) {
+            throw new Error('MSG91_URL is not configured');
+        }
+        const templateId = this.configService.get('MSG91_DEFAULT_TEMPLATE_ID');
+        if (!templateId) {
+            throw new Error('MSG91_DEFAULT_TEMPLATE_ID is not configured');
+        }
+        
+        LoggerUtil.log(`MSG91 Configuration - URL: ${this.msg91url}`);
+        LoggerUtil.log(`MSG91 Configuration - Template ID: ${templateId}`);
+        LoggerUtil.log(`MSG91 Configuration - Auth Key: ${this.authKey ? this.authKey.substring(0, 8) + '...' : 'NOT SET'}`);
+        
+        // For MSG91, map our variables to template variables
+        // Template uses ##var1## for OTP, so we need to send var1
+        const templateVariables: any = {};
+        
+        if (notificationData.replacements) {
+            // Map OTP to var1 (as per your template: ##var1##)
+            if (notificationData.replacements.OTP) {
+                templateVariables.var = notificationData.replacements.OTP;
+            }
+            // If you need more variables in future, add them here:
+            // templateVariables.var2 = notificationData.replacements.otpExpiry;
+        }
+        
+        LoggerUtil.log(`MSG91 Template Variables: ${JSON.stringify(templateVariables, null, 2)}`);
+        
+        const recipients = [{
+            mobiles: `91${notificationData.recipient}`,
+            ...templateVariables
+        }];
+        
+        const requestData = {
+            template_id: templateId,
+            recipients: recipients
+        };
+        LoggerUtil.log('MSG91 Request Data: ' + JSON.stringify(requestData, null, 2));
+        
+        try {
+            const response = await axios.post(this.msg91url, requestData, {
+                headers: {
+                    "Content-Type": "application/json",
+                    accept: "application/json",
+                    authkey: this.authKey,
+                },
+                timeout: 30000 // 30 second timeout
+            });
+            
+            LoggerUtil.log(SUCCESS_MESSAGES.SMS_NOTIFICATION_SEND_SUCCESSFULLY);
+            LoggerUtil.log('MSG91 Response: ' + JSON.stringify(response.data, null, 2));
+            return response;
+        } catch (error) {
+            console.error('MSG91 API Error:', error);
+            LoggerUtil.error('MSG91 API Error Details:', error);
+            
+            if (error.response) {
+                console.error('MSG91 Error Response Status:', error.response.status);
+                console.error('MSG91 Error Response Data:', JSON.stringify(error.response.data, null, 2));
+                LoggerUtil.error(`MSG91 API Error Response: Status ${error.response.status}, Data: ${JSON.stringify(error.response.data, null, 2)}`);
+            }
+            
+            throw error;
+        }
     }
 }
