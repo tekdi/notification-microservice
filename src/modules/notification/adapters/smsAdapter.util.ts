@@ -13,7 +13,15 @@ function removeCurlyBraces(str: string): string {
 export function createReplacementsForMsg91(replacementObj) {
     // Create replacements compatible with Msg91
     if (!replacementObj) return;
+    
     Object.keys(replacementObj).forEach((key) => {
-        delete Object.assign(replacementObj, { [removeCurlyBraces(key)]: replacementObj[key] })[key];
-    })
+        const keyWithoutBraces = removeCurlyBraces(key);
+        
+        // Only process if the key actually had curly braces
+        if (keyWithoutBraces && keyWithoutBraces !== key) {
+            delete Object.assign(replacementObj, { [keyWithoutBraces]: replacementObj[key] })[key];
+        }
+    });
+    
+    console.log('MSG91 Util - Output replacements:', JSON.stringify(replacementObj, null, 2));
 }
