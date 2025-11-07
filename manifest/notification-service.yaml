@@ -23,7 +23,14 @@ spec:
             name: notification-service-config
         ports:
         - containerPort: 4000
-        resources: {}
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "512Mi"
+          limits:
+            cpu: "700m"
+            memory: "1Gi"
+
 ---
 apiVersion: v1
 kind: Service
