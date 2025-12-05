@@ -64,10 +64,11 @@ export class NotificationService {
       email: { data: [], errors: [] },
       sms: { data: [], errors: [] },
       push: { data: [], errors: [] },
+      inApp: { data: [], errors: [] },
     };
 
     try {
-      const { email, push, sms, context, replacements, key } = notificationDto;
+      const { email, push, sms, inApp, context, replacements, key } = notificationDto;
       // Check if notification template exists
       const notification_event = await this.notificationActions.findOne({
         where: { context, key },
@@ -122,6 +123,18 @@ export class NotificationService {
           userId
         );
         promises.push({ promise, channel: "push" });
+      }
+      if (inApp && inApp.receipients && inApp.receipients.length > 0) {
+        const promise = this.notificationHandler(
+          "inApp",
+          inApp.receipients,
+          "inApp",
+          replacements,
+          notificationDto,
+          notification_event,
+          userId
+        );
+        promises.push({ promise, channel: "inApp" });
       }
       // Process all notification promises
       const results = await Promise.allSettled(promises.map((p) => p.promise));
