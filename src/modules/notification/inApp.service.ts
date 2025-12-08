@@ -63,7 +63,7 @@ export class InAppService {
       return this.renderTemplate(template, replacements, dto.link);
     }
     this.ensureRawContent(dto);
-    return { title: dto.title!, message: dto.message, link: dto.link };
+    return { title: dto.title, message: dto.message, link: dto.link };
   }
 
   private async findPublishedAction(
@@ -108,7 +108,9 @@ export class InAppService {
     return { title, message, link };
   }
 
-  private ensureRawContent(dto: CreateInAppNotificationDto) {
+  private ensureRawContent(
+    dto: CreateInAppNotificationDto,
+  ): asserts dto is CreateInAppNotificationDto & { title: string; message: string } {
     if (!dto.title || !dto.message) {
       throw new BadRequestException('Either key (with replacements) or raw title and message are required');
     }
@@ -116,13 +118,11 @@ export class InAppService {
 
   private replacePlaceholders(template: string, replacements: Record<string, string>) {
     return template
-      .split(/({\w+})/g)   // split but keep tokens
-      .map(token => {
+      .split(/({\w+})/g) // split but keep tokens
+      .map((token) => {
         if (replacements[token]) return replacements[token];
-  
-        const stripped = token.replace(/[{}]/g, "");
+        const stripped = token.replace(/[{}]/g, ''); // compatible with ES2015 target
         if (replacements[stripped]) return replacements[stripped];
-  
         return token;
       })
       .join("");

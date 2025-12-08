@@ -112,7 +112,7 @@ export class NotificationService {
         promises.push({ promise, channel: "sms" });
       }
 
-      if (push && push.receipients && push.receipients.length > 0) {
+      if (push?.receipients?.length) {
         const promise = this.notificationHandler(
           "push",
           push.receipients,
@@ -124,7 +124,7 @@ export class NotificationService {
         );
         promises.push({ promise, channel: "push" });
       }
-      if (inApp && inApp.receipients && inApp.receipients.length > 0) {
+      if (inApp?.receipients?.length) {
         const promise = this.notificationHandler(
           "inApp",
           inApp.receipients,
