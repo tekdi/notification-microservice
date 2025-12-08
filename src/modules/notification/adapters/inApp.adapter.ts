@@ -15,7 +15,7 @@ export class InAppAdapter implements NotificationServiceInterface {
         key: n.key,                        // forwarded from notificationDto
         replacements: n.replacements,      // forwarded from notificationDto
         link: n.link,
-        metadata: n.replacements,          // keep same metadata behavior if provided
+        metadata: n.metadata,
         tenant_code: n.tenant_code,
         org_code: n.org_code,
       } as any);

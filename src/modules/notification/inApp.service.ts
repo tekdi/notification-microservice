@@ -22,46 +22,8 @@ export class InAppService {
   ) {}
 
   async create(dto: CreateInAppNotificationDto) {
-    let computedTitle = dto.title;
-    let computedMessage = dto.message;
-    let computedLink = dto.link;
-    // templateId support removed; rely on key-based or raw title/message
-
-    // Choose replacements from request
-    const incomingReplacements: Record<string, string> = (dto as any).replacements || {};
-
-    if (dto.key) {
-      // Resolve via action by key (and optional context), then fetch inApp template (published)
-      let action: NotificationActions | null = null;
-      if (dto.context) {
-        action = await this.actionsRepo.findOne({ where: { context: dto.context, key: dto.key, status: 'published' } });
-      } else {
-        const actions = await this.actionsRepo.find({ where: { key: dto.key, status: 'published' } });
-        if (actions.length === 0) {
-          throw new BadRequestException('Notification action not found or not published for given key');
-        }
-        if (actions.length > 1) {
-          throw new BadRequestException('Multiple actions found for key. Please provide context.');
-        }
-        action = actions[0];
-      }
-      if (!action) {
-        throw new BadRequestException('Notification action not found');
-      }
-
-      const template = await this.templateRepo.findOne({
-        where: { actionId: action.actionId, type: 'inApp', status: 'published' },
-      });
-      if (!template) {
-        throw new BadRequestException('In-app template not found or not published for resolved action');
-      }
-      const replacements = incomingReplacements;
-      computedTitle = this.replacePlaceholders(template.subject || '', replacements);
-      computedMessage = this.replacePlaceholders(template.body || '', replacements);
-      computedLink = template.link ? this.replacePlaceholders(template.link, replacements) : dto.link;
-    } else if (!dto.title || !dto.message) {
-      throw new BadRequestException('Either key (with replacements) or raw title and message are required');
-    }
+    const replacements = (dto as any).replacements || {};
+    const { title, message, link } = await this.resolveContent(dto, replacements);
 
     const entity = this.inappRepo.create({
       userId: dto.userId,
@@ -69,10 +31,9 @@ export class InAppService {
       actionKey: dto.key,
       tenant_code: dto.tenant_code,
       org_code: dto.org_code,
-      title: computedTitle,
-      // Persist resolved message at create time
-      message: computedMessage || null,
-      link: computedLink,
+      title,
+      message: message || null,
+      link,
       metadata: dto.metadata,
       expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : null,
       isRead: false,
@@ -83,8 +44,8 @@ export class InAppService {
     const log = new NotificationLog();
     log.context = 'inApp';
     log.action = 'create';
-    log.subject = computedTitle;
-    log.body = (computedMessage || '').slice(0, 255);
+    log.subject = title;
+    log.body = (message || '').slice(0, 255);
     log.type = 'inApp';
     log.recipient = dto.userId;
     await this.notificationService.saveNotificationLogs(log);
@@ -92,18 +53,80 @@ export class InAppService {
     return saved;
   }
 
-  private replacePlaceholders(template: string, replacements: Record<string, string>) {
-    return template.replace(/{(\w+)}/g, (_full, key: string) => {
-      const withBraces = `{${key}}`;
-      if (Object.prototype.hasOwnProperty.call(replacements, withBraces)) {
-        return replacements[withBraces];
-      }
-      if (Object.prototype.hasOwnProperty.call(replacements, key)) {
-        return replacements[key];
-      }
-      return _full;
-    });
+  private async resolveContent(
+    dto: CreateInAppNotificationDto,
+    replacements: Record<string, string>,
+  ): Promise<{ title: string; message: string | undefined; link?: string }> {
+    if (dto.key) {
+      const action = await this.findPublishedAction(dto.context, dto.key);
+      const template = await this.findPublishedTemplateForAction(action.actionId);
+      return this.renderTemplate(template, replacements, dto.link);
+    }
+    this.ensureRawContent(dto);
+    return { title: dto.title!, message: dto.message, link: dto.link };
   }
+
+  private async findPublishedAction(
+    context: string | undefined,
+    key: string,
+  ): Promise<NotificationActionTemplates['template']> {
+    if (context) {
+      const action = await this.actionsRepo.findOne({ where: { context, key, status: 'published' } });
+      if (!action) {
+        throw new BadRequestException('Notification action not found or not published for given context/key');
+      }
+      return action;
+    }
+    const actions = await this.actionsRepo.find({ where: { key, status: 'published' } });
+    if (actions.length === 0) {
+      throw new BadRequestException('Notification action not found or not published for given key');
+    }
+    if (actions.length > 1) {
+      throw new BadRequestException('Multiple actions found for key. Please provide context.');
+    }
+    return actions[0];
+  }
+
+  private async findPublishedTemplateForAction(actionId: number): Promise<NotificationActionTemplates> {
+    const template = await this.templateRepo.findOne({
+      where: { actionId, type: 'inApp', status: 'published' },
+    });
+    if (!template) {
+      throw new BadRequestException('In-app template not found or not published for resolved action');
+    }
+    return template;
+  }
+
+  private renderTemplate(
+    template: NotificationActionTemplates,
+    replacements: Record<string, string>,
+    fallbackLink?: string,
+  ): { title: string; message: string; link?: string } {
+    const title = this.replacePlaceholders(template.subject || '', replacements);
+    const message = this.replacePlaceholders(template.body || '', replacements);
+    const link = template.link ? this.replacePlaceholders(template.link, replacements) : fallbackLink;
+    return { title, message, link };
+  }
+
+  private ensureRawContent(dto: CreateInAppNotificationDto) {
+    if (!dto.title || !dto.message) {
+      throw new BadRequestException('Either key (with replacements) or raw title and message are required');
+    }
+  }
+
+  private replacePlaceholders(template: string, replacements: Record<string, string>) {
+    return template
+      .split(/({\w+})/g)   // split but keep tokens
+      .map(token => {
+        if (replacements[token]) return replacements[token];
+  
+        const stripped = token.replace(/[{}]/g, "");
+        if (replacements[stripped]) return replacements[stripped];
+  
+        return token;
+      })
+      .join("");
+  }  
 
   async list(q: ListInAppNotificationsQueryDto) {
     const qb = this.inappRepo.createQueryBuilder('n')
@@ -123,7 +146,10 @@ export class InAppService {
     }
 
     const limit = q.limit || 20;
-    const offset = (q.offset !== undefined && q.offset !== null) ? q.offset : (((q.page || 1) - 1) * limit);
+    // If offset is explicitly used (including >0), honor it.
+    // If offset is 0 BUT page > 1, treat it as "offset not provided" and derive from page.
+    const useOffsetDirectly = !(q.offset === 0 && q.page && q.page > 1);
+    const offset = useOffsetDirectly ? (q.offset ?? 0) : (((q.page || 1) - 1) * limit);
     const [rows, count] = await qb.skip(offset).take(limit).getManyAndCount();
 
     // Return stored title/message/link directly; do not re-render
