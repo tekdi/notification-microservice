@@ -34,9 +34,6 @@ export class InAppNotification {
   @Column({ name: 'action_key', type: 'varchar', length: 255, nullable: true })
   actionKey?: string;
 
-  @Column({ name: 'action_id', type: 'int', nullable: true })
-  actionId?: number;
-
   @Column({ type: 'varchar', length: 255 })
   title: string;
 
@@ -48,9 +45,6 @@ export class InAppNotification {
 
   @Column({ type: 'jsonb', nullable: true })
   metadata?: Record<string, any>;
-
-  @Column({ name: 'template_params', type: 'jsonb', nullable: true })
-  templateParams?: Record<string, string>;
 
   @Column({ name: 'is_read', type: 'boolean', default: false })
   isRead: boolean;
@@ -64,8 +58,7 @@ export class InAppNotification {
   @Column({ name: 'expires_at', type: 'timestamptz', nullable: true })
   expiresAt?: Date;
 
-  @Column({ type: 'varchar', length: 100, nullable: true })
-  source?: string;
+  // removed: source, template_params, action_id (not needed)
 }
 
 

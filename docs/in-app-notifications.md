@@ -158,8 +158,6 @@ Response:
         "message": "Your review task is completed.",
         "link": "https://app.example.com/tasks/T-9001",
         "metadata": { "taskId": "T-9001" },
-        "templateId": "0d3b4b24-8a00-4f1d-9a1c-2f6f1c5f2b11",
-        "replacements": {"{taskId}":"T-9001"},
         "isRead": false,
         "createdAt": "2025-12-05T10:30:00.000Z",
         "readAt": null,

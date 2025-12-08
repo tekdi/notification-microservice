@@ -63,7 +63,6 @@ export class InAppService {
         throw new BadRequestException('Notification action not found');
       }
 
-      resolvedActionId = action.actionId;
       const template = await this.templateRepo.findOne({
         where: { actionId: action.actionId, type: 'inApp', status: 'published' },
       });
@@ -80,10 +79,8 @@ export class InAppService {
     const entity = this.inappRepo.create({
       userId: dto.userId,
       templateId: resolvedTemplateId,
-      templateParams: incomingReplacements,
       context: dto.context,
       actionKey: dto.key,
-      actionId: resolvedActionId,
       tenant_code: dto.tenant_code,
       org_code: dto.org_code,
       title: computedTitle,
@@ -92,7 +89,6 @@ export class InAppService {
       link: computedLink,
       metadata: dto.metadata,
       expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : null,
-      source: dto.source,
       isRead: false,
     });
 

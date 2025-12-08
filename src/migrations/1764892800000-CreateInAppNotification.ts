@@ -11,19 +11,17 @@ export class CreateInAppNotification1764892800000 implements MigrationInterface 
                 template_id uuid,
                 context varchar(255),
                 action_key varchar(255),
-                action_id integer,
                 tenant_code varchar(255),
                 org_code varchar(255),
                 title varchar(255) NOT NULL,
                 message text,
                 link varchar(500),
                 metadata jsonb,
-                template_params jsonb,
                 is_read boolean NOT NULL DEFAULT false,
                 created_at timestamptz NOT NULL DEFAULT now(),
                 read_at timestamptz,
                 expires_at timestamptz,
-                source varchar(100)
+                -- no source, template_params, action_id
             );
         `);
 
