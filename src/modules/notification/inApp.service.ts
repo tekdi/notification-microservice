@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Inject, forwardRef } from '@nestjs/common';
+import { BadRequestException, Injectable, Inject, forwardRef, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { InAppNotification } from './entity/inAppNotification.entity';
@@ -31,13 +31,13 @@ export class InAppService {
     // Choose replacements from request (prefer "replacements", fallback to "templateParams")
     const incomingReplacements: Record<string, string> = (dto as any).replacements || dto.templateParams || {};
 
-    // If templateId is provided, render from template (type should be 'inApp')
+    // If templateId is provided, render from template (type should be 'inApp' and published)
     if (dto.templateId) {
       const template = await this.templateRepo.findOne({
-        where: { templateId: dto.templateId, type: 'inApp' },
+        where: { templateId: dto.templateId, type: 'inApp', status: 'published' },
       });
       if (!template) {
-        throw new BadRequestException('In-app template not found for given templateId');
+        throw new BadRequestException('In-app template not found or not published for given templateId');
       }
       const replacements = incomingReplacements;
       computedTitle = this.replacePlaceholders(template.subject || '', replacements);
@@ -45,30 +45,30 @@ export class InAppService {
       computedLink = template.link ? this.replacePlaceholders(template.link, replacements) : dto.link;
       resolvedTemplateId = template.templateId;
     } else if (dto.key) {
-      // Resolve via action by key (and optional context), then fetch inApp template
+      // Resolve via action by key (and optional context), then fetch inApp template (published)
       let action: NotificationActions | null = null;
       if (dto.context) {
-        action = await this.actionsRepo.findOne({ where: { context: dto.context, key: dto.key } });
+        action = await this.actionsRepo.findOne({ where: { context: dto.context, key: dto.key, status: 'published' } });
       } else {
-        const actions = await this.actionsRepo.find({ where: { key: dto.key } });
+        const actions = await this.actionsRepo.find({ where: { key: dto.key, status: 'published' } });
         if (actions.length === 0) {
-          throw new BadRequestException('Notification action not found for given key');
+          throw new BadRequestException('Notification action not found or not published for given key');
         }
         if (actions.length > 1) {
           throw new BadRequestException('Multiple actions found for key. Please provide context.');
         }
         action = actions[0];
       }
-        if (!action) {
+      if (!action) {
         throw new BadRequestException('Notification action not found');
       }
 
       resolvedActionId = action.actionId;
       const template = await this.templateRepo.findOne({
-        where: { actionId: action.actionId, type: 'inApp' },
+        where: { actionId: action.actionId, type: 'inApp', status: 'published' },
       });
       if (!template) {
-        throw new BadRequestException('In-app template not found for resolved action');
+        throw new BadRequestException('In-app template not found or not published for resolved action');
       }
       const replacements = incomingReplacements;
       computedTitle = this.replacePlaceholders(template.subject || '', replacements);
@@ -87,8 +87,8 @@ export class InAppService {
       tenant_code: dto.tenant_code,
       org_code: dto.org_code,
       title: computedTitle,
-      // Persist empty body; render dynamically on list/read using template + params
-      message: null,
+      // Persist resolved message at create time
+      message: computedMessage || null,
       link: computedLink,
       metadata: dto.metadata,
       expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : null,
@@ -142,40 +142,14 @@ export class InAppService {
       return { count };
     }
 
-    const page = q.page || 1;
     const limit = q.limit || 20;
-    const [rows, count] = await qb.skip((page - 1) * limit).take(limit).getManyAndCount();
+    const offset = (q.offset !== undefined && q.offset !== null) ? q.offset : (((q.page || 1) - 1) * limit);
+    const [rows, count] = await qb.skip(offset).take(limit).getManyAndCount();
 
-    // Compute render-on-read when needed
-    const data = await Promise.all(rows.map(async (n) => {
-      let title = n.title;
-      let message = n.message;
-      let link = n.link;
-      const replacements = (n.templateParams || {}) as Record<string, string>;
+    // Return stored title/message/link directly; do not re-render
+    const data = rows;
 
-      if ((!title || !message) && (n.templateId || n.actionId)) {
-        let template: NotificationActionTemplates | null = null;
-        if (n.templateId) {
-          template = await this.templateRepo.findOne({ where: { templateId: n.templateId, type: 'inApp' } });
-        } else if (n.actionId) {
-          template = await this.templateRepo.findOne({ where: { actionId: n.actionId, type: 'inApp' } });
-        }
-        if (template) {
-          title = this.replacePlaceholders(template.subject || '', replacements);
-          message = this.replacePlaceholders(template.body || '', replacements);
-          link = template.link ? this.replacePlaceholders(template.link, replacements) : n.link;
-        }
-      }
-
-      return {
-        ...n,
-        title,
-        message,
-        link,
-      };
-    }));
-
-    return { data, count, page, limit };
+    return { data, count, offset, limit };
   }
 
   async markRead(dto: MarkInAppReadDto) {
@@ -184,10 +158,13 @@ export class InAppService {
     }
 
     if (dto.notificationId) {
-      await this.inappRepo.update(
+      const result = await this.inappRepo.update(
         { id: dto.notificationId, isRead: false },
         { isRead: true, readAt: () => 'NOW()' },
       );
+      if (!result.affected || result.affected === 0) {
+        throw new NotFoundException('Notification not found or already read');
+      }
 
       // write log for single mark-read
       const log = new NotificationLog();
@@ -199,7 +176,7 @@ export class InAppService {
       log.recipient = dto.userId || ''; // may be undefined for single; keep empty if not provided
       await this.notificationService.saveNotificationLogs(log);
 
-      return { updated: 1 };
+      return { updated: result.affected, message: 'Notification marked as read' };
     }
 
     if (dto.markAll) {
@@ -222,7 +199,7 @@ export class InAppService {
       bulkLog.recipient = dto.userId;
       await this.notificationService.saveNotificationLogs(bulkLog);
 
-      return { updated: res.affected || 0 };
+      return { updated: res.affected || 0, message: 'All notifications marked as read for user' };
     }
 
     throw new BadRequestException('Invalid payload: provide notificationId OR { userId, markAll: true }.');

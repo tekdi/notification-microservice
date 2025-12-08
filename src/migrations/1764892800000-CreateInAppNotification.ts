@@ -4,10 +4,9 @@ export class CreateInAppNotification1764892800000 implements MigrationInterface 
     name = 'CreateInAppNotification1764892800000'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp";`);
         await queryRunner.query(`
             CREATE TABLE IF NOT EXISTS public."notificationInApp" (
-                id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+                id uuid PRIMARY KEY,
                 user_id uuid NOT NULL,
                 template_id uuid,
                 context varchar(255),
@@ -16,7 +15,7 @@ export class CreateInAppNotification1764892800000 implements MigrationInterface 
                 tenant_code varchar(255),
                 org_code varchar(255),
                 title varchar(255) NOT NULL,
-                message text NOT NULL,
+                message text,
                 link varchar(500),
                 metadata jsonb,
                 template_params jsonb,

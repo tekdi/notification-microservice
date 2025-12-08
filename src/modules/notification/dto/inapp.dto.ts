@@ -93,12 +93,21 @@ export class ListInAppNotificationsQueryDto {
   @IsEnum(InAppStatus)
   status?: InAppStatus = InAppStatus.all;
 
+  // Backward-compat page (1-based). Prefer offset if provided.
   @ApiPropertyOptional({ default: 1 })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
   page?: number = 1;
+
+  // Offset-based pagination (0-based). If provided, overrides page.
+  @ApiPropertyOptional({ default: 0, description: 'Offset (0-based). If provided, page is ignored.' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  offset?: number = 0;
 
   @ApiPropertyOptional({ default: 20, description: 'If 0 → return count only' })
   @IsOptional()

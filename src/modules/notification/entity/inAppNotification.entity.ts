@@ -1,4 +1,5 @@
-import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
+import { BeforeInsert, Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
+import { v4 as uuidv4 } from 'uuid';
 
 @Entity({ name: 'notificationInApp' })
 @Index('idx_inapp_user_created', ['userId', 'createdAt'])
@@ -7,6 +8,13 @@ import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn } from 
 export class InAppNotification {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+  
+  @BeforeInsert()
+  setId() {
+    if (!this.id) {
+      this.id = uuidv4();
+    }
+  }
 
   @Column({ name: 'user_id', type: 'uuid' })
   userId: string;

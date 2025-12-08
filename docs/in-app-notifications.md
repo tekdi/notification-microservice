@@ -135,11 +135,11 @@ Behavior:
 
 ## List
 
-GET `notification/inApp?userId={uuid}&status=unread|read|all&page=1&limit=20`
+GET `notification/inApp?userId={uuid}&status=unread|read|all&offset=0&limit=20`
 
 Examples:
 ```
-GET notification/inApp?userId=c12f...&status=unread&page=1&limit=20
+GET notification/inApp?userId=c12f...&status=unread&offset=0&limit=20
 GET notification/inApp?userId=c12f...&status=read
 GET notification/inApp?userId=c12f...            (defaults to status=all)
 ```
@@ -168,7 +168,7 @@ Response:
       }
     ],
     "count": 1,
-    "page": 1,
+    "offset": 0,
     "limit": 20
   }
 }
@@ -203,6 +203,26 @@ PATCH `notification/inApp/mark-read`
 - Mark all for a user:
 ```json
 { "userId": "c12fa913-6fc1-4e90-bd44-2c75724f2b3c", "markAll": true }
+```
+
+Responses:
+- Success (single):
+```json
+{ "updated": 1, "message": "Notification marked as read" }
+```
+- Not found (single, already read or wrong id):
+```json
+{
+  "id": "api.send.notification",
+  "responseCode": "404",
+  "params": { "status": "failed" },
+  "result": {},
+  "errmsg": "Notification not found or already read"
+}
+```
+- Success (all):
+```json
+{ "updated": 3, "message": "All notifications marked as read for user" }
 ```
 
 ---
