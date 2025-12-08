@@ -92,9 +92,7 @@ export class InAppService {
       isRead: false,
     });
 
-    console.log('dto', dto);
     const saved = await this.inappRepo.save(entity);
-    console.log('saved', saved);
 
     const log = new NotificationLog();
     log.context = 'inApp';
