@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsUUID, IsString, IsOptional, IsEnum, IsInt, Min, IsBoolean, ValidateIf, IsObject } from 'class-validator';
+import { IsUUID, IsString, IsOptional, IsEnum, IsInt, Min, IsBoolean, ValidateIf, IsObject, registerDecorator, ValidationArguments, ValidationOptions } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateInAppNotificationDto {
@@ -64,6 +64,7 @@ export class CreateInAppNotificationDto {
 
   @ApiPropertyOptional()
   @IsOptional()
+  @IsObject()
   metadata?: Record<string, any>;
 
   @ApiPropertyOptional()
@@ -81,6 +82,26 @@ export enum InAppStatus {
   unread = 'unread',
   read = 'read',
   all = 'all',
+}
+
+// Custom validator: ensures at least one of the two fields is provided
+export function IsAtLeastOne(relatedPropertyName: string, validationOptions?: ValidationOptions) {
+  return function (object: Object, propertyName: string) {
+    registerDecorator({
+      name: 'isAtLeastOne',
+      target: (object as any).constructor,
+      propertyName,
+      constraints: [relatedPropertyName],
+      options: validationOptions,
+      validator: {
+        validate(value: any, args: ValidationArguments) {
+          const [related] = args.constraints;
+          const relatedValue = (args.object as any)[related];
+          return value !== undefined && value !== null && value !== '' || relatedValue === true;
+        },
+      },
+    });
+  };
 }
 
 export class ListInAppNotificationsQueryDto {
@@ -121,6 +142,7 @@ export class MarkInAppReadDto {
   @ApiPropertyOptional({ description: 'Mark a single notification' })
   @IsOptional()
   @IsUUID()
+  @IsAtLeastOne('markAll', { message: 'Either notificationId or markAll must be provided' })
   notificationId?: string;
 
   @ApiPropertyOptional({ description: 'Required if markAll=true' })
