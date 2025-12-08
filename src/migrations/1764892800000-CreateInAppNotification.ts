@@ -8,7 +8,6 @@ export class CreateInAppNotification1764892800000 implements MigrationInterface 
             CREATE TABLE IF NOT EXISTS public."notificationInApp" (
                 id uuid PRIMARY KEY,
                 user_id uuid NOT NULL,
-                template_id uuid,
                 context varchar(255),
                 action_key varchar(255),
                 tenant_code varchar(255),

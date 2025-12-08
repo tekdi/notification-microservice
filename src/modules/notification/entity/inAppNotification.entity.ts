@@ -19,9 +19,6 @@ export class InAppNotification {
   @Column({ name: 'user_id', type: 'uuid' })
   userId: string;
 
-  @Column({ name: 'template_id', type: 'uuid', nullable: true })
-  templateId?: string;
-
   @Column({ name: 'tenant_code', type: 'varchar', length: 255, nullable: true })
   tenant_code?: string;
 

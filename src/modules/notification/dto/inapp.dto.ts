@@ -24,28 +24,17 @@ export class CreateInAppNotificationDto {
   @IsObject()
   replacements?: Record<string, string>;
 
-  // Backward compatibility: accept templateParams as alias for replacements
-  @ApiPropertyOptional({
-    description: '[Deprecated] Use "replacements" instead. Will be removed later.',
-  })
-  @IsOptional()
-  @IsObject()
-  templateParams?: Record<string, string>;
-
-  @ApiPropertyOptional({ description: 'Title (required if templateId not provided)' })
-  @ValidateIf((o) => !o.templateId && !o.key)
+  @ApiPropertyOptional({ description: 'Title (required if key not provided)' })
+  @ValidateIf((o) => !o.key)
   @IsString()
-  title: string;
+  title?: string;
 
-  @ApiPropertyOptional({ description: 'Message (required if templateId not provided)' })
-  @ValidateIf((o) => !o.templateId && !o.key)
+  @ApiPropertyOptional({ description: 'Message (required if key not provided)' })
+  @ValidateIf((o) => !o.key)
   @IsString()
-  message: string;
+  message?: string;
 
-  @ApiPropertyOptional({ description: 'Template UUID to render in-app content' })
-  @IsOptional()
-  @IsUUID()
-  templateId?: string;
+  // removed: templateId (not stored; only key-based supported)
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -72,10 +61,7 @@ export class CreateInAppNotificationDto {
   @IsString()
   expiresAt?: string;
 
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  source?: string;
+  // removed: source (column dropped)
 }
 
 export enum InAppStatus {

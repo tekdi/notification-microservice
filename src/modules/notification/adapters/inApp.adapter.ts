@@ -18,7 +18,6 @@ export class InAppAdapter implements NotificationServiceInterface {
         metadata: n.replacements,          // keep same metadata behavior if provided
         tenant_code: n.tenant_code,
         org_code: n.org_code,
-        source: 'inApp-adapter',
       } as any);
       results.push({ recipient: n.recipient, status: 200, id: saved.id });
     }

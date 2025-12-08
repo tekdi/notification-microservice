@@ -31,15 +31,14 @@ Body:
   "metadata": { "taskId": "T-9001" },
   "tenant_code": "TENANT1",
   "org_code": "ORG1",
-  "expiresAt": "2026-01-01T00:00:00.000Z",
-  "source": "opportunity-service"
+  "expiresAt": "2026-01-01T00:00:00.000Z"
 }
 ```
 
 Notes:
 - `title` is required only when neither `templateId` nor `key` is provided.
-- `message` (body) is stored empty and rendered dynamically at read/list time from `NotificationActionTemplates` using stored `templateId`/`actionId` and `replacements`.
-- Optional fields: `link`, `metadata`, `tenant_code`, `org_code`, `expiresAt`, `source`.
+- `message` (body) is stored at create time from template and replacements (if provided). List returns stored message directly.
+- Optional fields: `link`, `metadata`, `tenant_code`, `org_code`, `expiresAt`.
 
 ---
 
@@ -56,8 +55,7 @@ Body:
     "userName": "Sachin",
     "{taskId}": "T-9001"
   },
-  "metadata": { "priority": "high" },
-  "source": "opportunity-service"
+  "metadata": { "priority": "high" }
 }
 ```
 
@@ -82,15 +80,14 @@ Body:
   "replacements": {
     "userName": "Sachin"
   },
-  "metadata": { "role": "superuser" },
-  "source": "identity-service"
+  "metadata": { "role": "superuser" }
 }
 ```
 
 Rules:
 - We resolve `NotificationActions` by `context` and `key`, then pick the `NotificationActionTemplates` with `type='inApp'`.
 - Placeholders are replaced using `replacements`.
-- We store `templateId`, `replacements`, `context`, `key`, `actionId` in DB for traceability and re-rendering when listing.
+- We store `context`, `key`, and resolved fields; template is used transiently at create time.
 
 ---
 
@@ -130,7 +127,7 @@ curl -X POST http://localhost:4000/notification/inApp \
 ```
 
 Behavior:
-- For each userId in `inApp.receipients`, the service resolves the action/template and creates an in-app record with `templateId`, `replacements`, etc.
+- For each userId in `inApp.receipients`, the service resolves the action/template and creates an in-app record with stored title/message/link and metadata.
 - Response returns `{ inApp: { data: [{recipient, id}, ...] } }`.
 
 ## List
@@ -161,8 +158,7 @@ Response:
         "isRead": false,
         "createdAt": "2025-12-05T10:30:00.000Z",
         "readAt": null,
-        "expiresAt": null,
-        "source": "opportunity-service"
+        "expiresAt": null
       }
     ],
     "count": 1,
@@ -255,7 +251,6 @@ Message formats:
   "tenant_code": "TENANT1",
   "org_code": "ORG1",
   "expiresAt": "2026-01-01T00:00:00.000Z",
-  "source": "opportunity-service",
   "traceId": "d9f7a1a0-6e4f-4a44-a9d0-1234567890ab"
 }
 ```
@@ -272,7 +267,6 @@ Message formats:
     "{taskId}": "T-9001"
   },
   "metadata": { "priority": "high" },
-  "source": "opportunity-service",
   "traceId": "d9f7a1a0-6e4f-4a44-a9d0-1234567890ab"
 }
 ```
@@ -282,7 +276,7 @@ Consumer handling guideline:
 - Route by `channel` (e.g., `email`, `sms`, `push`, `inApp`) under the single `notifications` topic.
 - Prefer resolving by `key` (and optional `context`) to find `NotificationActions`, then fetch `NotificationActionTemplates` with `type='inApp'`. Render subject/body/link using `replacements`.
 - Fallbacks:
-  - If only `templateId` exists, render using that.
+  - If only `templateId` exists, render using that (not stored).
   - Else require raw `title` and `message`.
 - Persist record into `notificationInApp`.
 - Optionally write an entry in `notificationLogs` with `type='inApp'`.

@@ -25,26 +25,12 @@ export class InAppService {
     let computedTitle = dto.title;
     let computedMessage = dto.message;
     let computedLink = dto.link;
-    let resolvedTemplateId: string | undefined = dto.templateId;
-    let resolvedActionId: number | undefined = undefined;
+    // templateId support removed; rely on key-based or raw title/message
 
-    // Choose replacements from request (prefer "replacements", fallback to "templateParams")
-    const incomingReplacements: Record<string, string> = (dto as any).replacements || dto.templateParams || {};
+    // Choose replacements from request
+    const incomingReplacements: Record<string, string> = (dto as any).replacements || {};
 
-    // If templateId is provided, render from template (type should be 'inApp' and published)
-    if (dto.templateId) {
-      const template = await this.templateRepo.findOne({
-        where: { templateId: dto.templateId, type: 'inApp', status: 'published' },
-      });
-      if (!template) {
-        throw new BadRequestException('In-app template not found or not published for given templateId');
-      }
-      const replacements = incomingReplacements;
-      computedTitle = this.replacePlaceholders(template.subject || '', replacements);
-      computedMessage = this.replacePlaceholders(template.body || '', replacements);
-      computedLink = template.link ? this.replacePlaceholders(template.link, replacements) : dto.link;
-      resolvedTemplateId = template.templateId;
-    } else if (dto.key) {
+    if (dto.key) {
       // Resolve via action by key (and optional context), then fetch inApp template (published)
       let action: NotificationActions | null = null;
       if (dto.context) {
@@ -73,12 +59,12 @@ export class InAppService {
       computedTitle = this.replacePlaceholders(template.subject || '', replacements);
       computedMessage = this.replacePlaceholders(template.body || '', replacements);
       computedLink = template.link ? this.replacePlaceholders(template.link, replacements) : dto.link;
-      resolvedTemplateId = template.templateId;
+    } else if (!dto.title || !dto.message) {
+      throw new BadRequestException('Either key (with replacements) or raw title and message are required');
     }
 
     const entity = this.inappRepo.create({
       userId: dto.userId,
-      templateId: resolvedTemplateId,
       context: dto.context,
       actionKey: dto.key,
       tenant_code: dto.tenant_code,

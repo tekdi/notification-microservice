@@ -52,13 +52,11 @@ export class InAppController {
           context: body.context,
           key: body.key,
           replacements: body.replacements,
-          templateId: body.templateId,
           link: body.link,
           metadata: body.metadata,
           tenant_code: body.tenant_code,
           org_code: body.org_code,
           expiresAt: body.expiresAt,
-          source: body.source,
         } as CreateInAppNotificationDto);
         results.push({ recipient: userId, id: saved.id });
       }
