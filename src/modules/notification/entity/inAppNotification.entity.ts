@@ -54,8 +54,6 @@ export class InAppNotification {
 
   @Column({ name: 'expires_at', type: 'timestamptz', nullable: true })
   expiresAt?: Date;
-
-  // removed: source, template_params, action_id (not needed)
 }
 
 

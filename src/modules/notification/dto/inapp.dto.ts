@@ -34,8 +34,6 @@ export class CreateInAppNotificationDto {
   @IsString()
   message?: string;
 
-  // removed: templateId (not stored; only key-based supported)
-
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
