@@ -28,8 +28,8 @@ export class NotificationController {
     @GetUserId() userId: string,
 
   ) {
-    if (!notificationDto.email && !notificationDto.push && !notificationDto.sms) {
-      throw new BadRequestException('At least one of email, push, or sms is required.');
+    if (!notificationDto.email && !notificationDto.push && !notificationDto.sms && !notificationDto.inApp) {
+      throw new BadRequestException('At least one of email, push, sms, or inApp is required.');
     }
     return this.notificationService.sendNotification(
       notificationDto,
