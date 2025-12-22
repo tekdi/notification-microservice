@@ -620,16 +620,28 @@ export class NotificationService {
       }
   
       if (sms && sms.to && sms.to.length > 0) {
-        if (!sms.body) {
-          throw new BadRequestException('SMS body is required');
+        // For MSG91: templateId is required, body is optional
+        // For other providers: body is required
+        const smsProvider = this.configService.get('SMS_PROVIDER', 'AWSSNS');
+        
+        if (smsProvider === 'MSG91') {
+          if (!sms.templateId) {
+            throw new BadRequestException('templateId is required for MSG91 provider');
+          }
+        } else {
+          if (!sms.body) {
+            throw new BadRequestException('SMS body is required');
+          }
         }
         
-        // Fixed: Use sms properties instead of email properties
+        // Pass templateId and replacements for MSG91 variable support
         const smsPromises = sms.to.map(recipient => {
           const singleSmsData = {
             to: recipient,
             from: sms.from || process.env.DEFAULT_SMS_SENDER,
             body: sms.body,
+            templateId: sms.templateId, // Pass templateId for MSG91
+            replacements: sms.replacements || {}, // Pass replacements for MSG91 templates
           };
           return this.smsService.sendRawSmsMessages(singleSmsData);
         });
