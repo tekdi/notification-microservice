@@ -14,13 +14,16 @@ import { NotificationActionTemplates } from '../notification_events/entity/notif
 import { NotificationActions } from '../notification_events/entity/notificationActions.entity';
 import { NotificationLog } from '../notification/entity/notificationLogs.entity';
 import { RabbitmqModule } from '../rabbitmq/rabbitmq.module';
+import { InAppAdapter } from '../notification/adapters/inApp.adapter';
+import { InAppService } from '../notification/inApp.service';
+import { InAppNotification } from '../notification/entity/inAppNotification.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([NotificationQueue, NotificationActionTemplates, NotificationActions, NotificationLog]),
+    TypeOrmModule.forFeature([NotificationQueue, NotificationActionTemplates, NotificationActions, NotificationLog, InAppNotification]),
     RabbitmqModule
   ],
-  providers: [NotificationQueueService, NotificationService, NotificationAdapterFactory, EmailAdapter, SmsAdapter, PushAdapter, WhatsappViaGupshupAdapter],
+  providers: [NotificationQueueService, NotificationService, NotificationAdapterFactory, EmailAdapter, SmsAdapter, PushAdapter, WhatsappViaGupshupAdapter, InAppAdapter, InAppService],
   controllers: [NotificationQueueController],
   exports: [NotificationQueueService]
 })

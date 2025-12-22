@@ -31,6 +31,16 @@ export class PushDTO {
     receipients: string[];
 }
 
+export class InAppDTO {
+
+    @ApiProperty({ type: [String], example: ['7f7e6b10-5bdc-4f8b-bf4b-3e4f11a1b2c3'] })
+    @IsArray()
+    @IsString({ each: true })
+    @ArrayMinSize(1)
+    @IsNotEmpty()
+    receipients: string[];
+}
+
 
 export class NotificationDto {
 
@@ -77,6 +87,12 @@ export class NotificationDto {
     @ValidateNested()
     @Type(() => PushDTO)
     push: PushDTO;
+
+    @ApiPropertyOptional({ type: InAppDTO, description: 'In-app notification details' })
+    @ValidateNested()
+    @Type(() => InAppDTO)
+    @IsOptional()
+    inApp?: InAppDTO;
 
     @ApiProperty({ type: SMSDTO, description: 'SMS notification details' })
     @ValidateNested()
