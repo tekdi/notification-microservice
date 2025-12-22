@@ -109,10 +109,10 @@ export class RawEmailDto {
   }
   
   export class RawSmsDto {
-    @ApiProperty({ description: 'Phone number of recipient', example: '+15551234567' })
+    @ApiProperty({ description: 'Phone number of recipient', example: ['+15551234567', '+919876543210'] })
     @IsNotEmpty()
     @IsArray()
-    @IsString()
+    @IsString({ each: true })
     to: string[];
   
     @ApiPropertyOptional({ description: 'SMS sender ID', example: 'COMPANY' })
@@ -120,10 +120,26 @@ export class RawEmailDto {
     @IsString()
     from?: string;
   
-    @ApiProperty({ description: 'SMS message content', example: 'Your verification code is 123456' })
-    @IsNotEmpty()
+    @ApiPropertyOptional({ description: 'SMS message content (not required for MSG91 when using templateId)', example: 'Your verification code is 123456' })
+    @IsOptional()
     @IsString()
-    body: string;
+    body?: string;
+
+    @ApiPropertyOptional({ 
+      description: 'MSG91 Template ID (required for MSG91 provider)', 
+      example: '64c8a5f4d6fc0541398b4567' 
+    })
+    @IsOptional()
+    @IsString()
+    templateId?: string;
+
+    @ApiPropertyOptional({ 
+      description: 'Template variables for MSG91 (optional). For MSG91, you can pass variables like var1, var2 which will be used in the template.', 
+      example: { 'var1': 'john.doe@example.com', 'var2': 'TempPass123' } 
+    })
+    @IsOptional()
+    @IsObject()
+    replacements?: { [key: string]: string };
   }
 
   export class RawWhatsappDto {

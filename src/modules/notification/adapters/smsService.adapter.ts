@@ -17,8 +17,10 @@ import { createReplacementsForMsg91, isValidMobileNumber } from "./smsAdapter.ut
 
 export interface RawSmsData {
     to: string;
-    body: string;
+    body?: string;
     from?: string;
+    templateId?: string;
+    replacements?: { [key: string]: string };
   }
 
 @Injectable()
@@ -123,9 +125,6 @@ export class SmsAdapter implements NotificationServiceInterface {
     }
 
     async send(notificationData) {
-        LoggerUtil.log(`SMS Send called with provider: ${this.smsProvider}`);
-        LoggerUtil.log(`Original notification data: ${JSON.stringify(notificationData, null, 2)}`);
-        
         const notificationLogs = this.createNotificationLog(
             notificationData,
             notificationData.subject,
@@ -142,13 +141,9 @@ export class SmsAdapter implements NotificationServiceInterface {
             } else if (this.smsProvider === SMS_PROVIDER.AWS_SNS) {
                 response = await this.sendViaAwsSns(notificationData);
             } else if (this.smsProvider === SMS_PROVIDER.MSG_91) {
-                LoggerUtil.log(`MSG91 - Before replacements processing: ${JSON.stringify(notificationData.replacements, null, 2)}`);
-                
-                // FIX: Don't modify the original replacements object, create a copy
+                // Don't modify the original replacements object, create a copy
                 const processedReplacements = notificationData.replacements ? { ...notificationData.replacements } : {};
                 createReplacementsForMsg91(processedReplacements);
-                
-                LoggerUtil.log(`MSG91 - After replacements processing: ${JSON.stringify(processedReplacements, null, 2)}`);
                 
                 // Create a new notification data object with processed replacements
                 const msg91NotificationData = {
@@ -156,7 +151,6 @@ export class SmsAdapter implements NotificationServiceInterface {
                     replacements: processedReplacements
                 };
                 
-                LoggerUtil.log(`MSG91 - Final notification data: ${JSON.stringify(msg91NotificationData, null, 2)}`);
                 response = await this.sendViaMsg91(msg91NotificationData);
             }
             LoggerUtil.log(SUCCESS_MESSAGES.SMS_NOTIFICATION_SEND_SUCCESSFULLY);
@@ -165,7 +159,6 @@ export class SmsAdapter implements NotificationServiceInterface {
             return response;
         } catch (error) {
             LoggerUtil.error(ERROR_MESSAGES.SMS_NOTIFICATION_FAILED, error);
-            LoggerUtil.error(`Full error details: ${JSON.stringify(error, null, 2)}`);
             notificationLogs.status = false;
             notificationLogs.error = error.toString();
             await this.notificationServices.saveNotificationLogs(notificationLogs);
@@ -208,7 +201,7 @@ export class SmsAdapter implements NotificationServiceInterface {
     private async sendRawSms(smsData: RawSmsData) {
         const notificationLog = new NotificationLog();
         notificationLog.context = 'raw-sms';
-        notificationLog.body = smsData.body;
+        notificationLog.body = smsData.body || 'Template-based SMS';
         notificationLog.action = 'send-raw-sms';
         notificationLog.type = 'sms';
         notificationLog.recipient = smsData.to;
@@ -216,9 +209,12 @@ export class SmsAdapter implements NotificationServiceInterface {
         try {
             let response;
     
+            // Prepare notification data with replacements if provided
             const notificationData = {
                 recipient: smsData.to,
                 body: smsData.body,
+                replacements: smsData.replacements || {},
+                templateId: smsData.templateId,
             };
     
             if (this.smsProvider === SMS_PROVIDER.TWILIO) {
@@ -226,46 +222,20 @@ export class SmsAdapter implements NotificationServiceInterface {
             } else if (this.smsProvider === SMS_PROVIDER.AWS_SNS) {
                 response = await this.sendViaAwsSns(notificationData);
             } else if (this.smsProvider === SMS_PROVIDER.MSG_91) {
-                // For raw SMS with MSG91, we still need to use template-based approach
-                // but we can use a generic template or send via their flow SMS API
-                // Note: For true raw SMS, you might need to use MSG91's flow SMS API instead of template API
-                const axiosResponse = await axios.post(this.msg91url, {
-                    template_id: this.configService.get('MSG91_DEFAULT_TEMPLATE_ID'),
-                    recipients: [{
-                        mobiles: `91${smsData.to}`,
-                        // For raw SMS, you might need to configure a generic template with {MESSAGE} variable
-                        MESSAGE: smsData.body,
-                    }],
-                }, {
-                    headers: {
-                        "Content-Type": "application/json",
-                        accept: "application/json",
-                        authkey: this.authKey,
-                    },
-                });
-    
-                // Extract only the necessary data to avoid circular references
-                response = {
-                    data: axiosResponse.data,
-                    status: axiosResponse.status,
-                    statusText: axiosResponse.statusText,
-                    // Create a mock structure similar to AWS SNS response for consistency
-                    $metadata: {
-                        httpStatusCode: axiosResponse.status
-                    },
-                    // Extract MessageId from MSG91 response if available
-                    MessageId: axiosResponse.data?.request_id || axiosResponse.data?.message_id || `msg91-${Date.now()}`
-                };
+                if (!smsData.templateId) {
+                    throw new BadRequestException('templateId is required for MSG91 provider');
+                }
+                response = await this.sendViaMsg91(notificationData, smsData.templateId);
             }
     
-            console.log(response, "Shubham");
             notificationLog.status = true;
             await this.notificationServices.saveNotificationLogs(notificationLog);
             return response;
         } catch (error) {
             notificationLog.status = false;
-            // Safe error logging - avoid circular references
-            notificationLog.error = error.message || error.toString();
+            const errorMessage = error.message || error.toString();
+            const errorDetails = error.status ? `Status: ${error.status}, ${errorMessage}` : errorMessage;
+            notificationLog.error = errorDetails;
             await this.notificationServices.saveNotificationLogs(notificationLog);
             throw error;
         }
@@ -279,15 +249,21 @@ export class SmsAdapter implements NotificationServiceInterface {
         
         for (const singleSmsData of smsDataArray) {
           try {
-            // if (!singleSmsData.to || !this.isValidPhoneNumber(singleSmsData.to)) {
-            //   throw new BadRequestException(ERROR_MESSAGES.INVALID_PHONE_NUMBER);
-            // }
-            
-            if (!singleSmsData.body) {
-              throw new BadRequestException("SMS body is required");
+            // Validate based on provider
+            if (this.smsProvider === SMS_PROVIDER.MSG_91) {
+              // For MSG91, templateId is required, body is optional
+              if (!singleSmsData.templateId) {
+                throw new BadRequestException("templateId is required for MSG91");
+              }
+            } else {
+              // For other providers, body is required
+              if (!singleSmsData.body) {
+                throw new BadRequestException("SMS body is required");
+              }
             }
             
             const result = await this.sendRawSms(singleSmsData);
+            
             if(result?.$metadata?.httpStatusCode === 200 && result?.MessageId) {
               results.push({
                 to: singleSmsData.to,
@@ -296,18 +272,25 @@ export class SmsAdapter implements NotificationServiceInterface {
                 messageId: result.MessageId || `sms-${Date.now()}`
               });
             } else {
+              // Safe stringification - only include serializable data
+              const safeResult = {
+                data: result?.data,
+                status: result?.status
+              };
               results.push({
                 to: singleSmsData.to,
                 status: 400,
-                error: `SMS not sent: ${JSON.stringify(result)}`
+                error: `SMS not sent: ${JSON.stringify(safeResult)}`
               });
             }
           }
           catch (error) {
-            LoggerUtil.error(ERROR_MESSAGES.SMS_NOTIFICATION_FAILED, error);
+            LoggerUtil.error(ERROR_MESSAGES.SMS_NOTIFICATION_FAILED, error.message);
+            
+            // Safe error object without circular references
             results.push({
               recipient: singleSmsData.to,
-              status: 500,
+              status: error.status || 500,
               error: error.message || error.toString()
             });
           }
@@ -316,9 +299,7 @@ export class SmsAdapter implements NotificationServiceInterface {
     }
 
 
-    private async sendViaMsg91(notificationData) {
-        console.log(notificationData, "msg91");
-        
+    private async sendViaMsg91(notificationData, customTemplateId?: string) {
         // Validate required configuration
         if (!this.authKey) {
             throw new Error('MSG91_AUTH_KEY is not configured');
@@ -326,29 +307,27 @@ export class SmsAdapter implements NotificationServiceInterface {
         if (!this.msg91url) {
             throw new Error('MSG91_URL is not configured');
         }
-        const templateId = this.configService.get('MSG91_DEFAULT_TEMPLATE_ID');
+        
+        // Use customTemplateId if provided, otherwise fall back to env variable
+        const templateId = customTemplateId || this.configService.get('MSG91_DEFAULT_TEMPLATE_ID');
         if (!templateId) {
-            throw new Error('MSG91_DEFAULT_TEMPLATE_ID is not configured');
+            throw new Error('Template ID is required. Either pass it in the request or configure MSG91_DEFAULT_TEMPLATE_ID');
         }
         
-        LoggerUtil.log(`MSG91 Configuration - URL: ${this.msg91url}`);
-        LoggerUtil.log(`MSG91 Configuration - Template ID: ${templateId}`);
-        LoggerUtil.log(`MSG91 Configuration - Auth Key: ${this.authKey ? this.authKey.substring(0, 8) + '...' : 'NOT SET'}`);
-        
-        // For MSG91, map our variables to template variables
-        // Template uses ##var1## for OTP, so we need to send var1
+        // For MSG91, directly use all replacements as template variables
         const templateVariables: any = {};
         
         if (notificationData.replacements) {
-            // Map OTP to var1 (as per your template: ##var1##)
+            // Pass all replacements directly as template variables
+            Object.keys(notificationData.replacements).forEach(key => {
+                templateVariables[key] = notificationData.replacements[key];
+            });
+            
+            // Legacy support: Map OTP to var if OTP is provided
             if (notificationData.replacements.OTP) {
                 templateVariables.var = notificationData.replacements.OTP;
             }
-            // If you need more variables in future, add them here:
-            // templateVariables.var2 = notificationData.replacements.otpExpiry;
         }
-        
-        LoggerUtil.log(`MSG91 Template Variables: ${JSON.stringify(templateVariables, null, 2)}`);
         
         const recipients = [{
             mobiles: `91${notificationData.recipient}`,
@@ -359,32 +338,45 @@ export class SmsAdapter implements NotificationServiceInterface {
             template_id: templateId,
             recipients: recipients
         };
-        LoggerUtil.log('MSG91 Request Data: ' + JSON.stringify(requestData, null, 2));
         
         try {
-            const response = await axios.post(this.msg91url, requestData, {
+            const axiosResponse = await axios.post(this.msg91url, requestData, {
                 headers: {
                     "Content-Type": "application/json",
                     accept: "application/json",
                     authkey: this.authKey,
                 },
-                timeout: 30000 // 30 second timeout
+                timeout: 30000
             });
             
-            LoggerUtil.log(SUCCESS_MESSAGES.SMS_NOTIFICATION_SEND_SUCCESSFULLY);
-            LoggerUtil.log('MSG91 Response: ' + JSON.stringify(response.data, null, 2));
-            return response;
+            // Return only safe, serializable data to avoid circular references
+            const safeResponse = {
+                data: axiosResponse.data,
+                status: axiosResponse.status,
+                statusText: axiosResponse.statusText,
+                $metadata: {
+                    httpStatusCode: axiosResponse.status
+                },
+                MessageId: axiosResponse.data?.request_id || axiosResponse.data?.message_id || `msg91-${Date.now()}`
+            };
+            
+            return safeResponse;
         } catch (error) {
-            console.error('MSG91 API Error:', error);
-            LoggerUtil.error('MSG91 API Error Details:', error);
+            LoggerUtil.error(ERROR_MESSAGES.SMS_NOTIFICATION_FAILED, error.message);
+            
+            // Extract safe error information to avoid circular references
+            const safeError: any = new Error(error.message || 'MSG91 API Error');
             
             if (error.response) {
-                console.error('MSG91 Error Response Status:', error.response.status);
-                console.error('MSG91 Error Response Data:', JSON.stringify(error.response.data, null, 2));
                 LoggerUtil.error(`MSG91 API Error Response: Status ${error.response.status}, Data: ${JSON.stringify(error.response.data, null, 2)}`);
+                safeError.status = error.response.status;
+                safeError.statusText = error.response.statusText;
+                safeError.data = error.response.data;
+            } else if (error.request) {
+                safeError.message = 'No response received from MSG91 server';
             }
             
-            throw error;
+            throw safeError;
         }
     }
 }
