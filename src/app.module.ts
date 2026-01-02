@@ -9,6 +9,7 @@ import { NotificationQueueModule } from "./modules/notification-queue/notificati
 import { RabbitmqModule } from "./modules/rabbitmq/rabbitmq.module";
 import { PermissionMiddleware } from "./middleware/permission.middleware";
 import { RolePermissionModule } from "./modules/permissionRbac/rolePermissionMapping/role-permission.module";
+import { HealthModule } from "./health/health.module";
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { RolePermissionModule } from "./modules/permissionRbac/rolePermissionMap
     NotificationModule,
     NotificationQueueModule,
     RolePermissionModule,
+    HealthModule,
   ],
   controllers: [AppController],
   providers: [AppService, ConfigService],
