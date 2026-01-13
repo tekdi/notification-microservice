@@ -23,7 +23,7 @@ spec:
                 name: notification-service-config
           ports:
             - name: http
-              containerPort: 4001
+              containerPort: 4000
           # Liveness probe - checks if container is alive
           livenessProbe:
             httpGet:
@@ -60,7 +60,7 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-    - port: 4001
+    - port: 4000
       protocol: TCP
   selector:
     app: notification
