@@ -25,9 +25,9 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/swagger-docs', app, document);
   app.enableCors();
-  
-  // Use environment variable for port, default to 4001
-  const port = process.env.PORT || 4001;
+
+  // Use environment variable for port, default to 4000
+  const port = process.env.PORT || 4000;
   await app.listen(port);
   console.log(`Application is running on port: ${port}`);
 }
