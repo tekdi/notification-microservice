@@ -9,6 +9,24 @@ export class EmailDTO {
     @IsNotEmpty()
     @ArrayMinSize(1)
     receipients: string[];
+
+    @ApiPropertyOptional({ 
+        description: 'CC (Carbon Copy) recipients', 
+        example: ['cc1@example.com', 'cc2@example.com'] 
+    })
+    @IsOptional()
+    @IsArray()
+    @IsEmail({}, { each: true })
+    cc?: string[];
+
+    @ApiPropertyOptional({ 
+        description: 'BCC (Blind Carbon Copy) recipients', 
+        example: ['bcc1@example.com', 'bcc2@example.com'] 
+    })
+    @IsOptional()
+    @IsArray()
+    @IsEmail({}, { each: true })
+    bcc?: string[];
 }
 
 export class SMSDTO {
@@ -104,7 +122,7 @@ export class RawEmailDto {
     @ApiProperty({ description: 'email recipients', example: 'user@example.com' })
     @IsNotEmpty()
     @IsArray()
-    @IsEmail()
+    @IsEmail({}, { each: true })
     to: string[];
   
     @ApiPropertyOptional({ description: 'Email sender address', example: 'noreply@company.com' })
@@ -121,6 +139,24 @@ export class RawEmailDto {
     @IsNotEmpty()
     @IsString()
     body: string;
+
+    @ApiPropertyOptional({ 
+        description: 'CC (Carbon Copy) recipients', 
+        example: ['cc1@example.com', 'cc2@example.com'] 
+    })
+    @IsOptional()
+    @IsArray()
+    @IsEmail({}, { each: true })
+    cc?: string[];
+
+    @ApiPropertyOptional({ 
+        description: 'BCC (Blind Carbon Copy) recipients', 
+        example: ['bcc1@example.com', 'bcc2@example.com'] 
+    })
+    @IsOptional()
+    @IsArray()
+    @IsEmail({}, { each: true })
+    bcc?: string[];
   
   }
   

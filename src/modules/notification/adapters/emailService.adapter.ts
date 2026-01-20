@@ -15,11 +15,13 @@ import { ERROR_MESSAGES, SUCCESS_MESSAGES } from "src/common/utils/constant.util
  * Interface for raw email data
  */
 export interface RawEmailData {
-  to: string;
+  to: string | string[];
   subject: string;
   body: string;
   from?: string;
   isHtml?: boolean;
+  cc?: string[];
+  bcc?: string[];
 }
 
 @Injectable()
@@ -185,16 +187,21 @@ export class EmailAdapter implements NotificationServiceInterface {
      * Sends template-based email
      */
     async send(notificationData) {
+        // Note: CC and BCC are not logged in notificationLogs for privacy/security reasons
+        // The NotificationLog entity doesn't have CC/BCC fields, and BCC is meant to be hidden
         const notificationLogs = this.createNotificationLog(notificationData, notificationData.subject, notificationData.key, notificationData.body, notificationData.recipient);
         try {
             const emailConfig = this.getEmailConfig(notificationData.context);
             const notifmeSdk = new NotifmeSdk(emailConfig);
+            
             const result = await notifmeSdk.send({
                 email: {
                     from: emailConfig.email.from,
                     to: notificationData.recipient,
                     subject: notificationData.subject,
                     html: notificationData.body,
+                    ...(notificationData.cc && Array.isArray(notificationData.cc) && notificationData.cc.length > 0 ? { cc: notificationData.cc } : {}),
+                    ...(notificationData.bcc && Array.isArray(notificationData.bcc) && notificationData.bcc.length > 0 ? { bcc: notificationData.bcc } : {}),
                 },
             });
             if (result.status === 'success') {
@@ -222,32 +229,27 @@ export class EmailAdapter implements NotificationServiceInterface {
      * @returns Result of email sending attempt
      */
     async sendRawEmail(emailData: RawEmailData) {
+        // Note: CC and BCC are not logged in notificationLogs for privacy/security reasons
+        // The NotificationLog entity doesn't have CC/BCC fields, and BCC is meant to be hidden
         const notificationLogs = this.createRawNotificationLog(
             emailData.subject,
             emailData.body,
-            emailData.to
+            emailData.to as string
         );
         
         try {
             const emailConfig = this.getEmailConfig('raw-email');
             const notifmeSdk = new NotifmeSdk(emailConfig);
             
-            // Determine content type (HTML or plain text)
-            const emailPayload: any = {
-                from: emailData.from || emailConfig.email.from,
-                to: emailData.to,
-                subject: emailData.subject,
-            };
-            
-            // Set content as HTML or text based on isHtml flag
-            if (emailData.isHtml !== false) {
-                emailPayload.html = emailData.body;
-            } else {
-                emailPayload.text = emailData.body;
-            }
-            
             const result = await notifmeSdk.send({
-                email: emailPayload,
+                email: {
+                    from: emailData.from || emailConfig.email.from,
+                    to: emailData.to,
+                    subject: emailData.subject,
+                    ...(emailData.isHtml !== false ? { html: emailData.body } : { text: emailData.body }),
+                    ...(emailData.cc && Array.isArray(emailData.cc) && emailData.cc.length > 0 ? { cc: emailData.cc } : {}),
+                    ...(emailData.bcc && Array.isArray(emailData.bcc) && emailData.bcc.length > 0 ? { bcc: emailData.bcc } : {}),
+                },
             });
             
             if (result.status === 'success') {
