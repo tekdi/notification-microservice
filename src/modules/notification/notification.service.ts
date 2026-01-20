@@ -256,7 +256,7 @@ export class NotificationService {
       bodyText = this.replacePlaceholders(bodyText, replacements);
 
       const notificationDataArray = recipients.map((recipient) => {
-        return {
+        const notificationData: any = {
           subject: subject,
           body: bodyText,
           recipient: recipient,
@@ -268,6 +268,18 @@ export class NotificationService {
           link: link || null,
           replacements: replacements,
         };
+        
+        // Add CC and BCC for email channel if provided
+        if (type === "email" && notificationDto.email) {
+          if (notificationDto.email.cc && notificationDto.email.cc.length > 0) {
+            notificationData.cc = notificationDto.email.cc;
+          }
+          if (notificationDto.email.bcc && notificationDto.email.bcc.length > 0) {
+            notificationData.bcc = notificationDto.email.bcc;
+          }
+        }
+        
+        return notificationData;
       });
 
       if (notificationDto.isQueue) {
@@ -603,13 +615,22 @@ export class NotificationService {
           throw new BadRequestException('Email subject and body are required');
         }
         const emailPromises = email.to.map(to => {
-          const singleEmailData = {
+          const singleEmailData: any = {
             to: to,
             from: email.from || process.env.DEFAULT_EMAIL_SENDER,
             subject: email.subject,
             body: email.body,
             isHtml: true,
           };
+          
+          // Add CC and BCC if provided
+          if (email.cc && email.cc.length > 0) {
+            singleEmailData.cc = email.cc;
+          }
+          if (email.bcc && email.bcc.length > 0) {
+            singleEmailData.bcc = email.bcc;
+          }
+          
           return this.emailService.sendRawEmails(singleEmailData);
         });
         

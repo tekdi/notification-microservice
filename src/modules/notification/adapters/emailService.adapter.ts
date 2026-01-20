@@ -15,11 +15,13 @@ import { ERROR_MESSAGES, SUCCESS_MESSAGES } from "src/common/utils/constant.util
  * Interface for raw email data
  */
 export interface RawEmailData {
-  to: string;
+  to: string | string[];
   subject: string;
   body: string;
   from?: string;
   isHtml?: boolean;
+  cc?: string[];
+  bcc?: string[];
 }
 
 @Injectable()
@@ -189,13 +191,27 @@ export class EmailAdapter implements NotificationServiceInterface {
         try {
             const emailConfig = this.getEmailConfig(notificationData.context);
             const notifmeSdk = new NotifmeSdk(emailConfig);
+            
+            // Build email payload with optional CC and BCC
+            const emailPayload: any = {
+                from: emailConfig.email.from,
+                to: notificationData.recipient,
+                subject: notificationData.subject,
+                html: notificationData.body,
+            };
+            
+            // Add CC if provided
+            if (notificationData.cc && Array.isArray(notificationData.cc) && notificationData.cc.length > 0) {
+                emailPayload.cc = notificationData.cc;
+            }
+            
+            // Add BCC if provided
+            if (notificationData.bcc && Array.isArray(notificationData.bcc) && notificationData.bcc.length > 0) {
+                emailPayload.bcc = notificationData.bcc;
+            }
+            
             const result = await notifmeSdk.send({
-                email: {
-                    from: emailConfig.email.from,
-                    to: notificationData.recipient,
-                    subject: notificationData.subject,
-                    html: notificationData.body,
-                },
+                email: emailPayload,
             });
             if (result.status === 'success') {
                 notificationLogs.status = true;
@@ -225,7 +241,7 @@ export class EmailAdapter implements NotificationServiceInterface {
         const notificationLogs = this.createRawNotificationLog(
             emailData.subject,
             emailData.body,
-            emailData.to
+            emailData.to as string
         );
         
         try {
@@ -244,6 +260,16 @@ export class EmailAdapter implements NotificationServiceInterface {
                 emailPayload.html = emailData.body;
             } else {
                 emailPayload.text = emailData.body;
+            }
+            
+            // Add CC if provided
+            if (emailData.cc && Array.isArray(emailData.cc) && emailData.cc.length > 0) {
+                emailPayload.cc = emailData.cc;
+            }
+            
+            // Add BCC if provided
+            if (emailData.bcc && Array.isArray(emailData.bcc) && emailData.bcc.length > 0) {
+                emailPayload.bcc = emailData.bcc;
             }
             
             const result = await notifmeSdk.send({
