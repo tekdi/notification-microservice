@@ -6,7 +6,7 @@ export class LoggerUtil {
     static getLogger() {
         if (!this.logger) {
             const customFormat = winston.format.printf(
-                ({ timestamp, level, message, context, user, error }) => {
+                ({ timestamp, level, message, context, user, error, metadata }) => {
                     return JSON.stringify({
                         timestamp: timestamp,
                         context: context,
@@ -14,6 +14,7 @@ export class LoggerUtil {
                         level: level,
                         message: message,
                         error: error,
+                        metadata: metadata,
                     });
                 },
             );
@@ -35,6 +36,7 @@ export class LoggerUtil {
         context?: string,
         user?: string,
         level: string = 'info',
+        metadata?: any,
     ) {
         this.getLogger().log({
             level: level,
@@ -42,6 +44,7 @@ export class LoggerUtil {
             context: context,
             user: user,
             timestamp: new Date().toISOString(),
+            metadata: metadata,
         });
     }
 
@@ -50,6 +53,7 @@ export class LoggerUtil {
         error?: string,
         context?: string,
         user?: string,
+        metadata?: any,
     ) {
         this.getLogger().error({
             message: message,
@@ -57,6 +61,7 @@ export class LoggerUtil {
             context: context,
             user: user,
             timestamp: new Date().toISOString(),
+            metadata: metadata,
         });
     }
 

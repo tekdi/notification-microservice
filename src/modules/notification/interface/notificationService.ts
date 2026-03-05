@@ -1,3 +1,3 @@
 export interface NotificationServiceInterface {
-    sendNotification(notificationDataArray);
+    sendNotification(notificationDataArray, traceId?: string);
 }

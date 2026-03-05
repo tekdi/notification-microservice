@@ -7,7 +7,7 @@ import { Repository } from "typeorm";
 import { NotificationActionTemplates } from "src/modules/notification_events/entity/notificationActionTemplates.entity";
 import { ConfigService } from "@nestjs/config";
 import { NotificationLog } from "../entity/notificationLogs.entity";
-import { NotificationService } from "../notification.service";
+import { NotificationService, maskPhone } from "../notification.service";
 import { LoggerUtil } from "src/common/logger/LoggerUtil";
 import { ERROR_MESSAGES, SUCCESS_MESSAGES } from "src/common/utils/constant.util";
 import { SNSClient, PublishCommand } from "@aws-sdk/client-sns";
@@ -21,7 +21,7 @@ export interface RawSmsData {
     from?: string;
     templateId?: string;
     replacements?: { [key: string]: string };
-  }
+}
 
 @Injectable()
 export class SmsAdapter implements NotificationServiceInterface {
@@ -76,7 +76,7 @@ export class SmsAdapter implements NotificationServiceInterface {
         }
     }
 
-    async sendNotification(notificationDataArray) {
+    async sendNotification(notificationDataArray, traceId) {
         const results = [];
         for (const notificationData of notificationDataArray) {
             try {
@@ -94,7 +94,23 @@ export class SmsAdapter implements NotificationServiceInterface {
                     replacements: notificationData.replacements,
                 };
 
+                const loggingData = { ...smsNotificationDto, smsProvider: this.smsProvider };
+                if (loggingData.recipient) {
+                    loggingData.recipient = maskPhone(String(loggingData.recipient));
+                }
+                delete loggingData.body;
+                if (loggingData.replacements && loggingData.replacements['{OTP}']) {
+                    loggingData.replacements = { ...loggingData.replacements };
+                    delete loggingData.replacements['{OTP}'];
+                }
+
+                LoggerUtil.log(`Status: ADAPTER_PREP, traceId: ${traceId}`, traceId, '', 'info', loggingData);
+
+                const startTime = Date.now();
                 const result = await this.send(smsNotificationDto);
+                const timeTakenInMs = Date.now() - startTime;
+
+                LoggerUtil.log(`Status: SENT, traceId: ${traceId}, timeTaken: ${timeTakenInMs}ms`, '', '', 'info', result);
 
                 results.push({
                     recipient: recipient,
@@ -102,11 +118,12 @@ export class SmsAdapter implements NotificationServiceInterface {
                     result: SUCCESS_MESSAGES.SMS_NOTIFICATION_SEND_SUCCESSFULLY,
                 });
             } catch (error) {
-                LoggerUtil.error('Failed to send SMS notification', error);
+                const timeTakenInMs = Date.now() - (error.startTime || Date.now());
+                LoggerUtil.error(`Status: FAILED, traceId: ${traceId}, timeTaken: ${timeTakenInMs}ms`, error.message, '', 'info', error.message);
                 results.push({
                     recipient: notificationData.recipient,
                     status: 'error',
-                    error: `SMS not sent: ${JSON.stringify(error)}`,
+                    error: `SMS not sent: ${error.message}`,
                 });
             }
         }
@@ -144,13 +161,13 @@ export class SmsAdapter implements NotificationServiceInterface {
                 // Don't modify the original replacements object, create a copy
                 const processedReplacements = notificationData.replacements ? { ...notificationData.replacements } : {};
                 createReplacementsForMsg91(processedReplacements);
-                
+
                 // Create a new notification data object with processed replacements
                 const msg91NotificationData = {
                     ...notificationData,
                     replacements: processedReplacements
                 };
-                
+
                 response = await this.sendViaMsg91(msg91NotificationData);
             }
             LoggerUtil.log(SUCCESS_MESSAGES.SMS_NOTIFICATION_SEND_SUCCESSFULLY);
@@ -158,9 +175,9 @@ export class SmsAdapter implements NotificationServiceInterface {
             await this.notificationServices.saveNotificationLogs(notificationLogs);
             return response;
         } catch (error) {
-            LoggerUtil.error(ERROR_MESSAGES.SMS_NOTIFICATION_FAILED, error);
+            LoggerUtil.error(ERROR_MESSAGES.SMS_NOTIFICATION_FAILED, error.message);
             notificationLogs.status = false;
-            notificationLogs.error = error.toString();
+            notificationLogs.error = error.message;
             await this.notificationServices.saveNotificationLogs(notificationLogs);
             throw error;
         }
@@ -205,10 +222,10 @@ export class SmsAdapter implements NotificationServiceInterface {
         notificationLog.action = 'send-raw-sms';
         notificationLog.type = 'sms';
         notificationLog.recipient = smsData.to;
-    
+
         try {
             let response;
-    
+
             // Prepare notification data with replacements if provided
             const notificationData = {
                 recipient: smsData.to,
@@ -216,7 +233,7 @@ export class SmsAdapter implements NotificationServiceInterface {
                 replacements: smsData.replacements || {},
                 templateId: smsData.templateId,
             };
-    
+
             if (this.smsProvider === SMS_PROVIDER.TWILIO) {
                 response = await this.sendViaTwilio(notificationData);
             } else if (this.smsProvider === SMS_PROVIDER.AWS_SNS) {
@@ -227,7 +244,7 @@ export class SmsAdapter implements NotificationServiceInterface {
                 }
                 response = await this.sendViaMsg91(notificationData, smsData.templateId);
             }
-    
+
             notificationLog.status = true;
             await this.notificationServices.saveNotificationLogs(notificationLog);
             return response;
@@ -241,59 +258,65 @@ export class SmsAdapter implements NotificationServiceInterface {
         }
     }
 
-    async sendRawSmsMessages(smsData) {
+    async sendRawSmsMessages(traceId, smsData) {
         const results = [];
-        
+
         // Convert to array if not already an array
         const smsDataArray = Array.isArray(smsData) ? smsData : [smsData];
-        
+
         for (const singleSmsData of smsDataArray) {
-          try {
-            // Validate based on provider
-            if (this.smsProvider === SMS_PROVIDER.MSG_91) {
-              // For MSG91, templateId is required, body is optional
-              if (!singleSmsData.templateId) {
-                throw new BadRequestException("templateId is required for MSG91");
-              }
-            } else {
-              // For other providers, body is required
-              if (!singleSmsData.body) {
-                throw new BadRequestException("SMS body is required");
-              }
+            try {
+                // Validate based on provider
+                if (this.smsProvider === SMS_PROVIDER.MSG_91) {
+                    // For MSG91, templateId is required, body is optional
+                    if (!singleSmsData.templateId) {
+                        throw new BadRequestException("templateId is required for MSG91");
+                    }
+                } else {
+                    // For other providers, body is required
+                    if (!singleSmsData.body) {
+                        throw new BadRequestException("SMS body is required");
+                    }
+                }
+                LoggerUtil.log(`Status: ADAPTER_PREP, traceId: ${traceId}`, 'info', singleSmsData);
+
+                const startTime = Date.now();
+                const result = await this.sendRawSms(singleSmsData);
+                const timeTakenInMs = Date.now() - startTime;
+
+                if (result?.$metadata?.httpStatusCode === 200 && result?.MessageId) {
+                    LoggerUtil.log(`Status: SENT, traceId: ${traceId}, timeTaken: ${timeTakenInMs}ms`, 'info', result);
+                    results.push({
+                        to: singleSmsData.to,
+                        status: 200,
+                        result: SUCCESS_MESSAGES.SMS_NOTIFICATION_SEND_SUCCESSFULLY,
+                        messageId: result.MessageId || `sms-${Date.now()}`
+                    });
+                } else {
+                    LoggerUtil.log(`Status: FAILED, traceId: ${traceId}, timeTaken: ${timeTakenInMs}ms`, 'info', result);
+                    // Safe stringification - only include serializable data
+                    const safeResult = {
+                        data: result?.data,
+                        status: result?.status
+                    };
+                    results.push({
+                        to: singleSmsData.to,
+                        status: 400,
+                        error: `SMS not sent: ${JSON.stringify(safeResult)}`
+                    });
+                }
             }
-            
-            const result = await this.sendRawSms(singleSmsData);
-            
-            if(result?.$metadata?.httpStatusCode === 200 && result?.MessageId) {
-              results.push({
-                to: singleSmsData.to,
-                status: 200,
-                result: SUCCESS_MESSAGES.SMS_NOTIFICATION_SEND_SUCCESSFULLY,
-                messageId: result.MessageId || `sms-${Date.now()}`
-              });
-            } else {
-              // Safe stringification - only include serializable data
-              const safeResult = {
-                data: result?.data,
-                status: result?.status
-              };
-              results.push({
-                to: singleSmsData.to,
-                status: 400,
-                error: `SMS not sent: ${JSON.stringify(safeResult)}`
-              });
+            catch (error) {
+                const timeTakenInMs = Date.now() - (error.startTime || Date.now());
+                LoggerUtil.error(`Status: FAILED, traceId: ${traceId}, timeTaken: ${timeTakenInMs}ms`, ERROR_MESSAGES.SMS_NOTIFICATION_FAILED, error.message);
+
+                // Safe error object without circular references
+                results.push({
+                    recipient: singleSmsData.to,
+                    status: error.status || 500,
+                    error: error.message || error.toString()
+                });
             }
-          }
-          catch (error) {
-            LoggerUtil.error(ERROR_MESSAGES.SMS_NOTIFICATION_FAILED, error.message);
-            
-            // Safe error object without circular references
-            results.push({
-              recipient: singleSmsData.to,
-              status: error.status || 500,
-              error: error.message || error.toString()
-            });
-          }
         }
         return results;
     }
@@ -307,38 +330,38 @@ export class SmsAdapter implements NotificationServiceInterface {
         if (!this.msg91url) {
             throw new Error('MSG91_URL is not configured');
         }
-        
+
         // Use customTemplateId if provided, otherwise fall back to env variable
         const templateId = customTemplateId || this.configService.get('MSG91_DEFAULT_TEMPLATE_ID');
         if (!templateId) {
             throw new Error('Template ID is required. Either pass it in the request or configure MSG91_DEFAULT_TEMPLATE_ID');
         }
-        
+
         // For MSG91, directly use all replacements as template variables
         const templateVariables: any = {};
-        
+
         if (notificationData.replacements) {
             // Pass all replacements directly as template variables
             Object.keys(notificationData.replacements).forEach(key => {
                 templateVariables[key] = notificationData.replacements[key];
             });
-            
+
             // Legacy support: Map OTP to var if OTP is provided
             if (notificationData.replacements.OTP) {
                 templateVariables.var = notificationData.replacements.OTP;
             }
         }
-        
+
         const recipients = [{
             mobiles: `91${notificationData.recipient}`,
             ...templateVariables
         }];
-        
+
         const requestData = {
             template_id: templateId,
             recipients: recipients
         };
-        
+
         try {
             const axiosResponse = await axios.post(this.msg91url, requestData, {
                 headers: {
@@ -348,7 +371,7 @@ export class SmsAdapter implements NotificationServiceInterface {
                 },
                 timeout: 30000
             });
-            
+
             // Return only safe, serializable data to avoid circular references
             const safeResponse = {
                 data: axiosResponse.data,
@@ -359,14 +382,14 @@ export class SmsAdapter implements NotificationServiceInterface {
                 },
                 MessageId: axiosResponse.data?.request_id || axiosResponse.data?.message_id || `msg91-${Date.now()}`
             };
-            
+
             return safeResponse;
         } catch (error) {
             LoggerUtil.error(ERROR_MESSAGES.SMS_NOTIFICATION_FAILED, error.message);
-            
+
             // Extract safe error information to avoid circular references
             const safeError: any = new Error(error.message || 'MSG91 API Error');
-            
+
             if (error.response) {
                 LoggerUtil.error(`MSG91 API Error Response: Status ${error.response.status}, Data: ${JSON.stringify(error.response.data, null, 2)}`);
                 safeError.status = error.response.status;
@@ -375,7 +398,7 @@ export class SmsAdapter implements NotificationServiceInterface {
             } else if (error.request) {
                 safeError.message = 'No response received from MSG91 server';
             }
-            
+
             throw safeError;
         }
     }
