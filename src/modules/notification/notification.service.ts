@@ -62,7 +62,7 @@ export class NotificationService {
   ): Promise<APIResponse> {
     const apiId = APIID.SEND_NOTIFICATION;
     const traceId = randomUUID();
-    LoggerUtil.log(`Status: RECEIVED, traceId: ${traceId}`, apiId, userId, 'info');
+    LoggerUtil.log(`RECEIVED`, apiId, userId, 'info', { traceId: traceId, status: 'RECEIVED' });
     const serverResponses: Record<string, { data: any[]; errors: any[] }> = {
       email: { data: [], errors: [] },
       sms: { data: [], errors: [] },
@@ -195,13 +195,13 @@ export class NotificationService {
           ([_, { data, errors }]) => data.length > 0 || errors.length > 0
         )
       );
-      LoggerUtil.log(`Status: COMPLETED, traceId: ${traceId}`, apiId, userId, 'info', finalResponses);
+      LoggerUtil.log(`COMPLETED`, apiId, userId, 'info', { ...finalResponses, traceId: traceId, status: 'COMPLETED' });
 
       return response
         .status(HttpStatus.OK)
         .json(APIResponse.success(traceId, finalResponses, "OK"));
     } catch (e) {
-      LoggerUtil.error(`Status: FAILED, traceId: ${traceId} , Error: ${e}`, e, apiId, userId);
+      LoggerUtil.error(`FAILED: ${e}`, e, apiId, userId, { traceId: traceId, status: 'FAILED' });
       throw e;
     }
   }
@@ -215,10 +215,8 @@ export class NotificationService {
     notification_event,
     userId
   ) {
-    if (notification_event) {
-      LoggerUtil.log("templeateID: ", notification_event, traceId, userId, 'info');
-    }
-    LoggerUtil.log(`Status: VALIDATED, traceId: ${traceId}`, traceId, userId, 'info', { channel, recipients });
+    LoggerUtil.log("templeateID", traceId, userId, 'info', { ...notification_event, traceId: traceId });
+    LoggerUtil.log(`VALIDATED`, traceId, userId, 'info', { channel, traceId: traceId, status: 'VALIDATED' });
     if (
       recipients &&
       recipients.length > 0 &&
@@ -291,7 +289,7 @@ export class NotificationService {
 
         return notificationData;
       });
-      LoggerUtil.log(`TemplateId: ${notification_event.templateId}, traceId: ${traceId}`, traceId, userId, 'info');
+      LoggerUtil.log(`TemplateId: ${notification_details[0].templateId}`, traceId, userId, 'info', { traceId: traceId });
       if (notificationDto.isQueue) {
         try {
           const saveQueue = await this.saveNotificationQueue(traceId,
@@ -300,7 +298,7 @@ export class NotificationService {
           if (saveQueue.length === 0) {
             throw new Error(ERROR_MESSAGES.NOTIFICATION_QUEUE_SAVE_FAILED);
           }
-          LoggerUtil.log(`Status: QUEUED, traceId: ${traceId}`, traceId, userId, 'info', saveQueue);
+          LoggerUtil.log(`QUEUED`, traceId, userId, 'info', { saveQueue, traceId: traceId, status: 'QUEUED' });
           return {
             status: 200,
             message: SUCCESS_MESSAGES.NOTIFICATION_QUEUE_SAVE_SUCCESSFULLY,
@@ -398,7 +396,7 @@ export class NotificationService {
         retries: 3 - retryCount,
         last_attempted: new Date(),
       };
-      LoggerUtil.log(`Status: QUEUED, traceId: ${traceId}`, traceId, 'info', notification);
+      LoggerUtil.log(`QUEUED`, traceId, '', 'info', { ...notification, traceId: traceId, status: 'QUEUED' });
       await this.notificationQueueService.updateQueue(
         notification.id,
         updateQueueDTO
@@ -612,7 +610,7 @@ export class NotificationService {
   ): Promise<APIResponse> {
     const apiId = APIID.SEND_NOTIFICATION;
     const traceId = randomUUID();
-    LoggerUtil.log(`Status: RECEIVED, traceId: ${traceId}`, traceId, userId, 'info', rawNotificationDto.email.to);
+    LoggerUtil.log(`RECEIVED`, traceId, userId, 'info', { traceId: traceId, status: 'RECEIVED' });
     const serverResponses: Record<string, { data: any[]; errors: any[] }> = {
       email: { data: [], errors: [] },
       sms: { data: [], errors: [] },
@@ -730,9 +728,9 @@ export class NotificationService {
 
             if (status === 200) {
               serverResponses[channel].data.push(notification);
-              LoggerUtil.log(`Status: SENT, traceId: ${traceId}`, apiId, userId, 'info', notification);
+              LoggerUtil.log(`SENT`, apiId, userId, 'info', { ...notification, traceId: traceId, status: 'SENT' });
             } else {
-              LoggerUtil.log(`Status: FAILED, traceId: ${traceId}`, apiId, userId, 'error', notification);
+              LoggerUtil.log(`FAILED`, apiId, userId, 'error', { ...notification, traceId: traceId, status: 'FAILED' });
               serverResponses[channel].errors.push({
                 recipient: notification.recipient || notification.to || 'unknown',
                 error: notification.error || notification.message || 'Unknown error',
@@ -741,7 +739,7 @@ export class NotificationService {
             }
           });
         } else {
-          LoggerUtil.log(`Status: FAILED, traceId: ${traceId}`, apiId, userId, 'error', result.reason);
+          LoggerUtil.log(`FAILED`, apiId, userId, 'error', { reason: result.reason, traceId: traceId, status: 'FAILED' });
           serverResponses[channel].errors.push({
             error: result.reason?.message || 'Unhandled rejection',
             code: result.reason?.status || 500,
@@ -755,13 +753,13 @@ export class NotificationService {
           ([_, { data, errors }]) => data.length > 0 || errors.length > 0
         )
       );
-      LoggerUtil.log(`Status: COMPLETED, traceId: ${traceId}`, apiId, userId, 'info', finalResponses);
+      LoggerUtil.log(`COMPLETED`, apiId, userId, 'info', { ...finalResponses, traceId: traceId, status: 'COMPLETED' });
       return response
         .status(HttpStatus.OK)
         .json(APIResponse.success(apiId, finalResponses, 'OK'));
 
     } catch (e) {
-      LoggerUtil.log(`Status: FAILED, traceId: ${traceId}`, apiId, userId, 'error', e);
+      LoggerUtil.log(`FAILED`, apiId, userId, 'error', { error: e, traceId: traceId, status: 'FAILED' });
       LoggerUtil.error(`Error: ${e}`, e, apiId, userId);
       throw e;
     }

@@ -1,5 +1,10 @@
 import * as winston from 'winston';
 
+type Metadata = {
+    traceId: string;
+    status?: string;
+    [key: string]: any;
+}
 export class LoggerUtil {
     private static logger: winston.Logger;
 
@@ -36,7 +41,7 @@ export class LoggerUtil {
         context?: string,
         user?: string,
         level: string = 'info',
-        metadata?: any,
+        metadata?: Metadata,
     ) {
         this.getLogger().log({
             level: level,
@@ -53,7 +58,7 @@ export class LoggerUtil {
         error?: string,
         context?: string,
         user?: string,
-        metadata?: any,
+        metadata?: Metadata,
     ) {
         this.getLogger().error({
             message: message,

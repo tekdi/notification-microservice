@@ -160,7 +160,7 @@ export class WhatsappViaGupshupAdapter implements NotificationServiceInterface {
             `Template: ${templateData.templateId}`,
             templateData.to
         );
-        LoggerUtil.log(`Status: ADAPTER_PREP, traceId: ${traceId}`, '', '', 'info', templateData);
+        LoggerUtil.log(`ADAPTER_PREP`, '', '', 'info', { ...templateData, traceId: traceId, status: 'ADAPTER_PREP' });
         try {
             const result = await this.sendViaGupshupProvider({
                 to: templateData.to,
@@ -172,7 +172,7 @@ export class WhatsappViaGupshupAdapter implements NotificationServiceInterface {
             });
 
             if (result.status === "success") {
-                LoggerUtil.log(`Status: ADAPTER_SUCCESS, traceId: ${traceId}`, '', '', 'info', result);
+                LoggerUtil.log(`ADAPTER_SUCCESS`, '', '', 'info', { ...result, traceId: traceId, status: 'ADAPTER_SUCCESS' });
                 notificationLogs.status = true;
                 await this.notificationServices.saveNotificationLogs(notificationLogs);
                 LoggerUtil.log('WhatsApp template message submitted successfully via Gupshup');
@@ -183,11 +183,11 @@ export class WhatsappViaGupshupAdapter implements NotificationServiceInterface {
                     messageId: result.id || `gupshup-template-${Date.now()}`,
                 };
             } else {
-                LoggerUtil.log(`Status: ADAPTER_FAILURE, traceId: ${traceId}`, '', '', 'info', result);
+                LoggerUtil.log(`ADAPTER_FAILURE`, '', '', 'info', { ...result, traceId: traceId, status: 'ADAPTER_FAILURE' });
                 throw new Error(`WhatsApp template not sent: ${JSON.stringify(result.errors)}`);
             }
         } catch (e) {
-            LoggerUtil.error(`Status: ADAPTER_FAILURE, traceId: ${traceId}`, '', '', 'info', e);
+            LoggerUtil.error(`ADAPTER_FAILURE`, '', '', 'info', { error: e, traceId: traceId, status: 'ADAPTER_FAILURE' });
             notificationLogs.status = false;
             notificationLogs.error = e.toString();
             await this.notificationServices.saveNotificationLogs(notificationLogs);

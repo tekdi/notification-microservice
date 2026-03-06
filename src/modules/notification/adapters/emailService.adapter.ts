@@ -61,31 +61,31 @@ export class EmailAdapter implements NotificationServiceInterface {
                     delete loggingData.replacements['{OTP}'];
                 }
 
-                LoggerUtil.log(`Status: ADAPTER_PREP, traceId: ${traceId}`, 'info', loggingData);
+                LoggerUtil.log(`ADAPTER_PREP ${traceId}`, traceId, '', 'info', { ...loggingData, status: 'ADAPTER_PREP', traceId: traceId });
 
                 const startTime = Date.now();
-                const result = await this.send(notificationData);
+                const result = await this.send(notificationData, traceId);
                 const timeTakenInMs = Date.now() - startTime;
 
                 if (result.status === 'success') {
-                    LoggerUtil.log(`Status: SENT, traceId: ${traceId}, timeTaken: ${timeTakenInMs}ms`, 'info', result);
+                    LoggerUtil.log(`SENT ${traceId}`, traceId, '', 'info', { ...result, status: 'SENT', traceId: traceId, timeTaken: timeTakenInMs });
                     results.push({
                         recipient: recipient,
                         status: 200,
                         result: SUCCESS_MESSAGES.EMAIL_NOTIFICATION_SEND_SUCCESSFULLY
                     });
                 } else {
-                    LoggerUtil.log(`Status: FAILED, traceId: ${traceId}, timeTaken: ${timeTakenInMs}ms`, 'error', result.message);
+                    LoggerUtil.error(`FAILED ${traceId}`, result.message, traceId, '', { status: 'FAILED', traceId: traceId, timeTaken: timeTakenInMs });
                     results.push({
                         recipient: recipient,
                         status: 'error',
-                        error: `Email not sent: ${JSON.stringify(result.errors)}`
+                        error: `Email not sent: ${JSON.stringify(result.message)}`
                     });
                 }
             }
             catch (error) {
                 const timeTakenInMs = Date.now() - (error.startTime || Date.now());
-                LoggerUtil.error(`Status: FAILED, traceId: ${traceId} ERROR_MESSAGES.EMAIL_NOTIFICATION_FAILED, timeTaken: ${timeTakenInMs}ms`, error.message);
+                LoggerUtil.error(`FAILED ${traceId}`, error.message, traceId, '', { status: 'FAILED', traceId: traceId, timeTaken: timeTakenInMs });
                 results.push({
                     recipient: notificationData.recipient,
                     status: 'error',
@@ -109,6 +109,7 @@ export class EmailAdapter implements NotificationServiceInterface {
 
         for (const singleEmailData of emailDataArray) {
             try {
+
                 if (!singleEmailData.to || !this.isValidEmail(singleEmailData.to)) {
                     throw new BadRequestException(ERROR_MESSAGES.INVALID_EMAIL);
                 }
@@ -136,14 +137,14 @@ export class EmailAdapter implements NotificationServiceInterface {
                     loggingData.replacements = { ...loggingData.replacements };
                     delete loggingData.replacements['{OTP}'];
                 }
-                LoggerUtil.log(`Status: ADAPTER_PREP, traceId: ${traceId}`, 'info', loggingData);
+                LoggerUtil.log(`ADAPTER_PREP ${traceId}`, traceId, '', 'info', { ...loggingData, status: 'ADAPTER_PREP', traceId: traceId });
 
                 const startTime = Date.now();
                 const result = await this.sendRawEmail(singleEmailData);
                 const timeTakenInMs = Date.now() - startTime;
 
                 if (result.status === 'success') {
-                    LoggerUtil.log(`Status: SENT, traceId: ${traceId}, timeTaken: ${timeTakenInMs}ms`, 'info', result);
+                    LoggerUtil.log(`SENT ${traceId}`, traceId, '', 'info', { ...result, status: 'SENT', traceId: traceId, timeTaken: timeTakenInMs });
                     results.push({
                         to: singleEmailData.to,
                         status: 200,
@@ -151,7 +152,7 @@ export class EmailAdapter implements NotificationServiceInterface {
                         messageId: result.messageId || `email-${Date.now()}`
                     });
                 } else {
-                    LoggerUtil.log(`Status: FAILED, traceId: ${traceId}, timeTaken: ${timeTakenInMs}ms`, 'error', result);
+                    LoggerUtil.error(`FAILED ${traceId}`, JSON.stringify(result), traceId, '', { status: 'FAILED', traceId: traceId, timeTaken: timeTakenInMs });
                     results.push({
                         to: singleEmailData.to,
                         status: 400,
@@ -161,7 +162,7 @@ export class EmailAdapter implements NotificationServiceInterface {
             }
             catch (error) {
                 const timeTakenInMs = Date.now() - (error.startTime || Date.now());
-                LoggerUtil.error(`Status: FAILED, traceId: ${traceId}, timeTaken: ${timeTakenInMs}ms`, ERROR_MESSAGES.EMAIL_NOTIFICATION_FAILED, error);
+                LoggerUtil.error(`FAILED ${traceId}`, error.message || error.toString(), traceId, '', { status: 'FAILED', traceId: traceId, timeTaken: timeTakenInMs });
                 results.push({
                     recipient: singleEmailData.to,
                     status: 500,
@@ -239,7 +240,7 @@ export class EmailAdapter implements NotificationServiceInterface {
     /**
      * Sends template-based email
      */
-    async send(notificationData) {
+    async send(notificationData, traceId) {
         // Note: CC and BCC are not logged in notificationLogs for privacy/security reasons
         // The NotificationLog entity doesn't have CC/BCC fields, and BCC is meant to be hidden
         const notificationLogs = this.createNotificationLog(notificationData, notificationData.subject, notificationData.key, notificationData.body, notificationData.recipient);
@@ -260,7 +261,7 @@ export class EmailAdapter implements NotificationServiceInterface {
             if (result.status === 'success') {
                 notificationLogs.status = true;
                 await this.notificationServices.saveNotificationLogs(notificationLogs);
-                LoggerUtil.log(SUCCESS_MESSAGES.EMAIL_NOTIFICATION_SEND_SUCCESSFULLY);
+                LoggerUtil.log(`traceId: ${traceId} SUCCESS_MESSAGES.EMAIL_NOTIFICATION_SEND_SUCCESSFULLY`, traceId, "", "info",);
                 return result;
             }
             else {
@@ -311,7 +312,7 @@ export class EmailAdapter implements NotificationServiceInterface {
                 LoggerUtil.log(SUCCESS_MESSAGES.EMAIL_NOTIFICATION_SEND_SUCCESSFULLY);
                 return {
                     ...result,
-                    messageId: result.id || `email-${Date.now()}`
+                    messageId: result.id || `email - ${Date.now()}`
                 };
             } else {
                 throw new Error(`Email not sent: ${JSON.stringify(result.errors)}`)

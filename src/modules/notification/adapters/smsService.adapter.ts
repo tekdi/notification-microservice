@@ -104,13 +104,13 @@ export class SmsAdapter implements NotificationServiceInterface {
                     delete loggingData.replacements['{OTP}'];
                 }
 
-                LoggerUtil.log(`Status: ADAPTER_PREP, traceId: ${traceId}`, traceId, '', 'info', loggingData);
+                LoggerUtil.log(`ADAPTER_PREP`, traceId, '', 'info', { ...loggingData, traceId: traceId, status: 'ADAPTER_PREP' });
 
                 const startTime = Date.now();
                 const result = await this.send(smsNotificationDto);
                 const timeTakenInMs = Date.now() - startTime;
 
-                LoggerUtil.log(`Status: SENT, traceId: ${traceId}, timeTaken: ${timeTakenInMs}ms`, '', '', 'info', result);
+                LoggerUtil.log(`SENT`, '', '', 'info', { ...result, traceId: traceId, status: 'SENT', timeTaken: timeTakenInMs });
 
                 results.push({
                     recipient: recipient,
@@ -119,7 +119,7 @@ export class SmsAdapter implements NotificationServiceInterface {
                 });
             } catch (error) {
                 const timeTakenInMs = Date.now() - (error.startTime || Date.now());
-                LoggerUtil.error(`Status: FAILED, traceId: ${traceId}, timeTaken: ${timeTakenInMs}ms`, error.message, '', 'info', error.message);
+                LoggerUtil.error(`FAILED`, error.message, '', 'info', { error: error.message, traceId: traceId, status: 'FAILED', timeTaken: timeTakenInMs });
                 results.push({
                     recipient: notificationData.recipient,
                     status: 'error',
@@ -278,14 +278,14 @@ export class SmsAdapter implements NotificationServiceInterface {
                         throw new BadRequestException("SMS body is required");
                     }
                 }
-                LoggerUtil.log(`Status: ADAPTER_PREP, traceId: ${traceId}`, 'info', singleSmsData);
+                LoggerUtil.log(`ADAPTER_PREP`, 'info', undefined, 'info', { ...singleSmsData, traceId: traceId, status: 'ADAPTER_PREP' });
 
                 const startTime = Date.now();
                 const result = await this.sendRawSms(singleSmsData);
                 const timeTakenInMs = Date.now() - startTime;
 
                 if (result?.$metadata?.httpStatusCode === 200 && result?.MessageId) {
-                    LoggerUtil.log(`Status: SENT, traceId: ${traceId}, timeTaken: ${timeTakenInMs}ms`, 'info', result);
+                    LoggerUtil.log(`SENT`, 'info', undefined, 'info', { ...result, traceId: traceId, status: 'SENT', timeTaken: timeTakenInMs });
                     results.push({
                         to: singleSmsData.to,
                         status: 200,
@@ -293,7 +293,7 @@ export class SmsAdapter implements NotificationServiceInterface {
                         messageId: result.MessageId || `sms-${Date.now()}`
                     });
                 } else {
-                    LoggerUtil.log(`Status: FAILED, traceId: ${traceId}, timeTaken: ${timeTakenInMs}ms`, 'info', result);
+                    LoggerUtil.log(`FAILED`, 'info', undefined, 'info', { ...result, traceId: traceId, status: 'FAILED', timeTaken: timeTakenInMs });
                     // Safe stringification - only include serializable data
                     const safeResult = {
                         data: result?.data,
@@ -308,7 +308,7 @@ export class SmsAdapter implements NotificationServiceInterface {
             }
             catch (error) {
                 const timeTakenInMs = Date.now() - (error.startTime || Date.now());
-                LoggerUtil.error(`Status: FAILED, traceId: ${traceId}, timeTaken: ${timeTakenInMs}ms`, ERROR_MESSAGES.SMS_NOTIFICATION_FAILED, error.message);
+                LoggerUtil.error(`FAILED`, ERROR_MESSAGES.SMS_NOTIFICATION_FAILED, undefined, undefined, { error: error.message, traceId: traceId, status: 'FAILED', timeTaken: timeTakenInMs });
 
                 // Safe error object without circular references
                 results.push({
