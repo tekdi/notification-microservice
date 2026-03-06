@@ -68,7 +68,7 @@ export class EmailAdapter implements NotificationServiceInterface {
                 const timeTakenInMs = Date.now() - startTime;
 
                 if (result.status === 'success') {
-                    LoggerUtil.log(`SENT ${traceId}`, traceId, '', 'info', { ...result, status: 'SENT', traceId: traceId, timeTaken: timeTakenInMs });
+                    LoggerUtil.log(`SENT ${traceId}`, traceId, '', 'info', { status: 'SENT', traceId: traceId, timeTaken: timeTakenInMs });
                     results.push({
                         recipient: recipient,
                         status: 200,
@@ -144,7 +144,7 @@ export class EmailAdapter implements NotificationServiceInterface {
                 const timeTakenInMs = Date.now() - startTime;
 
                 if (result.status === 'success') {
-                    LoggerUtil.log(`SENT ${traceId}`, traceId, '', 'info', { ...result, status: 'SENT', traceId: traceId, timeTaken: timeTakenInMs });
+                    LoggerUtil.log(`SENT ${traceId}`, traceId, '', 'info', { status: 'SENT', traceId: traceId, timeTaken: timeTakenInMs });
                     results.push({
                         to: singleEmailData.to,
                         status: 200,

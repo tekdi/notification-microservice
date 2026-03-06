@@ -195,7 +195,7 @@ export class NotificationService {
           ([_, { data, errors }]) => data.length > 0 || errors.length > 0
         )
       );
-      LoggerUtil.log(`COMPLETED`, apiId, userId, 'info', { ...finalResponses, traceId: traceId, status: 'COMPLETED' });
+      LoggerUtil.log(`COMPLETED`, apiId, userId, 'info', { traceId: traceId, status: 'COMPLETED' });
 
       return response
         .status(HttpStatus.OK)

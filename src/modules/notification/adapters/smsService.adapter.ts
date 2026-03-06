@@ -110,7 +110,7 @@ export class SmsAdapter implements NotificationServiceInterface {
                 const result = await this.send(smsNotificationDto);
                 const timeTakenInMs = Date.now() - startTime;
 
-                LoggerUtil.log(`SENT`, '', '', 'info', { ...result, traceId: traceId, status: 'SENT', timeTaken: timeTakenInMs });
+                LoggerUtil.log(`SENT`, '', '', 'info', { traceId: traceId, status: 'SENT', timeTaken: timeTakenInMs });
 
                 results.push({
                     recipient: recipient,
