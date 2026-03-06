@@ -2,7 +2,7 @@ import { BadRequestException, HttpStatus, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import axios from "axios";
-import { NotificationDto,RawNotificationDto } from "./dto/notificationDto.dto";
+import { NotificationDto, RawNotificationDto } from "./dto/notificationDto.dto";
 import { NotificationAdapterFactory } from "./notificationadapters";
 import APIResponse from "src/common/utils/response";
 // import * as FCM from 'fcm-node';
@@ -17,14 +17,15 @@ import { NotificationQueue } from "../notification-queue/entities/notificationQu
 import { AmqpConnection, RabbitSubscribe } from "@nestjs-plus/rabbitmq";
 import { NotificationQueueService } from "../notification-queue/notificationQueue.service";
 import { APIID } from "src/common/utils/api-id.config";
-import {EmailAdapter} from "src/modules/notification/adapters/emailService.adapter";
-import {SmsAdapter} from "src/modules/notification/adapters/smsService.adapter";
+import { EmailAdapter } from "src/modules/notification/adapters/emailService.adapter";
+import { SmsAdapter } from "src/modules/notification/adapters/smsService.adapter";
 import { WhatsappViaGupshupAdapter } from './adapters/whatsappViaGupshup.adapter';
 import {
   SUCCESS_MESSAGES,
   ERROR_MESSAGES,
 } from "src/common/utils/constant.util";
 import { LoggerUtil } from "src/common/logger/LoggerUtil";
+import { randomUUID } from 'crypto';
 
 @Injectable()
 export class NotificationService {
@@ -60,6 +61,8 @@ export class NotificationService {
     response: Response
   ): Promise<APIResponse> {
     const apiId = APIID.SEND_NOTIFICATION;
+    const traceId = randomUUID();
+    LoggerUtil.log(`RECEIVED`, apiId, userId, 'info', { traceId: traceId, status: 'RECEIVED' });
     const serverResponses: Record<string, { data: any[]; errors: any[] }> = {
       email: { data: [], errors: [] },
       sms: { data: [], errors: [] },
@@ -69,13 +72,14 @@ export class NotificationService {
 
     try {
       const { email, push, sms, inApp, context, replacements, key } = notificationDto;
+
       // Check if notification template exists
       const notification_event = await this.notificationActions.findOne({
         where: { context, key },
       });
       if (!notification_event) {
         LoggerUtil.error(
-          `template not found with this ${context} and ${key}`,
+          `Status: VALIDATED, traceId: ${traceId}, template not found with this ${context} and ${key}`,
           ERROR_MESSAGES.TEMPLATE_NOTFOUND,
           apiId,
           userId
@@ -88,6 +92,7 @@ export class NotificationService {
 
       if (email && email.receipients && email.receipients.length > 0) {
         const promise = this.notificationHandler(
+          traceId,
           "email",
           email.receipients,
           "email",
@@ -100,7 +105,7 @@ export class NotificationService {
       }
 
       if (sms && sms.receipients && sms.receipients.length > 0) {
-        const promise = this.notificationHandler(
+        const promise = this.notificationHandler(traceId,
           "sms",
           sms.receipients,
           "sms",
@@ -113,7 +118,7 @@ export class NotificationService {
       }
 
       if (push?.receipients?.length) {
-        const promise = this.notificationHandler(
+        const promise = this.notificationHandler(traceId,
           "push",
           push.receipients,
           "push",
@@ -125,7 +130,7 @@ export class NotificationService {
         promises.push({ promise, channel: "push" });
       }
       if (inApp?.receipients?.length) {
-        const promise = this.notificationHandler(
+        const promise = this.notificationHandler(traceId,
           "inApp",
           inApp.receipients,
           "inApp",
@@ -190,17 +195,18 @@ export class NotificationService {
           ([_, { data, errors }]) => data.length > 0 || errors.length > 0
         )
       );
+      LoggerUtil.log(`COMPLETED`, apiId, userId, 'info', { traceId: traceId, status: 'COMPLETED' });
 
       return response
         .status(HttpStatus.OK)
-        .json(APIResponse.success(apiId, finalResponses, "OK"));
+        .json(APIResponse.success(traceId, finalResponses, "OK"));
     } catch (e) {
-      LoggerUtil.error(`Error: ${e}`, e, apiId, userId);
+      LoggerUtil.error(`FAILED: ${e}`, e, apiId, userId, { traceId: traceId, status: 'FAILED' });
       throw e;
     }
   }
   // Helper function to handle sending notifications for a specific channel
-  async notificationHandler(
+  async notificationHandler(traceId: string,
     channel,
     recipients,
     type,
@@ -209,6 +215,8 @@ export class NotificationService {
     notification_event,
     userId
   ) {
+    LoggerUtil.log("templeateID", traceId, userId, 'info', { ...notification_event, traceId: traceId });
+    LoggerUtil.log(`VALIDATED`, traceId, userId, 'info', { channel, traceId: traceId, status: 'VALIDATED' });
     if (
       recipients &&
       recipients.length > 0 &&
@@ -219,8 +227,8 @@ export class NotificationService {
       });
       if (notification_details.length === 0) {
         LoggerUtil.error(
-          ERROR_MESSAGES.TEMPLATE_CONFIG_NOTFOUND,
-          `/Send ${channel} Notification`,
+          `Status: VALIDATED, traceId: ${traceId}, ERROR_MESSAGES.TEMPLATE_CONFIG_NOTFOUND`,
+          `/ Send ${channel} Notification`, traceId,
           userId
         );
         throw new BadRequestException(
@@ -268,7 +276,7 @@ export class NotificationService {
           link: link || null,
           replacements: replacements,
         };
-        
+
         // Add CC and BCC for email channel if provided
         if (type === "email" && notificationDto.email) {
           if (notificationDto.email.cc && notificationDto.email.cc.length > 0) {
@@ -278,25 +286,26 @@ export class NotificationService {
             notificationData.bcc = notificationDto.email.bcc;
           }
         }
-        
+
         return notificationData;
       });
-
+      LoggerUtil.log(`TemplateId: ${notification_details[0].templateId}`, traceId, userId, 'info', { traceId: traceId });
       if (notificationDto.isQueue) {
         try {
-          const saveQueue = await this.saveNotificationQueue(
+          const saveQueue = await this.saveNotificationQueue(traceId,
             notificationDataArray
           );
           if (saveQueue.length === 0) {
             throw new Error(ERROR_MESSAGES.NOTIFICATION_QUEUE_SAVE_FAILED);
           }
+          LoggerUtil.log(`QUEUED`, traceId, userId, 'info', { saveQueue, traceId: traceId, status: 'QUEUED' });
           return {
             status: 200,
             message: SUCCESS_MESSAGES.NOTIFICATION_QUEUE_SAVE_SUCCESSFULLY,
           };
         } catch (error) {
           LoggerUtil.error(
-            ERROR_MESSAGES.NOTIFICATION_QUEUE_SAVE_FAILED,
+            `Status: QUEUED_FAILED, traceId: ${traceId} ERROR_MESSAGES.NOTIFICATION_QUEUE_SAVE_FAILED`,
             error,
             SUCCESS_MESSAGES.MESSAGES_SAVING_IN_QUEUE,
             userId
@@ -305,7 +314,7 @@ export class NotificationService {
         }
       } else {
         const adapter = this.adapterFactory.getAdapter(type);
-        return adapter.sendNotification(notificationDataArray);
+        return adapter.sendNotification(notificationDataArray, traceId);
       }
     }
   }
@@ -339,13 +348,14 @@ export class NotificationService {
       throw new BadRequestException(
         `Missing replacements for placeholders: ${missingReplacements.join(
           ", "
-        )}`
+        )
+        } `
       );
     }
   }
 
   //Provider which store in Queue
-  async saveNotificationQueue(notificationDataArray) {
+  async saveNotificationQueue(apiId, notificationDataArray) {
     const arrayofResult = await this.notificationQueue.save(
       notificationDataArray
     );
@@ -353,7 +363,7 @@ export class NotificationService {
       if (this.amqpConnection) {
         try {
           for (const result of arrayofResult) {
-            this.amqpConnection.publish(
+            this.amqpConnection.publish(apiId,
               "notification.exchange",
               "notification.route",
               result,
@@ -377,15 +387,16 @@ export class NotificationService {
     routingKey: "notification.route",
     queue: "notification.queue",
   })
-  async handleNotification(notification, message: any, retryCount = 3) {
+  async handleNotification(traceId, notification, message: any, retryCount = 3) {
     try {
       const adapter = this.adapterFactory.getAdapter(notification.channel);
-      await adapter.sendNotification([notification]);
+      await adapter.sendNotification([notification], traceId);
       const updateQueueDTO = {
         status: true,
         retries: 3 - retryCount,
         last_attempted: new Date(),
       };
+      LoggerUtil.log(`QUEUED`, traceId, '', 'info', { ...notification, traceId: traceId, status: 'QUEUED' });
       await this.notificationQueueService.updateQueue(
         notification.id,
         updateQueueDTO
@@ -416,7 +427,7 @@ export class NotificationService {
   //     });
   //   } catch (error) {
   //     this.logger.error(
-  //       `Failed to Subscribe to topic ${requestBody.topicName}`,
+  //       `Failed to Subscribe to topic ${ requestBody.topicName } `,
   //       error,
   //       '/Not able to subscribe to topic',
   //     );
@@ -437,7 +448,7 @@ export class NotificationService {
   //     }
   //   } catch (error) {
   //     this.logger.error(
-  //       `Failed to UnSubscribe to topic ${requestBody.topicName}`,
+  //       `Failed to UnSubscribe to topic ${ requestBody.topicName } `,
   //       error,
   //       '/Not able to Unsubscribe to topic',
   //     );
@@ -457,13 +468,12 @@ export class NotificationService {
           image: requestBody.image,
           navigate_to: requestBody.navigate_to,
         },
-        to: `/topics/${topic_name}`,
+        to: `/ topics / ${topic_name} `,
       };
-
       const response = await axios.post(fcmUrl, notificationData, {
         headers: {
           "Content-Type": "application/json",
-          Authorization: `key=${fcmKey}`,
+          Authorization: `key = ${fcmKey} `,
         },
       });
       return {
@@ -488,7 +498,7 @@ export class NotificationService {
       await this.notificationLogRepository.save(notificationLogs);
     } catch (e) {
       LoggerUtil.error(
-        `error ${e}`,
+        `error ${e} `,
         ERROR_MESSAGES.NOTIFICATION_LOG_SAVE_FAILED
       );
       throw new Error(ERROR_MESSAGES.NOTIFICATION_LOG_SAVE_FAILED);
@@ -509,7 +519,7 @@ export class NotificationService {
   //     const message = await client.messages.create({
   //       body: notificationData.message,
   //       from: 'whatsapp:+14155238886',
-  //       to: `whatsapp: ${ notificationData.to }`,
+  //       to: `whatsapp: ${ notificationData.to } `,
   //     });
   //     this.logger.info('Message sent successfully to whatsapp');
 
@@ -599,17 +609,19 @@ export class NotificationService {
     response: Response
   ): Promise<APIResponse> {
     const apiId = APIID.SEND_NOTIFICATION;
+    const traceId = randomUUID();
+    LoggerUtil.log(`RECEIVED`, traceId, userId, 'info', { traceId: traceId, status: 'RECEIVED' });
     const serverResponses: Record<string, { data: any[]; errors: any[] }> = {
       email: { data: [], errors: [] },
       sms: { data: [], errors: [] },
       whatsapp: { data: [], errors: [] },
     };
-  
+
     try {
       const { email, sms, whatsapp } = rawNotificationDto;
-      
+
       const promises: Array<{ promise: Promise<any>; channel: string }> = [];
-  
+
       if (email && email.to && email.to.length > 0) {
         if (!email.subject || !email.body) {
           throw new BadRequestException('Email subject and body are required');
@@ -622,7 +634,7 @@ export class NotificationService {
             body: email.body,
             isHtml: true,
           };
-          
+
           // Add CC and BCC if provided
           if (email.cc && email.cc.length > 0) {
             singleEmailData.cc = email.cc;
@@ -630,21 +642,21 @@ export class NotificationService {
           if (email.bcc && email.bcc.length > 0) {
             singleEmailData.bcc = email.bcc;
           }
-          
-          return this.emailService.sendRawEmails(singleEmailData);
+          return this.emailService.sendRawEmails(traceId, singleEmailData);
         });
-        
-        promises.push({ 
-          promise: Promise.all(emailPromises), 
-          channel: 'email' 
+
+
+        promises.push({
+          promise: Promise.all(emailPromises),
+          channel: 'email'
         });
       }
-  
+
       if (sms && sms.to && sms.to.length > 0) {
         // For MSG91: templateId is required, body is optional
         // For other providers: body is required
         const smsProvider = this.configService.get('SMS_PROVIDER', 'AWSSNS');
-        
+
         if (smsProvider === 'MSG91') {
           if (!sms.templateId) {
             throw new BadRequestException('templateId is required for MSG91 provider');
@@ -654,7 +666,7 @@ export class NotificationService {
             throw new BadRequestException('SMS body is required');
           }
         }
-        
+
         // Pass templateId and replacements for MSG91 variable support
         const smsPromises = sms.to.map(recipient => {
           const singleSmsData = {
@@ -664,20 +676,20 @@ export class NotificationService {
             templateId: sms.templateId, // Pass templateId for MSG91
             replacements: sms.replacements || {}, // Pass replacements for MSG91 templates
           };
-          return this.smsService.sendRawSmsMessages(singleSmsData);
+          return this.smsService.sendRawSmsMessages(traceId, singleSmsData);
         });
-        
-        promises.push({ 
-          promise: Promise.all(smsPromises), 
-          channel: 'sms' 
+
+        promises.push({
+          promise: Promise.all(smsPromises),
+          channel: 'sms'
         });
       }
-  
+
       if (whatsapp && whatsapp.to && whatsapp.to.length > 0) {
         if (!whatsapp.templateId || !whatsapp.templateParams) {
           throw new BadRequestException('WhatsApp templateId and templateParams are required for raw sending.');
         }
-        
+
         if (!whatsapp.gupshupSource || !whatsapp.gupshupApiKey) {
           throw new BadRequestException('WhatsApp gupshupSource and gupshupApiKey are required for raw sending.');
         }
@@ -691,33 +703,34 @@ export class NotificationService {
             gupshupApiKey: whatsapp.gupshupApiKey
           };
           // Use the dedicated template sending method from the adapter
-          return this.whatsappViaGupshup.sendTemplateMessage(singleWhatsappData);
+          return this.whatsappViaGupshup.sendTemplateMessage(traceId, singleWhatsappData);
         });
-        
-        promises.push({ 
-          promise: Promise.all(whatsappPromises), 
-          channel: 'whatsapp' 
+
+        promises.push({
+          promise: Promise.all(whatsappPromises),
+          channel: 'whatsapp'
         });
       }
-      
+
       const results = await Promise.allSettled(promises.map(p => p.promise));
-      
-       results.forEach((result, index) => {
+
+      results.forEach((result, index) => {
         const channel = promises[index].channel;
-      
+
         if (!serverResponses[channel]) {
           serverResponses[channel] = { data: [], errors: [] };
         }
-      
+
         if (result.status === 'fulfilled') {
           const notifications = (result.value || []).flat();
-          console.log(result.value,"Shubham");
           notifications.forEach(notification => {
             const status = notification.status;
-            
+
             if (status === 200) {
               serverResponses[channel].data.push(notification);
+              LoggerUtil.log(`SENT`, apiId, userId, 'info', { ...notification, traceId: traceId, status: 'SENT' });
             } else {
+              LoggerUtil.log(`FAILED`, apiId, userId, 'error', { ...notification, traceId: traceId, status: 'FAILED' });
               serverResponses[channel].errors.push({
                 recipient: notification.recipient || notification.to || 'unknown',
                 error: notification.error || notification.message || 'Unknown error',
@@ -726,27 +739,49 @@ export class NotificationService {
             }
           });
         } else {
+          LoggerUtil.log(`FAILED`, apiId, userId, 'error', { reason: result.reason, traceId: traceId, status: 'FAILED' });
           serverResponses[channel].errors.push({
             error: result.reason?.message || 'Unhandled rejection',
             code: result.reason?.status || 500,
           });
         }
       });
-      
+
       // Filter empty channels
       const finalResponses = Object.fromEntries(
         Object.entries(serverResponses).filter(
           ([_, { data, errors }]) => data.length > 0 || errors.length > 0
         )
       );
-      
+      LoggerUtil.log(`COMPLETED`, apiId, userId, 'info', { ...finalResponses, traceId: traceId, status: 'COMPLETED' });
       return response
         .status(HttpStatus.OK)
         .json(APIResponse.success(apiId, finalResponses, 'OK'));
-      
+
     } catch (e) {
+      LoggerUtil.log(`FAILED`, apiId, userId, 'error', { error: e, traceId: traceId, status: 'FAILED' });
       LoggerUtil.error(`Error: ${e}`, e, apiId, userId);
       throw e;
     }
   }
 }
+
+//console.log(maskEmail("testuser@gmail.com"));
+// te****er@gmail.com
+export function maskEmail(email: string) {
+  const [name, domain] = email.split("@");
+
+  const maskedName =
+    name.substring(0, 2) +
+    "*".repeat(name.length - 4) +
+    name.substring(name.length - 2);
+
+  return `${maskedName}@${domain}`;
+}
+// console.log(maskPhone("9876543210"));
+// 98******10
+export function maskPhone(phone: string) {
+  return phone.slice(0, 2) + "******" + phone.slice(-2);
+}
+
+

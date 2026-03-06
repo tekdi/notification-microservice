@@ -34,14 +34,14 @@ export class WhatsappViaGupshupAdapter implements NotificationServiceInterface {
     ) {
         // Initialize Gupshup configuration
         this.gupshupApiUrl = this.configService.get('GUPSHUP_API_URL', 'https://api.gupshup.io/wa/api/v1');
-        
+
     }
 
     /**
      * Sends WhatsApp notifications using template-based approach
      */
     async sendNotification(notificationDataArray) {
-        
+
     }
 
     /**
@@ -77,7 +77,7 @@ export class WhatsappViaGupshupAdapter implements NotificationServiceInterface {
             // Format phone number (remove + if present and ensure proper format)
             const formattedDestination = to.startsWith('+') ? to.substring(1) : to;
             const formattedSource = from.startsWith('+') ? from.substring(1) : from;
-            
+
             // Prepare the message payload for Gupshup API
             let messagePayload: any = {
                 source: formattedSource,
@@ -98,9 +98,9 @@ export class WhatsappViaGupshupAdapter implements NotificationServiceInterface {
                 }
             });
 
-            if ((response.status === 202 || response.status === 200 )&& response.data) {
+            if ((response.status === 202 || response.status === 200) && response.data) {
                 const responseData = response.data;
-                
+
                 // Check if the response indicates success
                 if (responseData.status === 'submitted' || responseData.status === 'success') {
                     LoggerUtil.log('WhatsApp message sent successfully via Gupshup API');
@@ -117,7 +117,7 @@ export class WhatsappViaGupshupAdapter implements NotificationServiceInterface {
             }
         } catch (error) {
             LoggerUtil.error('Gupshup WhatsApp API error:', error);
-            
+
             // Handle different types of errors
             if (error.response) {
                 // API error response
@@ -148,7 +148,7 @@ export class WhatsappViaGupshupAdapter implements NotificationServiceInterface {
     /**
      * Send template message via Gupshup
      */
-    async sendTemplateMessage(templateData: {
+    async sendTemplateMessage(traceId, templateData: {
         to: string;
         templateId: string;
         templateParams: any[];
@@ -160,7 +160,7 @@ export class WhatsappViaGupshupAdapter implements NotificationServiceInterface {
             `Template: ${templateData.templateId}`,
             templateData.to
         );
-        
+        LoggerUtil.log(`ADAPTER_PREP`, '', '', 'info', { ...templateData, traceId: traceId, status: 'ADAPTER_PREP' });
         try {
             const result = await this.sendViaGupshupProvider({
                 to: templateData.to,
@@ -170,8 +170,9 @@ export class WhatsappViaGupshupAdapter implements NotificationServiceInterface {
                 gupshupSource: templateData.gupshupSource,
                 gupshupApiKey: templateData.gupshupApiKey
             });
-            
+
             if (result.status === "success") {
+                LoggerUtil.log(`ADAPTER_SUCCESS`, '', '', 'info', { ...result, traceId: traceId, status: 'ADAPTER_SUCCESS' });
                 notificationLogs.status = true;
                 await this.notificationServices.saveNotificationLogs(notificationLogs);
                 LoggerUtil.log('WhatsApp template message submitted successfully via Gupshup');
@@ -182,10 +183,11 @@ export class WhatsappViaGupshupAdapter implements NotificationServiceInterface {
                     messageId: result.id || `gupshup-template-${Date.now()}`,
                 };
             } else {
+                LoggerUtil.log(`ADAPTER_FAILURE`, '', '', 'info', { ...result, traceId: traceId, status: 'ADAPTER_FAILURE' });
                 throw new Error(`WhatsApp template not sent: ${JSON.stringify(result.errors)}`);
             }
         } catch (e) {
-            LoggerUtil.error('WhatsApp template message failed:', e);
+            LoggerUtil.error(`ADAPTER_FAILURE`, '', '', 'info', { error: e, traceId: traceId, status: 'ADAPTER_FAILURE' });
             notificationLogs.status = false;
             notificationLogs.error = e.toString();
             await this.notificationServices.saveNotificationLogs(notificationLogs);
