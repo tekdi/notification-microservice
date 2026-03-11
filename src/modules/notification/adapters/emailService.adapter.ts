@@ -37,35 +37,58 @@ export class EmailAdapter implements NotificationServiceInterface {
      */
     async sendNotification(notificationDataArray) {
         const results = [];
-        for (const notificationData of notificationDataArray) {
-            try {
-                const recipient = notificationData.recipient;
-                if (!recipient || !this.isValidEmail(recipient)) {
-                    throw new BadRequestException(ERROR_MESSAGES.INVALID_EMAIL);
+    
+        try {
+            // Collect all recipients from incoming array
+            let allRecipients = [];
+    
+            for (const notificationData of notificationDataArray) {
+                let recipients = notificationData.recipient;
+    
+                if (!Array.isArray(recipients)) {
+                    recipients = [recipients];
                 }
-                const result = await this.send(notificationData);
-                if (result.status === 'success') {
-                    results.push({
-                        recipient: recipient,
-                        status: 200,
-                        result: SUCCESS_MESSAGES.EMAIL_NOTIFICATION_SEND_SUCCESSFULLY
-                    });
-                } else {
-                    results.push({
-                        recipient: recipient,
-                        status: 'error',
-                        error: `Email not sent: ${JSON.stringify(result.errors)}`
-                    });
-                }
+    
+                allRecipients.push(...recipients);
             }
-            catch (error) {
-                LoggerUtil.error(ERROR_MESSAGES.EMAIL_NOTIFICATION_FAILED, error);
+    
+            // Remove duplicates
+            allRecipients = [...new Set(allRecipients)];
+    
+            // Take first object as base payload
+            const baseNotification = notificationDataArray[0];
+    
+            // Validate emails
+            const invalidEmails = allRecipients.filter(email => !this.isValidEmail(email));
+            if (allRecipients.length === 0 || invalidEmails.length > 0) {
+                throw new BadRequestException(ERROR_MESSAGES.INVALID_EMAIL);
+            }
+    
+            // Send ONE email
+            const result = await this.send({
+                ...baseNotification,
+                recipient: allRecipients
+            });
+    
+            if (result.status === 'success') {
                 results.push({
-                    recipient: notificationData.recipient,
+                    recipient: allRecipients,
+                    status: 200,
+                    result: SUCCESS_MESSAGES.EMAIL_NOTIFICATION_SEND_SUCCESSFULLY
+                });
+            } else {
+                results.push({
+                    recipient: allRecipients,
                     status: 'error',
-                    error: error.toString()
+                    error: `Email not sent: ${JSON.stringify(result.errors)}`
                 });
             }
+        } catch (error) {
+            LoggerUtil.error(ERROR_MESSAGES.EMAIL_NOTIFICATION_FAILED, error);
+            results.push({
+                status: 'error',
+                error: error.toString()
+            });
         }
         return results;
     }
@@ -189,7 +212,7 @@ export class EmailAdapter implements NotificationServiceInterface {
     async send(notificationData) {
         // Note: CC and BCC are not logged in notificationLogs for privacy/security reasons
         // The NotificationLog entity doesn't have CC/BCC fields, and BCC is meant to be hidden
-        const notificationLogs = this.createNotificationLog(notificationData, notificationData.subject, notificationData.key, notificationData.body, notificationData.recipient);
+                const notificationLogs = this.createNotificationLog(notificationData, notificationData.subject, notificationData.key, notificationData.body, notificationData.recipient);
         try {
             const emailConfig = this.getEmailConfig(notificationData.context);
             const notifmeSdk = new NotifmeSdk(emailConfig);
