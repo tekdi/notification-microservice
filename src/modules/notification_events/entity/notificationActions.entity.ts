@@ -32,7 +32,11 @@ export class NotificationActions {
     context: string;
 
     @Column({ type: 'jsonb', nullable: true })
-    replacementTags: any
+    replacementTags: any;
+
+    /** Supported notification channels, e.g. ["EMAIL","IN_APP"]. When null, all configured channel types are allowed. */
+    @Column({ type: 'jsonb', nullable: true })
+    channels: string[] | null;
 
     @OneToMany(() => NotificationActionTemplates, templateconfig => templateconfig.template, { cascade: true })
     templateconfig: NotificationActionTemplates[];
