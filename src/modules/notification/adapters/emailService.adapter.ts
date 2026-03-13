@@ -277,14 +277,15 @@ export class EmailAdapter implements NotificationServiceInterface {
 
     async sendNotificationBulk(notificationData) {
         try {
+    
             const recipients = notificationData.recipients;
     
             if (!recipients || !Array.isArray(recipients) || recipients.length === 0) {
                 throw new BadRequestException(ERROR_MESSAGES.INVALID_EMAIL);
             }
     
-            // Validate all emails
             const invalidEmails = recipients.filter(email => !this.isValidEmail(email));
+    
             if (invalidEmails.length > 0) {
                 throw new BadRequestException(`Invalid emails: ${invalidEmails.join(", ")}`);
             }
@@ -293,25 +294,26 @@ export class EmailAdapter implements NotificationServiceInterface {
     
             if (result.status === 'success') {
                 return {
-                    recipients: recipients,
+                    recipients,
                     status: 200,
                     result: SUCCESS_MESSAGES.EMAIL_NOTIFICATION_SEND_SUCCESSFULLY
                 };
             }
     
             return {
-                recipients: recipients,
+                recipients,
                 status: 'error',
                 error: `Email not sent: ${JSON.stringify(result.errors)}`
             };
     
         } catch (error) {
+    
             LoggerUtil.error(ERROR_MESSAGES.EMAIL_NOTIFICATION_FAILED, error);
     
             return {
-                recipients: notificationData.recipients,
+                recipients: notificationData?.recipients || [],
                 status: 'error',
-                error: error.toString()
+                error: error.message || error.toString()
             };
         }
     }
@@ -319,7 +321,12 @@ export class EmailAdapter implements NotificationServiceInterface {
 
     async sendBulk(notificationData) {
 
-        const logRecipient = notificationData.recipients.join(", ");
+        const recipients = notificationData.recipients || [];
+
+        const logRecipient =
+        recipients.length > 3
+            ? `${recipients.slice(0,3).join(", ")} + ${recipients.length - 3} more`
+            : recipients.join(", ");
     
         const notificationLogs = this.createNotificationLog(
             notificationData,
@@ -354,14 +361,19 @@ export class EmailAdapter implements NotificationServiceInterface {
                 notificationLogs.status = true;
     
                 try {
-                    await this.notificationServices.saveNotificationLogs(notificationLogs);
+                    this.notificationServices
+                    .saveNotificationLogs(notificationLogs)
+                    .catch(err => LoggerUtil.error("Failed to save notification log", err));
                 } catch (logError) {
                     LoggerUtil.error("Failed to save notification log", logError);
                 }
     
                 LoggerUtil.log(SUCCESS_MESSAGES.EMAIL_NOTIFICATION_SEND_SUCCESSFULLY);
     
-                return result;
+                return {
+                    status: 'success',
+                    data: result
+                };
             }
     
             throw new Error(`Email not sent ${JSON.stringify(result.errors)}`);
@@ -374,12 +386,17 @@ export class EmailAdapter implements NotificationServiceInterface {
             notificationLogs.error = e.toString();
     
             try {
-                await this.notificationServices.saveNotificationLogs(notificationLogs);
+                this.notificationServices
+                .saveNotificationLogs(notificationLogs)
+                .catch(err => LoggerUtil.error("Failed to save notification log", err));
             } catch (logError) {
                 LoggerUtil.error("Failed to save notification log", logError);
             }
     
-            return e;
+            return {
+                status: 'error',
+                errors: e.message || e.toString()
+            };
         }
     }
 }

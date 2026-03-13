@@ -750,9 +750,9 @@ export class NotificationService {
     }
   }
 
-  async sendBulkNotification(notificationDto, userId, response) {
+  async sendBulkNotification(notificationDto: any, userId: string) {
 
-    const recipients = notificationDto.email.recipients;
+    const recipients = notificationDto?.email?.recipients;
   
     if (!Array.isArray(recipients) || recipients.length === 0) {
       throw new BadRequestException('Recipients must be a non-empty array');
@@ -760,7 +760,7 @@ export class NotificationService {
   
     return this.emailService.sendNotificationBulk({
       ...notificationDto,
-      recipients: notificationDto.email.recipients,
+      recipients,
       cc: notificationDto.email?.cc,
       bcc: notificationDto.email?.bcc
     });
