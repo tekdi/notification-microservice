@@ -274,4 +274,129 @@ export class EmailAdapter implements NotificationServiceInterface {
             };
         }
     }
+
+    async sendNotificationBulk(notificationData) {
+        try {
+    
+            const recipients = notificationData.recipients;
+    
+            if (!recipients || !Array.isArray(recipients) || recipients.length === 0) {
+                throw new BadRequestException(ERROR_MESSAGES.INVALID_EMAIL);
+            }
+    
+            const invalidEmails = recipients.filter(email => !this.isValidEmail(email));
+    
+            if (invalidEmails.length > 0) {
+                throw new BadRequestException(`Invalid emails: ${invalidEmails.join(", ")}`);
+            }
+    
+            const result = await this.sendBulk(notificationData);
+    
+            if (result.status === 'success') {
+                return {
+                    recipients,
+                    status: 200,
+                    result: SUCCESS_MESSAGES.EMAIL_NOTIFICATION_SEND_SUCCESSFULLY
+                };
+            }
+    
+            return {
+                recipients,
+                status: 'error',
+                error: `Email not sent: ${JSON.stringify(result.errors)}`
+            };
+    
+        } catch (error) {
+    
+            LoggerUtil.error(ERROR_MESSAGES.EMAIL_NOTIFICATION_FAILED, error);
+    
+            return {
+                recipients: notificationData?.recipients || [],
+                status: 'error',
+                error: error.message || error.toString()
+            };
+        }
+    }
+
+
+    async sendBulk(notificationData) {
+
+        const recipients = notificationData.recipients || [];
+
+        const logRecipient =
+        recipients.length > 3
+            ? `${recipients.slice(0,3).join(", ")} + ${recipients.length - 3} more`
+            : recipients.join(", ");
+    
+        const notificationLogs = this.createNotificationLog(
+            notificationData,
+            notificationData.subject,
+            notificationData.key,
+            notificationData.body,
+            logRecipient
+        );
+    
+        try {
+    
+            const emailConfig = this.getEmailConfig(notificationData.context);
+            const notifmeSdk = new NotifmeSdk(emailConfig);
+    
+            const result = await notifmeSdk.send({
+                email: {
+                    from: emailConfig.email.from,
+                    to: notificationData.recipients,
+                    subject: notificationData.subject,
+                    html: notificationData.body,
+                    ...(notificationData.cc && Array.isArray(notificationData.cc) && notificationData.cc.length > 0
+                        ? { cc: notificationData.cc }
+                        : {}),
+                    ...(notificationData.bcc && Array.isArray(notificationData.bcc) && notificationData.bcc.length > 0
+                        ? { bcc: notificationData.bcc }
+                        : {}),
+                },
+            });
+    
+            if (result.status === 'success') {
+    
+                notificationLogs.status = true;
+    
+                try {
+                    this.notificationServices
+                    .saveNotificationLogs(notificationLogs)
+                    .catch(err => LoggerUtil.error("Failed to save notification log", err));
+                } catch (logError) {
+                    LoggerUtil.error("Failed to save notification log", logError);
+                }
+    
+                LoggerUtil.log(SUCCESS_MESSAGES.EMAIL_NOTIFICATION_SEND_SUCCESSFULLY);
+    
+                return {
+                    status: 'success',
+                    data: result
+                };
+            }
+    
+            throw new Error(`Email not sent ${JSON.stringify(result.errors)}`);
+    
+        } catch (e) {
+    
+            LoggerUtil.error(ERROR_MESSAGES.EMAIL_NOTIFICATION_FAILED, e);
+    
+            notificationLogs.status = false;
+            notificationLogs.error = e.toString();
+    
+            try {
+                this.notificationServices
+                .saveNotificationLogs(notificationLogs)
+                .catch(err => LoggerUtil.error("Failed to save notification log", err));
+            } catch (logError) {
+                LoggerUtil.error("Failed to save notification log", logError);
+            }
+    
+            return {
+                status: 'error',
+                errors: e.message || e.toString()
+            };
+        }
+    }
 }
