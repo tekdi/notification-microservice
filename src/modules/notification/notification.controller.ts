@@ -96,6 +96,28 @@ export class NotificationController {
       response,
     );
   }
-
+  @UseFilters(new AllExceptionsFilter(APIID.SEND_NOTIFICATION))
+  @Post("send-bulk")
+  @ApiOkResponse({ description: "send bulk notification successfully" })
+  @ApiInternalServerErrorResponse({ description: "internal server error" })
+  @ApiBadRequestResponse({ description: "Invalid Request" })
+  @UsePipes(new ValidationPipe({ transform: true }))
+  @ApiBody({ type: RawNotificationDto }) // you can create a new DTO later if needed
+  async sendBulkNotification(
+    @Body() notificationDto: any,
+    @Res() response: Response,
+    @GetUserId() userId: string,
+  ) {
+  
+    if (!notificationDto.email || !notificationDto.email.recipients) {
+      throw new BadRequestException('Email recipients are required for bulk notification.');
+    }
+  
+    return this.notificationService.sendBulkNotification(
+      notificationDto,
+      userId,
+      response
+    );
+  }
   
 }

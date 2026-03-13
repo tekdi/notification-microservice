@@ -749,4 +749,20 @@ export class NotificationService {
       throw e;
     }
   }
+
+  async sendBulkNotification(notificationDto, userId, response) {
+
+    const recipients = notificationDto.email.recipients;
+  
+    if (!Array.isArray(recipients) || recipients.length === 0) {
+      throw new BadRequestException('Recipients must be a non-empty array');
+    }
+  
+    return this.emailService.sendNotificationBulk({
+      ...notificationDto,
+      recipients: notificationDto.email.recipients,
+      cc: notificationDto.email?.cc,
+      bcc: notificationDto.email?.bcc
+    });
+  }
 }
