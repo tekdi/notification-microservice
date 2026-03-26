@@ -1,6 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleDestroy } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import Redis from 'ioredis';
 import { InAppNotificationCampaign } from './entities/in-app-notification-campaign.entity';
 import { InAppNotificationRead } from './entities/in-app-notification-read.entity';
 import type { AudienceType, NotificationType } from './entities/in-app-notification-campaign.entity';
@@ -37,13 +39,134 @@ export interface CreateInAppCampaignParams {
 }
 
 @Injectable()
-export class InAppNotificationService {
+export class InAppNotificationService implements OnModuleDestroy {
+  private readonly GLOBAL_VERSION_KEY = 'notif:global_version';
+  private readonly USER_UNREAD_PREFIX = 'unread:user:';
+  private readonly redis: Redis | null;
+  private readonly unreadCountTtlSec: number;
+
   constructor(
     @InjectRepository(InAppNotificationCampaign)
     private readonly campaignRepository: Repository<InAppNotificationCampaign>,
     @InjectRepository(InAppNotificationRead)
     private readonly readRepository: Repository<InAppNotificationRead>,
-  ) {}
+    private readonly configService: ConfigService,
+  ) {
+    this.unreadCountTtlSec = Number(this.configService.get('UNREAD_COUNT_TTL_SEC') || 600);
+    const host = this.configService.get<string>('REDIS_HOST');
+    const port = Number(this.configService.get('REDIS_PORT') || 6379);
+    const password = this.configService.get<string>('REDIS_PASSWORD') || undefined;
+    const db = Number(this.configService.get('REDIS_DB') || 0);
+    this.redis = host
+      ? new Redis({
+          host,
+          port,
+          password,
+          db,
+          lazyConnect: true,
+          maxRetriesPerRequest: 1,
+        })
+      : null;
+  }
+
+  async onModuleDestroy(): Promise<void> {
+    if (this.redis) {
+      await this.redis.quit();
+    }
+  }
+
+  private getUnreadCacheKey(userId: string): string {
+    return `${this.USER_UNREAD_PREFIX}${userId}`;
+  }
+
+  private async ensureRedisConnected(): Promise<void> {
+    if (!this.redis) return;
+    if (this.redis.status === 'ready' || this.redis.status === 'connect') return;
+    await this.redis.connect();
+  }
+
+  private async getGlobalVersion(): Promise<number> {
+    if (!this.redis) return 0;
+    try {
+      await this.ensureRedisConnected();
+      const value = await this.redis.get(this.GLOBAL_VERSION_KEY);
+      return Number(value || 0);
+    } catch {
+      return 0;
+    }
+  }
+
+  private async incrementGlobalVersion(): Promise<void> {
+    if (!this.redis) return;
+    try {
+      await this.ensureRedisConnected();
+      await this.redis.incr(this.GLOBAL_VERSION_KEY);
+    } catch {
+      // Fallback is DB recalculation on cache miss/mismatch.
+    }
+  }
+
+  private async cacheUnreadCount(userId: string, count: number, version: number): Promise<void> {
+    if (!this.redis) return;
+    try {
+      await this.ensureRedisConnected();
+      await this.redis.set(
+        this.getUnreadCacheKey(userId),
+        JSON.stringify({ count: Math.max(0, count), version }),
+        'EX',
+        this.unreadCountTtlSec,
+      );
+    } catch {
+      // Ignore cache write errors and return DB-backed result.
+    }
+  }
+
+  private async decrementUnreadCacheCount(userId: string): Promise<void> {
+    if (!this.redis) return;
+    try {
+      await this.ensureRedisConnected();
+      const cacheKey = this.getUnreadCacheKey(userId);
+      const cached = await this.redis.get(cacheKey);
+      if (!cached) return;
+      const parsed = JSON.parse(cached) as { count?: number; version?: number };
+      if (typeof parsed?.count !== 'number' || typeof parsed?.version !== 'number') return;
+      await this.redis.set(
+        cacheKey,
+        JSON.stringify({
+          count: Math.max(0, parsed.count - 1),
+          version: parsed.version,
+        }),
+        'EX',
+        this.unreadCountTtlSec,
+      );
+    } catch {
+      // Ignore cache decrement errors.
+    }
+  }
+
+  private async calculateUnreadCountFromDb(
+    userId: string,
+    userProfile?: UserProfileFilter | null,
+  ): Promise<number> {
+    const campaigns = await this.campaignRepository
+      .createQueryBuilder('c')
+      .select(['c.id', 'c.audience_type', 'c.audience_metadata'])
+      .where('(c.expires_at IS NULL OR c.expires_at >= :now)', { now: new Date() })
+      .getMany();
+
+    const readIds = await this.readRepository.find({
+      where: { user_id: userId },
+      select: ['notification_id'],
+    });
+    const readSet = new Set(readIds.map((r) => r.notification_id));
+
+    let count = 0;
+    for (const c of campaigns) {
+      if (readSet.has(c.id)) continue;
+      if (this.isUserInAudience(userId, c.audience_type, c.audience_metadata || {}, userProfile)) count++;
+    }
+    return count;
+  }
 
   /**
    * Determines if a user is in the campaign audience.
@@ -193,35 +316,46 @@ export class InAppNotificationService {
   }
 
   async getUnreadCount(userId: string, userProfile?: UserProfileFilter | null): Promise<number> {
-    const campaigns = await this.campaignRepository
-      .createQueryBuilder('c')
-      .select(['c.id', 'c.audience_type', 'c.audience_metadata'])
-      .where('(c.expires_at IS NULL OR c.expires_at >= :now)', { now: new Date() })
-      .getMany();
-
-    const readIds = await this.readRepository.find({
-      where: { user_id: userId },
-      select: ['notification_id'],
-    });
-    const readSet = new Set(readIds.map((r) => r.notification_id));
-
-    let count = 0;
-    for (const c of campaigns) {
-      if (readSet.has(c.id)) continue;
-      if (this.isUserInAudience(userId, c.audience_type, c.audience_metadata || {}, userProfile)) count++;
+    if (!this.redis) {
+      return this.calculateUnreadCountFromDb(userId, userProfile);
     }
-    return count;
+
+    try {
+      await this.ensureRedisConnected();
+      const currentVersion = await this.getGlobalVersion();
+      const cacheKey = this.getUnreadCacheKey(userId);
+      const cached = await this.redis.get(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached) as { count?: number; version?: number };
+        if (typeof parsed?.count === 'number' && parsed.version === currentVersion) {
+          return Math.max(0, parsed.count);
+        }
+      }
+
+      const count = await this.calculateUnreadCountFromDb(userId, userProfile);
+      await this.cacheUnreadCount(userId, count, currentVersion);
+      return count;
+    } catch {
+      return this.calculateUnreadCountFromDb(userId, userProfile);
+    }
   }
 
   async markAsRead(notificationId: string, userId: string): Promise<void> {
-    const existing = await this.readRepository.findOne({
-      where: { notification_id: notificationId, user_id: userId },
-    });
-    if (existing) return;
-    await this.readRepository.save({
-      notification_id: notificationId,
-      user_id: userId,
-    });
+    const result = await this.readRepository
+      .createQueryBuilder()
+      .insert()
+      .into(InAppNotificationRead)
+      .values({
+        notification_id: notificationId,
+        user_id: userId,
+      })
+      .orIgnore()
+      .execute();
+
+    const inserted = Number(result?.raw?.rowCount || 0) > 0 || (result.identifiers?.length || 0) > 0;
+    if (inserted) {
+      await this.decrementUnreadCacheCount(userId);
+    }
   }
 
   async createCampaign(params: CreateInAppCampaignParams): Promise<InAppNotificationCampaign> {
@@ -237,6 +371,8 @@ export class InAppNotificationService {
       updated_by: params.updatedBy ?? null,
       expires_at: params.expiresAt ?? null,
     });
-    return this.campaignRepository.save(campaign);
+    const saved = await this.campaignRepository.save(campaign);
+    await this.incrementGlobalVersion();
+    return saved;
   }
 }

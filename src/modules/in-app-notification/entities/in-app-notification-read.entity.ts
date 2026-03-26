@@ -5,10 +5,12 @@ import {
   CreateDateColumn,
   ManyToOne,
   JoinColumn,
+  Unique,
 } from 'typeorm';
 import { InAppNotificationCampaign } from './in-app-notification-campaign.entity';
 
 @Entity('UserNotifications')
+@Unique('UQ_user_notification_read', ['user_id', 'notification_id'])
 export class InAppNotificationRead {
   @PrimaryGeneratedColumn('uuid')
   id: string;
