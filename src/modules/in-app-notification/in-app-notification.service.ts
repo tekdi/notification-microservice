@@ -168,6 +168,112 @@ export class InAppNotificationService implements OnModuleDestroy {
     return count;
   }
 
+  private stripAudienceQuotes(value: string): string {
+    return String(value).trim().replaceAll(/^["']|["']$/g, '');
+  }
+
+  private getResolvedUserIds(audienceMetadata: Record<string, unknown>): string[] {
+    const raw = audienceMetadata?.resolvedUserIds;
+    return Array.isArray(raw) ? (raw as string[]) : [];
+  }
+
+  private audienceMetadataHasAttributeFilters(audienceMetadata: Record<string, unknown>): boolean {
+    const metaCohortId = audienceMetadata?.cohortId;
+    const metaCohortIds = audienceMetadata?.cohortIds;
+    const metaAutoTags = audienceMetadata?.auto_tags;
+    const metaCountry = audienceMetadata?.country;
+    const metaCountries = audienceMetadata?.countries;
+    return (
+      metaCohortId !== undefined ||
+      (Array.isArray(metaCohortIds) && metaCohortIds.length > 0) ||
+      metaAutoTags !== undefined ||
+      metaCountry !== undefined ||
+      (Array.isArray(metaCountries) && metaCountries.length > 0)
+    );
+  }
+
+  private buildAllowedCohortIds(audienceMetadata: Record<string, unknown>): string[] {
+    const metaCohortId = audienceMetadata?.cohortId as string | string[] | undefined;
+    const metaCohortIds = audienceMetadata?.cohortIds as string[] | undefined;
+    if (Array.isArray(metaCohortIds)) {
+      return metaCohortIds.map((c) => this.stripAudienceQuotes(String(c)));
+    }
+    if (metaCohortId === undefined) return [];
+    if (Array.isArray(metaCohortId)) {
+      return metaCohortId.map((c) => this.stripAudienceQuotes(String(c)));
+    }
+    return [this.stripAudienceQuotes(String(metaCohortId))];
+  }
+
+  private userMatchesCohortConstraint(
+    userProfile: UserProfileFilter,
+    audienceMetadata: Record<string, unknown>,
+  ): boolean {
+    const allowedCohorts = this.buildAllowedCohortIds(audienceMetadata);
+    if (allowedCohorts.length === 0) return true;
+    const userCohort = userProfile.cohortId ? this.stripAudienceQuotes(userProfile.cohortId) : '';
+    return Boolean(userCohort && allowedCohorts.includes(userCohort));
+  }
+
+  private normalizeAudienceTag(value: unknown): string | null {
+    if (typeof value === 'string') return value.trim().toLowerCase();
+    if (typeof value === 'number' && Number.isFinite(value)) return String(value).trim().toLowerCase();
+    return null;
+  }
+
+  private userMatchesTagConstraint(userProfile: UserProfileFilter, audienceMetadata: Record<string, unknown>): boolean {
+    const metaAutoTags = audienceMetadata?.auto_tags;
+    if (metaAutoTags === undefined) return true;
+    let allowedTags: string[];
+    if (Array.isArray(metaAutoTags)) {
+      allowedTags = (metaAutoTags as unknown[])
+        .map((t) => this.normalizeAudienceTag(t))
+        .filter((t): t is string => t !== null);
+    } else {
+      const one = this.normalizeAudienceTag(metaAutoTags);
+      allowedTags = one === null ? [] : [one];
+    }
+    const userTagSet = new Set(
+      (userProfile.auto_tags || []).map((t) => String(t).trim().toLowerCase()),
+    );
+    return allowedTags.some((tag) => userTagSet.has(tag));
+  }
+
+  private buildAllowedCountriesLower(audienceMetadata: Record<string, unknown>): string[] {
+    const metaCountry = audienceMetadata?.country as string | undefined;
+    const metaCountries = audienceMetadata?.countries as string[] | undefined;
+    if (Array.isArray(metaCountries)) {
+      return metaCountries.map((c) => this.stripAudienceQuotes(String(c)).toLowerCase());
+    }
+    if (metaCountry !== undefined) {
+      return [this.stripAudienceQuotes(String(metaCountry)).toLowerCase()];
+    }
+    return [];
+  }
+
+  private userMatchesCountryConstraint(
+    userProfile: UserProfileFilter,
+    audienceMetadata: Record<string, unknown>,
+  ): boolean {
+    const allowedCountries = this.buildAllowedCountriesLower(audienceMetadata);
+    if (allowedCountries.length === 0) return true;
+    const userCountry = userProfile.country
+      ? this.stripAudienceQuotes(userProfile.country).toLowerCase()
+      : '';
+    return Boolean(userCountry && allowedCountries.includes(userCountry));
+  }
+
+  private userProfileMatchesAttributeFilters(
+    userProfile: UserProfileFilter | null | undefined,
+    audienceMetadata: Record<string, unknown>,
+  ): boolean {
+    if (!userProfile) return false;
+    if (!this.userMatchesCohortConstraint(userProfile, audienceMetadata)) return false;
+    if (!this.userMatchesTagConstraint(userProfile, audienceMetadata)) return false;
+    if (!this.userMatchesCountryConstraint(userProfile, audienceMetadata)) return false;
+    return true;
+  }
+
   /**
    * Determines if a user is in the campaign audience.
    * - ALL_USERS: everyone (subject to cohortId/auto_tags/country filter below).
@@ -181,77 +287,22 @@ export class InAppNotificationService implements OnModuleDestroy {
     audienceMetadata: Record<string, unknown>,
     userProfile?: UserProfileFilter | null,
   ): boolean {
-    // Explicit user lists
     if (audienceType === 'USER_LIST') {
-      const userIds = (audienceMetadata?.userIds as string[] | undefined) || [];
+      const userIds = audienceMetadata?.userIds as string[] | undefined;
       return Array.isArray(userIds) && userIds.includes(userId);
     }
-    if (audienceType === 'COHORT' || audienceType === 'ROLE') {
-      const resolvedUserIds = (audienceMetadata?.resolvedUserIds as string[] | undefined) || [];
-      if (Array.isArray(resolvedUserIds) && resolvedUserIds.length > 0) {
-        return resolvedUserIds.includes(userId);
-      }
-      // No resolved list: fall back to attribute matching if metadata has cohortId/auto_tags/country
+
+    const resolvedUserIds = this.getResolvedUserIds(audienceMetadata);
+    if ((audienceType === 'COHORT' || audienceType === 'ROLE') && resolvedUserIds.length > 0) {
+      return resolvedUserIds.includes(userId);
     }
 
-    // Attribute-based filter: supports cohortId/cohortIds, auto_tags, country/countries in audience_metadata
-    const metaCohortId = audienceMetadata?.cohortId as string | string[] | undefined;
-    const metaCohortIds = audienceMetadata?.cohortIds as string[] | undefined;
-    const metaAutoTags = audienceMetadata?.auto_tags;
-    const metaCountry = audienceMetadata?.country as string | undefined;
-    const metaCountries = audienceMetadata?.countries as string[] | undefined;
-
-    const hasAttributeFilter =
-      metaCohortId !== undefined ||
-      (Array.isArray(metaCohortIds) && metaCohortIds.length > 0) ||
-      metaAutoTags !== undefined ||
-      metaCountry !== undefined ||
-      (Array.isArray(metaCountries) && metaCountries.length > 0);
-
-    if (hasAttributeFilter) {
-      if (!userProfile) return false;
-
-      // Cohort: metadata.cohortIds (array) or metadata.cohortId (single). User's cohortId must be in allowed list.
-      const allowedCohorts: string[] = Array.isArray(metaCohortIds)
-        ? metaCohortIds.map((c) => String(c).trim().replace(/^["']|["']$/g, ''))
-        : metaCohortId !== undefined
-          ? Array.isArray(metaCohortId)
-            ? (metaCohortId as string[]).map((c) => String(c).trim().replace(/^["']|["']$/g, ''))
-            : [String(metaCohortId).trim().replace(/^["']|["']$/g, '')]
-          : [];
-      if (allowedCohorts.length > 0) {
-        const userCohort = userProfile.cohortId?.trim().replace(/^["']|["']$/g, '');
-        if (!userCohort || !allowedCohorts.includes(userCohort)) return false;
-      }
-
-      // Tags: metadata.auto_tags (array or string). User must have at least one tag in metadata (OR).
-      if (metaAutoTags !== undefined) {
-        const allowedTags = Array.isArray(metaAutoTags)
-          ? (metaAutoTags as string[]).map((t) => String(t).trim().toLowerCase())
-          : [String(metaAutoTags).trim().toLowerCase()];
-        const userTags = (userProfile.auto_tags || []).map((t) => String(t).trim().toLowerCase());
-        const hasAtLeastOne = allowedTags.some((tag) => userTags.includes(tag));
-        if (!hasAtLeastOne) return false;
-      }
-
-      // Country: metadata.countries (array) or metadata.country (single). Case-insensitive.
-      const allowedCountries: string[] = Array.isArray(metaCountries)
-        ? metaCountries.map((c) => String(c).trim().replace(/^["']|["']$/g, '').toLowerCase())
-        : metaCountry !== undefined
-          ? [String(metaCountry).trim().replace(/^["']|["']$/g, '').toLowerCase()]
-          : [];
-      if (allowedCountries.length > 0) {
-        const userCountry = userProfile.country?.trim().replace(/^["']|["']$/g, '').toLowerCase();
-        if (!userCountry || !allowedCountries.includes(userCountry)) return false;
-      }
-
-      return true;
+    if (this.audienceMetadataHasAttributeFilters(audienceMetadata)) {
+      return this.userProfileMatchesAttributeFilters(userProfile, audienceMetadata);
     }
 
-    // Legacy: only userId lists, no attribute filter
     if (audienceType === 'ALL_USERS') return true;
-    const resolvedUserIds = (audienceMetadata?.resolvedUserIds as string[] | undefined) || [];
-    return Array.isArray(resolvedUserIds) && resolvedUserIds.includes(userId);
+    return resolvedUserIds.includes(userId);
   }
 
   async getNotifications(

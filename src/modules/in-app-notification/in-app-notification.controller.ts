@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOkResponse, ApiBadRequestResponse, ApiBasicAuth, ApiBody } from '@nestjs/swagger';
 import { Response } from 'express';
-import { InAppNotificationService, InAppNotificationItem, UserProfileFilter } from './in-app-notification.service';
+import { InAppNotificationService, UserProfileFilter } from './in-app-notification.service';
 import { GetInAppNotificationsQueryDto } from './dto/get-in-app-notifications.dto';
 import { MarkInAppNotificationReadDto } from './dto/mark-in-app-read.dto';
 import { GetUserId } from 'src/common/decorator/userId.decorator';
@@ -19,14 +19,17 @@ import { APIID } from 'src/common/utils/api-id.config';
 
 /** Build UserProfileFilter from request body (cohortId, auto_tags string or array, country) */
 function buildUserProfileFilter(body: GetInAppNotificationsQueryDto): UserProfileFilter | undefined {
-  const stripQuotes = (s: string) => s.replace(/^["']|["']$/g, '').trim();
+  const stripQuotes = (s: string) => s.replaceAll(/^["']|["']$/g, '').trim();
   const cohortId = body.cohortId ? stripQuotes(body.cohortId.trim()) : undefined;
   const auto_tagsRaw = body.auto_tags;
-  const auto_tags = auto_tagsRaw === undefined || auto_tagsRaw === null
-    ? undefined
-    : Array.isArray(auto_tagsRaw)
-      ? (auto_tagsRaw as string[]).map((s) => stripQuotes(String(s).trim())).filter(Boolean)
-      : String(auto_tagsRaw).split(',').map((s) => stripQuotes(s.trim())).filter(Boolean);
+  let auto_tags: string[] | undefined;
+  if (auto_tagsRaw === undefined || auto_tagsRaw === null) {
+    auto_tags = undefined;
+  } else if (Array.isArray(auto_tagsRaw)) {
+    auto_tags = auto_tagsRaw.map((s) => stripQuotes(String(s).trim())).filter(Boolean);
+  } else {
+    auto_tags = String(auto_tagsRaw).split(',').map((s) => stripQuotes(s.trim())).filter(Boolean);
+  }
   const country = body.country ? stripQuotes(body.country.trim()) : undefined;
   if (!cohortId && !auto_tags?.length && !country) return undefined;
   return { cohortId: cohortId || undefined, auto_tags, country: country || undefined };
