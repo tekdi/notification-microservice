@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsObject, IsIn, IsUUID, IsEmail, IsArray } from 'class-validator';
+import { IsString, IsOptional, IsObject, IsIn, IsUUID } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 /** DTO for creating an in-app notification campaign (no auth) */

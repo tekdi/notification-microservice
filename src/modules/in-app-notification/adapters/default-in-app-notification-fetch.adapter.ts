@@ -9,7 +9,6 @@ import {
   InAppNotificationFetchAdapter,
   InAppNotificationFetchParams,
 } from './in-app-notification-fetch.adapter';
-import type { NotificationType } from '../entities/in-app-notification-campaign.entity';
 
 @Injectable()
 /**
@@ -58,7 +57,7 @@ export class DefaultInAppNotificationFetchAdapter implements InAppNotificationFe
       params.userId,
       params.limit ?? 10,
       params.offset ?? 0,
-      params.type as NotificationType | undefined,
+      params.type,
       params.userProfile,
     );
   }
