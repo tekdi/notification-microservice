@@ -16,11 +16,6 @@ import { NotificationActionTemplates } from '../notification_events/entity/notif
 import { NotificationQueue } from '../notification-queue/entities/notificationQueue.entity';
 import { AmqpConnection, RabbitSubscribe } from '@golevelup/nestjs-rabbitmq';
 import { NotificationQueueService } from '../notification-queue/notificationQueue.service';
-import {
-  CreateInAppCampaignParams,
-  InAppNotificationService,
-} from '../in-app-notification/in-app-notification.service';
-import type { NotificationType } from '../in-app-notification/entities/in-app-notification-campaign.entity';
 import { APIID } from 'src/common/utils/api-id.config';
 import { EmailAdapter } from 'src/modules/notification/adapters/emailService.adapter';
 import { SmsAdapter } from 'src/modules/notification/adapters/smsService.adapter';
@@ -46,7 +41,6 @@ export class NotificationService {
     @InjectRepository(NotificationQueue)
     private readonly notificationQueue: Repository<NotificationQueue>,
     private readonly notificationQueueService: NotificationQueueService,
-    private readonly inAppNotificationService: InAppNotificationService,
     private readonly adapterFactory: NotificationAdapterFactory,
     private readonly configService: ConfigService,
     private readonly amqpConnection: AmqpConnection,
@@ -68,7 +62,6 @@ export class NotificationService {
       email: { data: [], errors: [] },
       sms: { data: [], errors: [] },
       push: { data: [], errors: [] },
-      in_app: { data: [], errors: [] },
     };
 
     try {
@@ -87,46 +80,7 @@ export class NotificationService {
         throw new BadRequestException(ERROR_MESSAGES.TEMPLATE_NOTFOUND);
       }
 
-      const channels = notification_event.channels as string[] | null;
-      const supportsInApp = !channels || channels.includes('IN_APP');
-      if (supportsInApp && notificationDto.inApp) {
-        const inApp = notificationDto.inApp;
-        const templates = await this.notificationActionTemplates.find({
-          where: { actionId: notification_event.actionId },
-        });
-        const firstTemplate = templates[0];
-        if (!firstTemplate) {
-          LoggerUtil.error(
-            ERROR_MESSAGES.TEMPLATE_CONFIG_NOTFOUND,
-            'IN_APP campaign',
-            userId
-          );
-          throw new BadRequestException(
-            `${ERROR_MESSAGES.TEMPLATE_CONFIG_NOTFOUND} IN_APP`
-          );
-        }
-        const replacements = notificationDto.replacements || {};
-        let title = inApp.title ?? firstTemplate.subject;
-        let message = inApp.message ?? firstTemplate.body;
-        const link = inApp.link ?? firstTemplate.link ?? null;
-        title = this.replacePlaceholders(title, replacements);
-        message = this.replacePlaceholders(message, replacements);
-        const notificationType: NotificationType =
-          (inApp.notificationType as NotificationType) ?? 'ANNOUNCEMENT';
-        const params: CreateInAppCampaignParams = {
-          templateId: firstTemplate.templateId,
-          title,
-          message,
-          link,
-          notificationType,
-          audienceType: inApp.audienceType as CreateInAppCampaignParams['audienceType'],
-          audienceMetadata: inApp.audienceMetadata ?? {},
-          createdBy: userId,
-          updatedBy: userId,
-        };
-        const campaign = await this.inAppNotificationService.createCampaign(params);
-        serverResponses.in_app.data.push({ campaignId: campaign.id, message: 'Campaign created' });
-      }
+    
 
       // Prepare promises based on provided notification types
       const promises: Array<{ promise: Promise<any>; channel: string }> = [];
