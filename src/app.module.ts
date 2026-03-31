@@ -1,15 +1,16 @@
-import { MiddlewareConsumer, Module, RequestMethod } from "@nestjs/common";
-import { AppController } from "./app.controller";
-import { AppService } from "./app.service";
-import { NotificationEventsModule } from "./modules/notification_events/notification_events.module";
-import { NotificationModule } from "./modules/notification/notification.module";
-import { DatabaseModule } from "./common/database-modules";
-import { ConfigModule, ConfigService } from "@nestjs/config";
-import { NotificationQueueModule } from "./modules/notification-queue/notificationQueue.module";
-import { RabbitmqModule } from "./modules/rabbitmq/rabbitmq.module";
-import { PermissionMiddleware } from "./middleware/permission.middleware";
-import { RolePermissionModule } from "./modules/permissionRbac/rolePermissionMapping/role-permission.module";
-import { HealthModule } from "./health/health.module";
+import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+import { NotificationEventsModule } from './modules/notification_events/notification_events.module';
+import { NotificationModule } from './modules/notification/notification.module';
+import { DatabaseModule } from './common/database-modules';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { NotificationQueueModule } from './modules/notification-queue/notificationQueue.module';
+import { RabbitmqModule } from './modules/rabbitmq/rabbitmq.module';
+import { PermissionMiddleware } from './middleware/permission.middleware';
+import { RolePermissionModule } from './modules/permissionRbac/rolePermissionMapping/role-permission.module';
+import { HealthModule } from './health/health.module';
+import { InAppNotificationModule } from './modules/in-app-notification/in-app-notification.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { HealthModule } from "./health/health.module";
     NotificationEventsModule,
     NotificationModule,
     NotificationQueueModule,
+    InAppNotificationModule,
     RolePermissionModule,
     HealthModule,
   ],

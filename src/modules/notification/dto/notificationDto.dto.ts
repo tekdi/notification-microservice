@@ -1,4 +1,4 @@
-import { IsString, IsEmail, IsArray, ValidateNested, IsObject, IsNotEmpty, ArrayMinSize, IsBoolean, IsOptional, IS_ARRAY } from 'class-validator';
+import { IsString, IsEmail, IsArray, ValidateNested, IsObject, IsNotEmpty, ArrayMinSize, IsBoolean, IsOptional } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -31,6 +31,37 @@ export class PushDTO {
     receipients: string[];
 }
 
+
+export class InAppPayloadDto {
+    @ApiProperty({ description: 'Audience type', enum: ['ALL_USERS', 'COHORT', 'ROLE', 'USER_LIST'] })
+    @IsString()
+    audienceType: 'ALL_USERS' | 'COHORT' | 'ROLE' | 'USER_LIST';
+
+    @ApiPropertyOptional({ description: 'Audience identifiers, e.g. { cohortIds: ["C101"] } or { userIds: ["uuid"] }', default: {} })
+    @IsOptional()
+    @IsObject()
+    audienceMetadata?: Record<string, unknown>;
+
+    @ApiPropertyOptional({ description: 'Notification type', enum: ['ANNOUNCEMENT', 'COURSE', 'EVENT'] })
+    @IsOptional()
+    @IsString()
+    notificationType?: 'ANNOUNCEMENT' | 'COURSE' | 'EVENT';
+
+    @ApiPropertyOptional({ description: 'Override title (default from template subject)' })
+    @IsOptional()
+    @IsString()
+    title?: string;
+
+    @ApiPropertyOptional({ description: 'Override message (default from template body)' })
+    @IsOptional()
+    @IsString()
+    message?: string;
+
+    @ApiPropertyOptional({ description: 'Override link (default from template)' })
+    @IsOptional()
+    @IsString()
+    link?: string;
+}
 
 export class NotificationDto {
 
@@ -68,20 +99,29 @@ export class NotificationDto {
     // @ValidateReplacement() // Custom decorator to ensure at least one replacement
     replacements?: { [key: string]: string };
 
-    @ApiProperty({ type: EmailDTO, description: 'Email notification details' })
+    @ApiPropertyOptional({ type: EmailDTO, description: 'Email notification details' })
+    @IsOptional()
     @ValidateNested()
     @Type(() => EmailDTO)
-    email: EmailDTO;
+    email?: EmailDTO;
 
-    @ApiProperty({ type: PushDTO, description: 'Push notification details' })
+    @ApiPropertyOptional({ type: PushDTO, description: 'Push notification details' })
+    @IsOptional()
     @ValidateNested()
     @Type(() => PushDTO)
-    push: PushDTO;
+    push?: PushDTO;
 
-    @ApiProperty({ type: SMSDTO, description: 'SMS notification details' })
+    @ApiPropertyOptional({ type: SMSDTO, description: 'SMS notification details' })
+    @IsOptional()
     @ValidateNested()
     @Type(() => SMSDTO)
-    sms: SMSDTO;
+    sms?: SMSDTO;
+
+    @ApiPropertyOptional({ description: 'In-app campaign payload when template supports IN_APP channel' })
+    @IsOptional()
+    @ValidateNested()
+    @Type(() => InAppPayloadDto)
+    inApp?: InAppPayloadDto;
 }
 
 export class RawEmailDto {
