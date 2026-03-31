@@ -9,7 +9,8 @@ import type { AudienceType, NotificationType } from './entities/in-app-notificat
 
 /** User profile attributes used to filter notifications by audience_metadata (cohortId/cohortIds, auto_tags, country/countries) */
 export interface UserProfileFilter {
-  cohortId?: string;
+  /** Single cohort or multiple if the user belongs to more than one */
+  cohortId?: string | string[];
   /** User's tags. Campaign is shown if user has at least one tag in metadata.auto_tags (or all if single tag in metadata). */
   auto_tags?: string[];
   country?: string;
@@ -205,14 +206,24 @@ export class InAppNotificationService implements OnModuleDestroy {
     return [this.stripAudienceQuotes(String(metaCohortId))];
   }
 
+  private normalizeUserCohortIds(userProfile: UserProfileFilter): string[] {
+    const raw = userProfile.cohortId;
+    if (raw === undefined || raw === null) return [];
+    if (Array.isArray(raw)) {
+      return raw.map((c) => this.stripAudienceQuotes(String(c))).filter(Boolean);
+    }
+    const one = this.stripAudienceQuotes(String(raw));
+    return one ? [one] : [];
+  }
+
   private userMatchesCohortConstraint(
     userProfile: UserProfileFilter,
     audienceMetadata: Record<string, unknown>,
   ): boolean {
     const allowedCohorts = this.buildAllowedCohortIds(audienceMetadata);
     if (allowedCohorts.length === 0) return true;
-    const userCohort = userProfile.cohortId ? this.stripAudienceQuotes(userProfile.cohortId) : '';
-    return Boolean(userCohort && allowedCohorts.includes(userCohort));
+    const userCohortSet = new Set(this.normalizeUserCohortIds(userProfile));
+    return [...userCohortSet].some((id) => allowedCohorts.includes(id));
   }
 
   private normalizeAudienceTag(value: unknown): string | null {
@@ -279,7 +290,7 @@ export class InAppNotificationService implements OnModuleDestroy {
    * - ALL_USERS: everyone (subject to cohortId/auto_tags/country filter below).
    * - USER_LIST: userId in audience_metadata.userIds.
    * - COHORT/ROLE: userId in audience_metadata.resolvedUserIds.
-   * - When audience_metadata has cohortId, auto_tags, or country: userProfile must be provided and must match (AND).
+   * - When audience_metadata has cohortId, auto_tags, or country: userProfile must be provided and must match (AND). User cohortId may be a string or string[] (any cohort may match).
    */
   private isUserInAudience(
     userId: string,

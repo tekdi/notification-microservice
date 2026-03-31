@@ -17,10 +17,20 @@ import { GetUserId } from 'src/common/decorator/userId.decorator';
 import APIResponse from 'src/common/utils/response';
 import { APIID } from 'src/common/utils/api-id.config';
 
-/** Build UserProfileFilter from request body (cohortId, auto_tags string or array, country) */
+/** Build UserProfileFilter from request body (cohortId string or array, auto_tags string or array, country) */
 function buildUserProfileFilter(body: GetInAppNotificationsQueryDto): UserProfileFilter | undefined {
   const stripQuotes = (s: string) => s.replaceAll(/^["']|["']$/g, '').trim();
-  const cohortId = body.cohortId ? stripQuotes(body.cohortId.trim()) : undefined;
+  const cohortRaw = body.cohortId;
+  let cohortId: string | string[] | undefined;
+  if (cohortRaw === undefined || cohortRaw === null) {
+    cohortId = undefined;
+  } else if (Array.isArray(cohortRaw)) {
+    const ids = cohortRaw.map((s) => stripQuotes(String(s).trim())).filter(Boolean);
+    cohortId = ids.length ? ids : undefined;
+  } else {
+    const one = stripQuotes(String(cohortRaw).trim());
+    cohortId = one || undefined;
+  }
   const auto_tagsRaw = body.auto_tags;
   let auto_tags: string[] | undefined;
   if (auto_tagsRaw === undefined || auto_tagsRaw === null) {
@@ -31,8 +41,9 @@ function buildUserProfileFilter(body: GetInAppNotificationsQueryDto): UserProfil
     auto_tags = String(auto_tagsRaw).split(',').map((s) => stripQuotes(s.trim())).filter(Boolean);
   }
   const country = body.country ? stripQuotes(body.country.trim()) : undefined;
-  if (!cohortId && !auto_tags?.length && !country) return undefined;
-  return { cohortId: cohortId || undefined, auto_tags, country: country || undefined };
+  const hasCohort = Array.isArray(cohortId) ? cohortId.length > 0 : Boolean(cohortId);
+  if (!hasCohort && !auto_tags?.length && !country) return undefined;
+  return { cohortId, auto_tags, country: country || undefined };
 }
 
 @Controller('notifications/in-app')
