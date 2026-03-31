@@ -5,9 +5,7 @@ import { NotificationService } from './notification.service';
 import { InAppNotificationService } from '../in-app-notification/in-app-notification.service';
 import {
   CreateInAppNotificationPublicDto,
-  SendEmailNotificationPublicDto,
 } from './dto/notification-public.dto';
-import { RawNotificationDto } from './dto/notificationDto.dto';
 import APIResponse from 'src/common/utils/response';
 import { APIID } from 'src/common/utils/api-id.config';
 
@@ -54,23 +52,4 @@ export class NotificationPublicController {
       .json(APIResponse.success(APIID.NOTIFICATION_CREATE_IN_APP, { campaignId: campaign.id }, String(HttpStatus.CREATED)));
   }
 
-  @Post('email')
-  @ApiOkResponse({ description: 'Email notification sent' })
-  @ApiBadRequestResponse({ description: 'Invalid request' })
-  @UsePipes(new ValidationPipe({ transform: true }))
-  @ApiBody({ type: SendEmailNotificationPublicDto })
-  async sendEmailNotification(
-    @Body() dto: SendEmailNotificationPublicDto,
-    @Res() res: Response,
-  ): Promise<void> {
-    const rawDto: RawNotificationDto = {
-      email: {
-        to: dto.to,
-        subject: dto.subject,
-        body: dto.body,
-        from: dto.from,
-      },
-    };
-    await this.notificationService.sendRawNotification(rawDto, 'system', res);
-  }
 }

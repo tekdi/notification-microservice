@@ -41,24 +41,3 @@ export class CreateInAppNotificationPublicDto {
   @IsString()
   expiresAt?: string;
 }
-
-/** DTO for sending email notification (no auth) - raw email */
-export class SendEmailNotificationPublicDto {
-  @ApiProperty({ description: 'Recipient email addresses', example: ['user@example.com'] })
-  @IsArray()
-  @IsEmail({}, { each: true })
-  to: string[];
-
-  @ApiProperty({ description: 'Email subject' })
-  @IsString()
-  subject: string;
-
-  @ApiProperty({ description: 'Email body (HTML or plain text)' })
-  @IsString()
-  body: string;
-
-  @ApiPropertyOptional({ description: 'Sender email address' })
-  @IsOptional()
-  @IsEmail()
-  from?: string;
-}
