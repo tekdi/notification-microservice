@@ -7,50 +7,30 @@ import {
   ValidationPipe,
   BadRequestException,
   HttpStatus,
+  Inject,
 } from '@nestjs/common';
 import { ApiTags, ApiOkResponse, ApiBadRequestResponse, ApiBasicAuth, ApiBody } from '@nestjs/swagger';
 import { Response } from 'express';
-import { InAppNotificationService, UserProfileFilter } from './in-app-notification.service';
+import { InAppNotificationService } from './in-app-notification.service';
 import { GetInAppNotificationsQueryDto } from './dto/get-in-app-notifications.dto';
 import { MarkInAppNotificationReadDto } from './dto/mark-in-app-read.dto';
 import { GetUserId } from 'src/common/decorator/userId.decorator';
 import APIResponse from 'src/common/utils/response';
 import { APIID } from 'src/common/utils/api-id.config';
-
-/** Build UserProfileFilter from request body (cohortId string or array, auto_tags string or array, country) */
-function buildUserProfileFilter(body: GetInAppNotificationsQueryDto): UserProfileFilter | undefined {
-  const stripQuotes = (s: string) => s.replaceAll(/^["']|["']$/g, '').trim();
-  const cohortRaw = body.cohortId;
-  let cohortId: string | string[] | undefined;
-  if (cohortRaw === undefined || cohortRaw === null) {
-    cohortId = undefined;
-  } else if (Array.isArray(cohortRaw)) {
-    const ids = cohortRaw.map((s) => stripQuotes(String(s).trim())).filter(Boolean);
-    cohortId = ids.length ? ids : undefined;
-  } else {
-    const one = stripQuotes(String(cohortRaw).trim());
-    cohortId = one || undefined;
-  }
-  const auto_tagsRaw = body.auto_tags;
-  let auto_tags: string[] | undefined;
-  if (auto_tagsRaw === undefined || auto_tagsRaw === null) {
-    auto_tags = undefined;
-  } else if (Array.isArray(auto_tagsRaw)) {
-    auto_tags = auto_tagsRaw.map((s) => stripQuotes(String(s).trim())).filter(Boolean);
-  } else {
-    auto_tags = String(auto_tagsRaw).split(',').map((s) => stripQuotes(s.trim())).filter(Boolean);
-  }
-  const country = body.country ? stripQuotes(body.country.trim()) : undefined;
-  const hasCohort = Array.isArray(cohortId) ? cohortId.length > 0 : Boolean(cohortId);
-  if (!hasCohort && !auto_tags?.length && !country) return undefined;
-  return { cohortId, auto_tags, country: country || undefined };
-}
+import {
+  IN_APP_NOTIFICATION_FETCH_ADAPTER,
+  InAppNotificationFetchAdapter,
+} from './adapters/in-app-notification-fetch.adapter';
 
 @Controller('notifications/in-app')
 @ApiTags('In-App Notifications')
 @ApiBasicAuth('access-token')
 export class InAppNotificationController {
-  constructor(private readonly inAppNotificationService: InAppNotificationService) {}
+  constructor(
+    private readonly inAppNotificationService: InAppNotificationService,
+    @Inject(IN_APP_NOTIFICATION_FETCH_ADAPTER)
+    private readonly inAppNotificationFetchAdapter: InAppNotificationFetchAdapter,
+  ) {}
 
   @Post()
   @ApiOkResponse({ description: 'List of in-app notifications for the user' })
@@ -66,14 +46,14 @@ export class InAppNotificationController {
     if (!effectiveUserId) {
       throw new BadRequestException('userId is required');
     }
-    const userProfile = buildUserProfileFilter(body);
-    const result = await this.inAppNotificationService.getNotifications(
-      effectiveUserId,
-      body.limit ?? 10,
-      body.offset ?? 0,
-      body.type,
+    const userProfile = this.inAppNotificationFetchAdapter.buildUserProfileFilter(body);
+    const result = await this.inAppNotificationFetchAdapter.getNotifications({
+      userId: effectiveUserId,
+      limit: body.limit ?? 10,
+      offset: body.offset ?? 0,
+      type: body.type,
       userProfile,
-    );
+    });
     if (!result || result.length === 0) {
       res
         .status(HttpStatus.NOT_FOUND)
@@ -98,8 +78,11 @@ export class InAppNotificationController {
     if (!effectiveUserId) {
       throw new BadRequestException('userId is required (pass in body or use authenticated user)');
     }
-    const userProfile = buildUserProfileFilter(body);
-    const unread = await this.inAppNotificationService.getUnreadCount(effectiveUserId, userProfile);
+    const userProfile = this.inAppNotificationFetchAdapter.buildUserProfileFilter(body);
+    const unread = await this.inAppNotificationFetchAdapter.getUnreadCount({
+      userId: effectiveUserId,
+      userProfile,
+    });
     return { unread };
   }
 
