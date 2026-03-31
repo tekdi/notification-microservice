@@ -12,6 +12,10 @@ import {
 import type { NotificationType } from '../entities/in-app-notification-campaign.entity';
 
 @Injectable()
+/**
+ * Aspire-specific default adapter.
+ * Update this implementation per product/project use case when audience/profile fields differ.
+ */
 export class DefaultInAppNotificationFetchAdapter implements InAppNotificationFetchAdapter {
   constructor(private readonly inAppNotificationService: InAppNotificationService) {}
 
