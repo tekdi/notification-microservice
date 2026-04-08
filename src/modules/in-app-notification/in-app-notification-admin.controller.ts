@@ -20,10 +20,40 @@ import {
   ApiNotFoundResponse,
 } from '@nestjs/swagger';
 import { Response } from 'express';
-import { InAppNotificationService } from './in-app-notification.service';
+import {
+  InAppNotificationService,
+  ListInAppCampaignsAudienceFilter,
+} from './in-app-notification.service';
 import { ListInAppCampaignsAdminDto, UpdateInAppCampaignAdminDto } from './dto/admin-in-app-campaign.dto';
 import APIResponse from 'src/common/utils/response';
 import { APIID } from 'src/common/utils/api-id.config';
+
+function buildListAudienceFilter(body: ListInAppCampaignsAdminDto): ListInAppCampaignsAudienceFilter | undefined {
+  const country = body.country?.trim() || undefined;
+  let cohortIds: string[] | undefined;
+  if (body.cohortId !== undefined) {
+    const raw = Array.isArray(body.cohortId) ? body.cohortId : [body.cohortId];
+    cohortIds = raw.map((c) => String(c).trim());
+  }
+  const autoParts: string[] = [];
+  if (typeof body.auto_tags === 'string') {
+    autoParts.push(...body.auto_tags.split(',').map((s) => s.trim()).filter(Boolean));
+  } else if (Array.isArray(body.auto_tags)) {
+    autoParts.push(...body.auto_tags.map((s) => String(s).trim()).filter(Boolean));
+  }
+  if (body.auto_tag?.trim()) {
+    autoParts.push(body.auto_tag.trim());
+  }
+  const autoTags = [...new Set(autoParts.map((t) => t.toLowerCase()))];
+  if (!country && !(cohortIds?.length) && !autoTags.length) {
+    return undefined;
+  }
+  return {
+    country,
+    cohortIds: cohortIds?.length ? cohortIds : undefined,
+    autoTags: autoTags.length ? autoTags : undefined,
+  };
+}
 
 /**
  * Admin CRUD for in-app notification campaigns (NotificationCampaigns).
@@ -49,6 +79,7 @@ export class InAppNotificationAdminController {
       limit,
       offset,
       body.notificationType,
+      buildListAudienceFilter(body),
     );
     res
       .status(HttpStatus.OK)

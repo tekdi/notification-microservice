@@ -1,7 +1,7 @@
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Brackets, Repository, SelectQueryBuilder } from 'typeorm';
 import Redis from 'ioredis';
 import { InAppNotificationCampaign } from './entities/in-app-notification-campaign.entity';
 import { InAppNotificationRead } from './entities/in-app-notification-read.entity';
@@ -38,6 +38,13 @@ export interface CreateInAppCampaignParams {
   createdBy: string;
   updatedBy?: string | null;
   expiresAt?: Date | null;
+}
+
+/** Optional filters on audience_metadata for admin campaign list */
+export interface ListInAppCampaignsAudienceFilter {
+  country?: string;
+  cohortIds?: string[];
+  autoTags?: string[];
 }
 
 /** Full campaign row for admin list/detail APIs */
@@ -480,18 +487,87 @@ export class InAppNotificationService implements OnModuleDestroy {
     };
   }
 
+  private applyAdminAudienceMetadataFilters(
+    qb: SelectQueryBuilder<InAppNotificationCampaign>,
+    audience?: ListInAppCampaignsAudienceFilter,
+  ): void {
+    if (!audience) return;
+
+    if (audience.country) {
+      const cn = audience.country.trim().toLowerCase();
+      qb.andWhere(
+        `(
+        LOWER(REGEXP_REPLACE(TRIM(BOTH '"' FROM COALESCE(c.audience_metadata->>'country','')), '^"|$', '', 'g')) = :adminListCountry
+        OR EXISTS (
+          SELECT 1 FROM jsonb_array_elements_text(COALESCE(c.audience_metadata->'countries', '[]'::jsonb)) AS ce
+          WHERE LOWER(REGEXP_REPLACE(TRIM(BOTH '"' FROM ce::text), '^"|$', '', 'g')) = :adminListCountry
+        )
+      )`,
+        { adminListCountry: cn },
+      );
+    }
+
+    if (audience.cohortIds?.length) {
+      const ids = audience.cohortIds.map((id) => this.stripAudienceQuotes(String(id)));
+      qb.andWhere(
+        new Brackets((wqb) => {
+          ids.forEach((id, i) => {
+            const p = `adminCohort_${i}`;
+            const pj = `adminCohortJ_${i}`;
+            wqb.orWhere(
+              `(c.audience_metadata->>'cohortId' = :${p} OR c.audience_metadata->'cohortIds' @> :${pj}::jsonb)`,
+              { [p]: id, [pj]: JSON.stringify([id]) },
+            );
+          });
+        }),
+      );
+    }
+
+    if (audience.autoTags?.length) {
+      const tags = [...new Set(audience.autoTags.map((t) => t.trim().toLowerCase()).filter(Boolean))];
+      if (tags.length) {
+        qb.andWhere(
+          new Brackets((wqb) => {
+            tags.forEach((tag, i) => {
+              const p = `adminAtag_${i}`;
+              wqb.orWhere(
+                `(
+                (jsonb_typeof(c.audience_metadata->'auto_tags') = 'string'
+                  AND LOWER(REGEXP_REPLACE(TRIM(BOTH '"' FROM c.audience_metadata->>'auto_tags'), '^"|$', '', 'g')) = :${p}
+                )
+                OR (
+                  jsonb_typeof(c.audience_metadata->'auto_tags') = 'array'
+                  AND EXISTS (
+                    SELECT 1 FROM jsonb_array_elements_text(c.audience_metadata->'auto_tags') AS el
+                    WHERE LOWER(REGEXP_REPLACE(TRIM(BOTH '"' FROM el::text), '^"|$', '', 'g')) = :${p}
+                  )
+                )
+              )`,
+                { [p]: tag },
+              );
+            });
+          }),
+        );
+      }
+    }
+  }
+
   async listCampaignsAdmin(
     limit: number = 20,
     offset: number = 0,
     notificationType?: NotificationType,
+    audience?: ListInAppCampaignsAudienceFilter,
   ): Promise<{ items: InAppCampaignAdminItem[]; total: number }> {
-    const where = notificationType ? { notification_type: notificationType } : {};
-    const [rows, total] = await this.campaignRepository.findAndCount({
-      where,
-      order: { created_at: 'DESC' },
-      take: Math.min(Math.max(limit, 1), 200),
-      skip: Math.max(offset, 0),
-    });
+    const take = Math.min(Math.max(limit, 1), 200);
+    const skip = Math.max(offset, 0);
+
+    const qb = this.campaignRepository.createQueryBuilder('c');
+    if (notificationType) {
+      qb.andWhere('c.notification_type = :notificationType', { notificationType });
+    }
+    this.applyAdminAudienceMetadataFilters(qb, audience);
+    qb.orderBy('c.created_at', 'DESC');
+    const [rows, total] = await qb.skip(skip).take(take).getManyAndCount();
     return { items: rows.map((r) => this.toAdminItem(r)), total };
   }
 

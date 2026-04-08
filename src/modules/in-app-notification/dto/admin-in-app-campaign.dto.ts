@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import { IsInt, IsIn, IsObject, IsOptional, IsString, IsUUID, Min, Max, ValidateIf } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsUuidOrUuidArray } from './get-in-app-notifications.dto';
 
 const NOTIFICATION_TYPES = ['ANNOUNCEMENT', 'COURSE', 'EVENT'] as const;
 const AUDIENCE_TYPES = ['ALL_USERS', 'COHORT', 'ROLE', 'USER_LIST'] as const;
@@ -26,6 +27,33 @@ export class ListInAppCampaignsAdminDto {
   @IsOptional()
   @IsIn([...NOTIFICATION_TYPES])
   notificationType?: (typeof NOTIFICATION_TYPES)[number];
+
+  @ApiPropertyOptional({
+    description: 'Filter: audience_metadata.country or countries[] (case-insensitive)',
+  })
+  @IsOptional()
+  @IsString()
+  country?: string;
+
+  @ApiPropertyOptional({
+    description: 'Filter: audience_metadata.cohortId or cohortIds[] (any match)',
+    oneOf: [{ type: 'string', format: 'uuid' }, { type: 'array', items: { type: 'string', format: 'uuid' } }],
+  })
+  @IsOptional()
+  @IsUuidOrUuidArray()
+  cohortId?: string | string[];
+
+  @ApiPropertyOptional({
+    description:
+      'Filter: audience_metadata.auto_tags (string or array; comma-separated string allowed; any tag match)',
+  })
+  @IsOptional()
+  auto_tags?: string | string[];
+
+  @ApiPropertyOptional({ description: 'Alias for auto_tags (single tag)' })
+  @IsOptional()
+  @IsString()
+  auto_tag?: string;
 }
 
 /** Body for PATCH /notifications/in-app/admin/:id — send at least one field */
