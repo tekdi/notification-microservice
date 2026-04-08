@@ -4,6 +4,7 @@ import { InAppNotificationCampaign } from './entities/in-app-notification-campai
 import { InAppNotificationRead } from './entities/in-app-notification-read.entity';
 import { InAppNotificationService } from './in-app-notification.service';
 import { InAppNotificationController } from './in-app-notification.controller';
+import { InAppNotificationAdminController } from './in-app-notification-admin.controller';
 import { DefaultInAppNotificationFetchAdapter } from './adapters/default-in-app-notification-fetch.adapter';
 import { IN_APP_NOTIFICATION_FETCH_ADAPTER } from './adapters/in-app-notification-fetch.adapter';
 
@@ -19,7 +20,7 @@ import { IN_APP_NOTIFICATION_FETCH_ADAPTER } from './adapters/in-app-notificatio
       useExisting: DefaultInAppNotificationFetchAdapter,
     },
   ],
-  controllers: [InAppNotificationController],
+  controllers: [InAppNotificationController, InAppNotificationAdminController],
   exports: [InAppNotificationService],
 })
 export class InAppNotificationModule {}

@@ -12,5 +12,8 @@ export const APIID = {
     QUEUE_UPDATE: "api.queue.update",
     SEND_NOTIFICATION: "api.send.notification",
     NOTIFICATION_LIST: "api.notification.list",
-    NOTIFICATION_CREATE_IN_APP: "api.notification.create.in-app"
+    NOTIFICATION_CREATE_IN_APP: "api.notification.create.in-app",
+    IN_APP_CAMPAIGN_ADMIN_LIST: "api.notification.in-app.admin.list",
+    IN_APP_CAMPAIGN_ADMIN_UPDATE: "api.notification.in-app.admin.update",
+    IN_APP_CAMPAIGN_ADMIN_DELETE: "api.notification.in-app.admin.delete",
 }
