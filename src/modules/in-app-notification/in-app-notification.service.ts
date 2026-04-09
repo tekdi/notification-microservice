@@ -1,11 +1,12 @@
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Brackets, Repository, SelectQueryBuilder } from 'typeorm';
 import Redis from 'ioredis';
 import { InAppNotificationCampaign } from './entities/in-app-notification-campaign.entity';
 import { InAppNotificationRead } from './entities/in-app-notification-read.entity';
 import type { AudienceType, NotificationType } from './entities/in-app-notification-campaign.entity';
+import { UpdateInAppCampaignAdminDto } from './dto/admin-in-app-campaign.dto';
 
 /** User profile attributes used to filter notifications by audience_metadata (cohortId/cohortIds, auto_tags, country/countries) */
 export interface UserProfileFilter {
@@ -37,6 +38,30 @@ export interface CreateInAppCampaignParams {
   createdBy: string;
   updatedBy?: string | null;
   expiresAt?: Date | null;
+}
+
+/** Optional filters on audience_metadata for admin campaign list */
+export interface ListInAppCampaignsAudienceFilter {
+  country?: string;
+  cohortIds?: string[];
+  autoTags?: string[];
+}
+
+/** Full campaign row for admin list/detail APIs */
+export interface InAppCampaignAdminItem {
+  id: string;
+  templateId: string | null;
+  title: string;
+  message: string;
+  link: string | null;
+  notificationType: NotificationType;
+  audienceType: AudienceType;
+  audienceMetadata: Record<string, unknown>;
+  createdBy: string;
+  createdAt: string;
+  updatedBy: string | null;
+  updatedAt: string | null;
+  expiresAt: string | null;
 }
 
 @Injectable()
@@ -436,5 +461,156 @@ export class InAppNotificationService implements OnModuleDestroy {
     const saved = await this.campaignRepository.save(campaign);
     await this.incrementGlobalVersion();
     return saved;
+  }
+
+  private formatDateIso(value: Date | null | undefined): string | null {
+    if (value == null) return null;
+    if (value instanceof Date) return value.toISOString();
+    return String(value);
+  }
+
+  private toAdminItem(c: InAppNotificationCampaign): InAppCampaignAdminItem {
+    return {
+      id: c.id,
+      templateId: c.template_id,
+      title: c.title,
+      message: c.message,
+      link: c.link,
+      notificationType: c.notification_type,
+      audienceType: c.audience_type,
+      audienceMetadata: c.audience_metadata ?? {},
+      createdBy: c.created_by,
+      createdAt: c.created_at instanceof Date ? c.created_at.toISOString() : String(c.created_at),
+      updatedBy: c.updated_by,
+      updatedAt: this.formatDateIso(c.updated_at),
+      expiresAt: this.formatDateIso(c.expires_at),
+    };
+  }
+
+  private applyAdminAudienceMetadataFilters(
+    qb: SelectQueryBuilder<InAppNotificationCampaign>,
+    audience?: ListInAppCampaignsAudienceFilter,
+  ): void {
+    if (!audience) return;
+
+    if (audience.country) {
+      const cn = audience.country.trim().toLowerCase();
+      qb.andWhere(
+        `(
+        LOWER(REGEXP_REPLACE(TRIM(BOTH '"' FROM COALESCE(c.audience_metadata->>'country','')), '^"|$', '', 'g')) = :adminListCountry
+        OR EXISTS (
+          SELECT 1 FROM jsonb_array_elements_text(COALESCE(c.audience_metadata->'countries', '[]'::jsonb)) AS ce
+          WHERE LOWER(REGEXP_REPLACE(TRIM(BOTH '"' FROM ce::text), '^"|$', '', 'g')) = :adminListCountry
+        )
+      )`,
+        { adminListCountry: cn },
+      );
+    }
+
+    if (audience.cohortIds?.length) {
+      const ids = audience.cohortIds.map((id) => this.stripAudienceQuotes(String(id)));
+      qb.andWhere(
+        new Brackets((wqb) => {
+          ids.forEach((id, i) => {
+            const p = `adminCohort_${i}`;
+            const pj = `adminCohortJ_${i}`;
+            wqb.orWhere(
+              `(c.audience_metadata->>'cohortId' = :${p} OR c.audience_metadata->'cohortIds' @> :${pj}::jsonb)`,
+              { [p]: id, [pj]: JSON.stringify([id]) },
+            );
+          });
+        }),
+      );
+    }
+
+    if (audience.autoTags?.length) {
+      const tags = [...new Set(audience.autoTags.map((t) => t.trim().toLowerCase()).filter(Boolean))];
+      if (tags.length) {
+        qb.andWhere(
+          new Brackets((wqb) => {
+            tags.forEach((tag, i) => {
+              const p = `adminAtag_${i}`;
+              wqb.orWhere(
+                `(
+                (jsonb_typeof(c.audience_metadata->'auto_tags') = 'string'
+                  AND LOWER(REGEXP_REPLACE(TRIM(BOTH '"' FROM c.audience_metadata->>'auto_tags'), '^"|$', '', 'g')) = :${p}
+                )
+                OR (
+                  jsonb_typeof(c.audience_metadata->'auto_tags') = 'array'
+                  AND EXISTS (
+                    SELECT 1 FROM jsonb_array_elements_text(c.audience_metadata->'auto_tags') AS el
+                    WHERE LOWER(REGEXP_REPLACE(TRIM(BOTH '"' FROM el::text), '^"|$', '', 'g')) = :${p}
+                  )
+                )
+              )`,
+                { [p]: tag },
+              );
+            });
+          }),
+        );
+      }
+    }
+  }
+
+  async listCampaignsAdmin(
+    limit: number = 20,
+    offset: number = 0,
+    notificationType?: NotificationType,
+    audience?: ListInAppCampaignsAudienceFilter,
+  ): Promise<{ items: InAppCampaignAdminItem[]; total: number }> {
+    const take = Math.min(Math.max(limit, 1), 200);
+    const skip = Math.max(offset, 0);
+
+    const qb = this.campaignRepository.createQueryBuilder('c');
+    if (notificationType) {
+      qb.andWhere('c.notification_type = :notificationType', { notificationType });
+    }
+    this.applyAdminAudienceMetadataFilters(qb, audience);
+    qb.orderBy('c.created_at', 'DESC');
+    const [rows, total] = await qb.skip(skip).take(take).getManyAndCount();
+    return { items: rows.map((r) => this.toAdminItem(r)), total };
+  }
+
+  async updateCampaignAdmin(
+    id: string,
+    dto: UpdateInAppCampaignAdminDto,
+  ): Promise<InAppCampaignAdminItem | null> {
+    const campaign = await this.campaignRepository.findOne({ where: { id } });
+    if (!campaign) return null;
+
+    if (dto.title !== undefined) campaign.title = dto.title;
+    if (dto.message !== undefined) campaign.message = dto.message;
+    if (dto.link !== undefined) {
+      campaign.link = dto.link === null || dto.link === '' ? null : dto.link;
+    }
+    if (dto.notificationType !== undefined) campaign.notification_type = dto.notificationType;
+    if (dto.audienceType !== undefined) campaign.audience_type = dto.audienceType;
+    if (dto.audienceMetadata !== undefined) campaign.audience_metadata = dto.audienceMetadata;
+    if (dto.templateId !== undefined) {
+      campaign.template_id = dto.templateId;
+    }
+    if (dto.expiresAt !== undefined) {
+      if (dto.expiresAt === null || dto.expiresAt === '') {
+        campaign.expires_at = null;
+      } else {
+        campaign.expires_at = new Date(dto.expiresAt);
+      }
+    }
+    if (dto.updatedBy !== undefined) {
+      campaign.updated_by = dto.updatedBy;
+    }
+
+    const saved = await this.campaignRepository.save(campaign);
+    await this.incrementGlobalVersion();
+    return this.toAdminItem(saved);
+  }
+
+  async deleteCampaignAdmin(id: string): Promise<boolean> {
+    const result = await this.campaignRepository.delete({ id });
+    const affected = result.affected ?? 0;
+    if (affected > 0) {
+      await this.incrementGlobalVersion();
+    }
+    return affected > 0;
   }
 }
