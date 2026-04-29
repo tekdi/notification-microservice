@@ -103,6 +103,58 @@
                     "packageName": "shiksha-notification"
                 }
             ]
+        },
+        {
+            "sourceRoute": "/interface/v1/inApp",
+            "type": "POST",
+            "priority": "MUST_HAVE",
+            "inSequence": false,
+            "orchestrated": false,
+            "targetPackages": [
+                {
+                    "basePackageName": "notification",
+                    "packageName": "shiksha-notification"
+                }
+            ]
+        },
+        {
+            "sourceRoute": "/interface/v1/inApp/:id/mark-read",
+            "type": "PATCH",
+            "priority": "MUST_HAVE",
+            "inSequence": false,
+            "orchestrated": false,
+            "targetPackages": [
+                {
+                    "basePackageName": "notification",
+                    "packageName": "shiksha-notification"
+                }
+            ]
+        },
+        {
+            "sourceRoute": "/interface/v1/inApp",
+            "type": "GET",
+            "priority": "MUST_HAVE",
+            "inSequence": false,
+            "orchestrated": false,
+            "targetPackages": [
+                {
+                    "basePackageName": "notification",
+                    "packageName": "shiksha-notification"
+                }
+            ]
+        },
+        {
+            "sourceRoute": "/interface/v1/inApp/:id/mark-read",
+            "type": "GET",
+            "priority": "MUST_HAVE",
+            "inSequence": false,
+            "orchestrated": false,
+            "targetPackages": [
+                {
+                    "basePackageName": "notification",
+                    "packageName": "shiksha-notification"
+                }
+            ]
         }
     ]
 }
