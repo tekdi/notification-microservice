@@ -105,7 +105,7 @@
             ]
         },
         {
-            "sourceRoute": "/interface/v1/inApp",
+            "sourceRoute": "/interface/v1/notification/inApp",
             "type": "POST",
             "priority": "MUST_HAVE",
             "inSequence": false,
@@ -118,7 +118,7 @@
             ]
         },
         {
-            "sourceRoute": "/interface/v1/inApp/:id/mark-read",
+            "sourceRoute": "/interface/v1/notification/inApp/:id/mark-read",
             "type": "PATCH",
             "priority": "MUST_HAVE",
             "inSequence": false,
@@ -131,7 +131,7 @@
             ]
         },
         {
-            "sourceRoute": "/interface/v1/inApp",
+            "sourceRoute": "/interface/v1/notification/inApp",
             "type": "GET",
             "priority": "MUST_HAVE",
             "inSequence": false,
@@ -144,7 +144,7 @@
             ]
         },
         {
-            "sourceRoute": "/interface/v1/inApp/:id/mark-read",
+            "sourceRoute": "/interface/v1/notification/inApp/:id/mark-read",
             "type": "GET",
             "priority": "MUST_HAVE",
             "inSequence": false,
