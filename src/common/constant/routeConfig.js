@@ -104,6 +104,19 @@
                 }
             ]
         },
+         {
+      "sourceRoute": "/interface/v1/notification/send-raw",
+      "type": "POST",
+      "priority": "MUST_HAVE",
+      "inSequence": false,
+      "orchestrated": false,
+      "targetPackages": [
+        {
+          "basePackageName": "notification",
+          "packageName": "shiksha-notification"
+        }
+      ]
+    },
         {
             "sourceRoute": "/interface/v1/notification/inApp",
             "type": "POST",
