@@ -4,10 +4,10 @@ import { IsNotEmpty, IsOptional, IsString, ValidateNested, } from "class-validat
 
 export class SearchDto {
 
-    @ApiProperty({ example: 'EVENT' })
+    @ApiProperty({ example: 'EVENT', required: false })
     @IsString()
     @IsNotEmpty()
-    context: string;
+    context?: string;
 
     @ApiProperty({ example: 'EVENT' })
     @IsOptional()
@@ -17,9 +17,9 @@ export class SearchDto {
 }
 
 export class SearchFilterDto {
-    @ApiProperty({ type: SearchDto, description: 'Filters for search' })
+    @ApiProperty({ type: SearchDto, description: 'Filters for search', required: false })
+    @IsOptional()
     @ValidateNested({ each: true })
     @Type(() => SearchDto)
-    @IsNotEmpty()
-    filters: SearchDto
+    filters?: SearchDto
 }
