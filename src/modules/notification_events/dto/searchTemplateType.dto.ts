@@ -1,25 +1,24 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { IsNotEmpty, IsOptional, IsString, ValidateNested, } from "class-validator";
+import { IsOptional, IsString, ValidateNested, } from "class-validator";
 
 export class SearchDto {
 
-    @ApiProperty({ example: 'EVENT' })
+    @ApiProperty({ example: 'EVENT', required: false })
+    @IsOptional()
     @IsString()
-    @IsNotEmpty()
-    context: string;
+    context?: string;
 
     @ApiProperty({ example: 'EVENT' })
     @IsOptional()
     @IsString()
-    @IsNotEmpty()
     key: string;
 }
 
 export class SearchFilterDto {
-    @ApiProperty({ type: SearchDto, description: 'Filters for search' })
-    @ValidateNested({ each: true })
+    @ApiProperty({ type: SearchDto, description: 'Filters for search', required: false })
+    @IsOptional()
+    @ValidateNested()
     @Type(() => SearchDto)
-    @IsNotEmpty()
-    filters: SearchDto
+    filters?: SearchDto
 }

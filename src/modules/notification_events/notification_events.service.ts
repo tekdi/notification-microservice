@@ -225,10 +225,15 @@ export class NotificationEventsService {
     response: Response
   ) {
     const apiId = APIID.TEMPLATE_LIST;
-    const { context } = searchFilterDto.filters;
-    const key = searchFilterDto.filters?.key;
+    const context = searchFilterDto?.filters?.context;
+    const key = searchFilterDto?.filters?.key;
 
-    let whereCondition: any = { context };
+    let whereCondition: any = {};
+
+    if (context) {
+      whereCondition.context = context;
+    }
+    
     if (key) {
       whereCondition.key = key;
     }
