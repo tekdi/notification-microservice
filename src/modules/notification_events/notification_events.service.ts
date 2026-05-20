@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, ILike } from 'typeorm';
+import { Repository, ILike, In } from 'typeorm';
 import { NotificationActions } from './entity/notificationActions.entity';
 import { SearchFilterDto } from './dto/searchTemplateType.dto';
 import APIResponse from 'src/common/utils/response';
@@ -229,7 +229,9 @@ export class NotificationEventsService {
     const { context, key, title } = searchFilterDto.filters;
     const { limit, offset } = searchFilterDto;
 
-    let whereCondition: any = { context };
+    let whereCondition: any = {
+      context: Array.isArray(context) ? In(context) : context,
+    };
     if (key) {
       whereCondition.key = key;
     }

@@ -4,10 +4,9 @@ import { IsNotEmpty, IsOptional, IsString, ValidateNested, IsNumber, Min } from 
 
 export class SearchDto {
 
-    @ApiProperty({ example: 'EVENT' })
-    @IsString()
+    @ApiProperty({ example: ['USER', 'EVENT'], description: 'Single context string or array of contexts' })
     @IsNotEmpty()
-    context: string;
+    context: string | string[];
 
     @ApiProperty({ example: 'EVENT' })
     @IsOptional()
