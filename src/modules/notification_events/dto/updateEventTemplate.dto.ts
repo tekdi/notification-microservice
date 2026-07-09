@@ -63,6 +63,20 @@ export class SMSNotificationDto {
     body: string;
 }
 
+export class InAppNotificationDto {
+    @ApiProperty({ description: "Subject", example: "This is in-app subject" })
+    @IsString()
+    @IsNotEmpty()
+    @IsOptional()
+    subject: string;
+
+    @ApiProperty({ description: "Body", example: "This is body of in-app" })
+    @IsString()
+    @IsNotEmpty()
+    @IsOptional()
+    body: string;
+}
+
 
 export class UpdateEventDto {
 
@@ -126,6 +140,13 @@ export class UpdateEventDto {
     @IsOptional()
     @IsNotEmpty()
     sms?: SMSNotificationDto;
+
+    @ApiProperty({ type: InAppNotificationDto, description: "In-app details" })
+    @ValidateNested({ each: true })
+    @Type(() => InAppNotificationDto)
+    @IsOptional()
+    @IsNotEmpty()
+    inApp?: InAppNotificationDto;
 }
 
 export class ReplacementTagDto {

@@ -91,6 +91,10 @@ export class NotificationEventsService {
     if (data.sms && Object.keys(data.sms).length > 0) {
       await createConfig("sms", data.sms);
     }
+
+    if (data.inApp && Object.keys(data.inApp).length > 0) {
+      await createConfig("inApp", data.inApp);
+    }
     LoggerUtil.log(
       SUCCESS_MESSAGES.TEMPLATE_CREATED_SUCESSFULLY(userId),
       apiId,
@@ -194,6 +198,10 @@ export class NotificationEventsService {
 
     if (updateEventDto.sms && Object.keys(updateEventDto.sms).length > 0) {
       await createConfig("sms", updateEventDto.sms);
+    }
+
+    if (updateEventDto.inApp && Object.keys(updateEventDto.inApp).length > 0) {
+      await createConfig("inApp", updateEventDto.inApp);
     }
 
     if (updateEventDto.status) {
