@@ -711,7 +711,6 @@ export class NotificationService {
       
         if (result.status === 'fulfilled') {
           const notifications = (result.value || []).flat();
-          console.log(result.value,"Shubham");
           notifications.forEach(notification => {
             const status = notification.status;
             

@@ -100,7 +100,7 @@ export class RolePermissionService {
         .status(HttpStatus.OK)
         .json(APIResponse.success(apiId, result, HttpStatus.OK + ""));
     } catch (error) {
-      APIResponse.error(
+      return APIResponse.error(
         apiId,
         "Failed to update permission data.",
         error.message,
