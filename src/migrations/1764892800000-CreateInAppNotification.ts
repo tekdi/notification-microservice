@@ -19,8 +19,7 @@ export class CreateInAppNotification1764892800000 implements MigrationInterface 
                 is_read boolean NOT NULL DEFAULT false,
                 created_at timestamptz NOT NULL DEFAULT now(),
                 read_at timestamptz,
-                expires_at timestamptz,
-                -- no source, template_params, action_id
+                expires_at timestamptz
             );
         `);
 

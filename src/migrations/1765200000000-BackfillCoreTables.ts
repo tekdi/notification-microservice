@@ -23,7 +23,7 @@ export class BackfillCoreTables1765200000000 implements MigrationInterface {
     // NotificationActionTemplates
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "NotificationActionTemplates" (
-        "templateId" uuid PRIMARY KEY,
+        "templateId" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
         "actionId" integer NOT NULL,
         "language" varchar NOT NULL,
         "subject" varchar NOT NULL,
@@ -42,7 +42,7 @@ export class BackfillCoreTables1765200000000 implements MigrationInterface {
     // NotificationQueue
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "NotificationQueue" (
-        "id" uuid PRIMARY KEY,
+        "id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
         "channel" varchar,
         "context" varchar,
         "subject" varchar,
@@ -60,7 +60,7 @@ export class BackfillCoreTables1765200000000 implements MigrationInterface {
     // RolePermission
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "RolePermission" (
-        "rolePermissionId" uuid PRIMARY KEY,
+        "rolePermissionId" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
         "module" varchar NOT NULL,
         "apiPath" varchar NOT NULL,
         "roleTitle" varchar NOT NULL,
@@ -87,7 +87,7 @@ export class BackfillCoreTables1765200000000 implements MigrationInterface {
     // notificationLogs
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "notificationLogs" (
-        "id" uuid PRIMARY KEY,
+        "id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
         "status" boolean NOT NULL DEFAULT false,
         "createdOn" timestamptz NOT NULL DEFAULT now(),
         "context" varchar(255),
