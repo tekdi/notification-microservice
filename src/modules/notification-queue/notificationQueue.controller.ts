@@ -34,7 +34,7 @@ export class NotificationQueueController {
     @ApiBody({ type: SearchQueueDTO })
     @UsePipes(new ValidationPipe({ transform: true }))
     async get(@Body() searchQueueDTO: SearchQueueDTO, @Res() response: Response) {
-        this.notificationQueueService.getList(searchQueueDTO, response)
+        return this.notificationQueueService.getList(searchQueueDTO, response)
     }
 
     @UseFilters(new AllExceptionsFilter(APIID.QUEUE_GET))
