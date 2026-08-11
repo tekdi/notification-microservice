@@ -19,7 +19,7 @@ spec:
         imagePullPolicy: Always
         name: notification-service
         envFrom:
-        - configMapRef:
+        - secretRef:
             name: notification-service-config
         ports:
         - containerPort: 4000
