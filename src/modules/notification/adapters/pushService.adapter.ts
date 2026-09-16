@@ -22,7 +22,7 @@ export class PushAdapter implements NotificationServiceInterface {
         if (this.configService.get('FIREBASE_PROJECT_ID') && this.configService.get('FIREBASE_CLIENT_EMAIL') && this.configService.get('FIREBASE_PRIVATE_KEY') && this.fcmurl) {
             try {
                 const serviceAccount = {
-                    projectId: this.configService.get('FIREBASE_PRIVATE_KEY'),
+                    projectId: this.configService.get('FIREBASE_PROJECT_ID'),
                     clientEmail:this.configService.get('FIREBASE_CLIENT_EMAIL'),
                     privateKey: this.configService.get('FIREBASE_PRIVATE_KEY').replace(/\\n/g, '\n'), // Replace escaped newlines
                 };
