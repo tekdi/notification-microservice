@@ -5,10 +5,10 @@ import axios from "axios";
 import { NotificationDto,RawNotificationDto } from "./dto/notificationDto.dto";
 import { NotificationAdapterFactory } from "./notificationadapters";
 import APIResponse from "src/common/utils/response";
-// import * as FCM from 'fcm-node';
 // import { SubscribeToDeviceTopicDto } from './dto/subscribtotopic.dto';
 import { ConfigService } from "@nestjs/config";
 import { TopicNotification } from "./dto/topicnotification .dto";
+import { CaptchaService } from "src/common/services/captcha.services";
 import { NotificationLog } from "./entity/notificationLogs.entity";
 import { Response } from "express";
 import { NotificationActions } from "../notification_events/entity/notificationActions.entity";
@@ -48,6 +48,7 @@ export class NotificationService {
     private emailService: EmailAdapter,
     private smsService: SmsAdapter,
     private whatsappViaGupshup: WhatsappViaGupshupAdapter,
+    private readonly captchaService: CaptchaService,
   ) {
     this.fcmkey = this.configService.get("FCM_KEY");
     this.fcmurl = this.configService.get("FCM_URL");
@@ -599,6 +600,14 @@ export class NotificationService {
     response: Response
   ): Promise<APIResponse> {
     const apiId = APIID.SEND_NOTIFICATION;
+
+    
+    // CAPTCHA must pass before any Keycloak call; kept outside the try so the
+        // 400 is not converted into a 500 by the catch below.
+        const isCaptchaValid = await this.captchaService.verify(rawNotificationDto.captchaToken);
+        if (!isCaptchaValid) {
+          throw new BadRequestException("CAPTCHA verification failed");
+        }
     const serverResponses: Record<string, { data: any[]; errors: any[] }> = {
       email: { data: [], errors: [] },
       sms: { data: [], errors: [] },
