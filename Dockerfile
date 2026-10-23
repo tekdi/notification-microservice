@@ -1,8 +1,7 @@
-FROM node:22.23.4-alpine as dependencies
+FROM node:22.23.4-alpine AS dependencies
 WORKDIR /app
-COPY . ./
-RUN npm i --force
-RUN npm install fcm-node --force
-RUN apt-get update 
+COPY package*.json ./
+RUN npm ci
+COPY . .
 EXPOSE 4000
 CMD ["npm", "start"]
