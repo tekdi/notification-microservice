@@ -7,6 +7,7 @@ import { NotificationAdapterFactory } from './notificationadapters';
 import { EmailAdapter } from './adapters/emailService.adapter';
 import { SmsAdapter } from './adapters/smsService.adapter';
 import { PushAdapter } from './adapters/pushService.adapter';
+import { WhatsappViaGupshupAdapter } from './adapters/whatsappViaGupshup.adapter';
 import { NotificationActions } from '../notification_events/entity/notificationActions.entity';
 import { NotificationActionTemplates } from '../notification_events/entity/notificationActionTemplates.entity';
 import { NotificationLog } from './entity/notificationLogs.entity';
@@ -23,7 +24,7 @@ import { InAppNotificationModule } from '../in-app-notification/in-app-notificat
     RabbitmqModule,
     InAppNotificationModule,
   ],
-  providers: [NotificationAdapterFactory, PushAdapter, SmsAdapter, EmailAdapter, NotificationService, NotificationQueueService],
+  providers: [NotificationAdapterFactory, PushAdapter, SmsAdapter, EmailAdapter, WhatsappViaGupshupAdapter, NotificationService, NotificationQueueService],
   controllers: [NotificationController, NotificationPublicController],
   exports: [NotificationService]
 })

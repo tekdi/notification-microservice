@@ -19,6 +19,7 @@ import { NotificationQueueService } from '../notification-queue/notificationQueu
 import { APIID } from 'src/common/utils/api-id.config';
 import { EmailAdapter } from 'src/modules/notification/adapters/emailService.adapter';
 import { SmsAdapter } from 'src/modules/notification/adapters/smsService.adapter';
+import { WhatsappViaGupshupAdapter } from './adapters/whatsappViaGupshup.adapter';
 import {
   SUCCESS_MESSAGES,
   ERROR_MESSAGES,
@@ -45,7 +46,8 @@ export class NotificationService {
     private readonly configService: ConfigService,
     private readonly amqpConnection: AmqpConnection,
     private emailService: EmailAdapter,
-    private smsService: SmsAdapter
+    private smsService: SmsAdapter,
+    private whatsappViaGupshup: WhatsappViaGupshupAdapter,
   ) {
     this.fcmkey = this.configService.get('FCM_KEY');
     this.fcmurl = this.configService.get('FCM_URL');
@@ -593,10 +595,11 @@ export class NotificationService {
     const serverResponses: Record<string, { data: any[]; errors: any[] }> = {
       email: { data: [], errors: [] },
       sms: { data: [], errors: [] },
+      whatsapp: { data: [], errors: [] },
     };
 
     try {
-      const { email, sms } = rawNotificationDto;
+      const { email, sms, whatsapp } = rawNotificationDto;
 
       const promises: Array<{ promise: Promise<any>; channel: string }> = [];
 
@@ -639,6 +642,25 @@ export class NotificationService {
         promises.push({
           promise: Promise.all(smsPromises),
           channel: 'sms',
+        });
+      }
+
+      if (whatsapp && whatsapp.to && whatsapp.to.length > 0) {
+        if (!whatsapp.templateId || !Array.isArray(whatsapp.templateParams)) {
+          throw new BadRequestException('WhatsApp templateId and templateParams are required');
+        }
+        const whatsappPromises = whatsapp.to.map((recipient) =>
+          this.whatsappViaGupshup.sendTemplateMessage({
+            to: recipient,
+            templateId: whatsapp.templateId,
+            templateParams: whatsapp.templateParams,
+            gupshupSource: whatsapp.gupshupSource,
+            gupshupApiKey: whatsapp.gupshupApiKey,
+          }),
+        );
+        promises.push({
+          promise: Promise.all(whatsappPromises),
+          channel: 'whatsapp',
         });
       }
 
