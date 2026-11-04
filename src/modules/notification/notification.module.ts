@@ -12,6 +12,7 @@ import { NotificationActions } from '../notification_events/entity/notificationA
 import { NotificationActionTemplates } from '../notification_events/entity/notificationActionTemplates.entity';
 import { NotificationLog } from './entity/notificationLogs.entity';
 import { NotificationService } from './notification.service';
+import {CaptchaService} from "src/common/services/captcha.services";
 import { NotificationQueue } from '../notification-queue/entities/notificationQueue.entity';
 import { RabbitmqModule } from '../rabbitmq/rabbitmq.module';
 import { NotificationQueueService } from '../notification-queue/notificationQueue.service';
@@ -25,7 +26,7 @@ import { InAppController } from './inApp.controller';
     TypeOrmModule.forFeature([NotificationActions, NotificationActionTemplates, NotificationLog, NotificationQueue, InAppNotification]), // import entity here
     NotificationEventsModule, RabbitmqModule
   ],
-  providers: [NotificationAdapterFactory, PushAdapter, SmsAdapter, EmailAdapter, WhatsappViaGupshupAdapter, InAppAdapter, NotificationService, NotificationQueueService, InAppService],
+  providers: [NotificationAdapterFactory, PushAdapter, SmsAdapter, EmailAdapter, WhatsappViaGupshupAdapter,CaptchaService, InAppAdapter, NotificationService, NotificationQueueService, InAppService],
   controllers: [NotificationController, InAppController],
   exports: [NotificationService]
 })

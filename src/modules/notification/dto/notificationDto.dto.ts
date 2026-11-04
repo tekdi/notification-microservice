@@ -240,6 +240,15 @@ export class RawEmailDto {
     @ValidateNested()
     @Type(() => RawWhatsappDto)
     whatsapp?: RawWhatsappDto;
+
+      @ApiPropertyOptional({
+        type: String,
+        description:
+          "reCAPTCHA token obtained on the client. Required unless CAPTCHA_ENABLED=false on the server.",
+      })
+      @IsOptional()
+      @IsString({ message: "captchaToken must be a string" })
+      captchaToken?: string;
   }
 
 

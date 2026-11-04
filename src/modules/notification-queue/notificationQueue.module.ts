@@ -17,13 +17,14 @@ import { RabbitmqModule } from '../rabbitmq/rabbitmq.module';
 import { InAppAdapter } from '../notification/adapters/inApp.adapter';
 import { InAppService } from '../notification/inApp.service';
 import { InAppNotification } from '../notification/entity/inAppNotification.entity';
+import { CaptchaService } from 'src/common/services/captcha.services';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([NotificationQueue, NotificationActionTemplates, NotificationActions, NotificationLog, InAppNotification]),
     RabbitmqModule
   ],
-  providers: [NotificationQueueService, NotificationService, NotificationAdapterFactory, EmailAdapter, SmsAdapter, PushAdapter, WhatsappViaGupshupAdapter, InAppAdapter, InAppService],
+  providers: [NotificationQueueService, NotificationService, NotificationAdapterFactory, EmailAdapter, SmsAdapter, PushAdapter, WhatsappViaGupshupAdapter, InAppAdapter, InAppService, CaptchaService],
   controllers: [NotificationQueueController],
   exports: [NotificationQueueService]
 })
