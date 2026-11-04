@@ -166,6 +166,33 @@ export class RawEmailDto {
     body: string;
   }
   
+  export class RawWhatsappDto {
+    @ApiProperty({ description: 'Recipients with country code', example: ['919876543210'] })
+    @IsNotEmpty()
+    @IsArray()
+    @IsString({ each: true })
+    to: string[];
+
+    @ApiProperty({ description: 'Gupshup template ID (approved template)', example: 'a0c2we11-1ff1-411b-144a-11d61d9e73e0' })
+    @IsNotEmpty()
+    @IsString()
+    templateId: string;
+
+    @ApiProperty({ description: 'Template parameters, in placeholder order', example: ['123456'] })
+    @IsArray()
+    templateParams: string[];
+
+    @ApiPropertyOptional({ description: 'Gupshup sender number; defaults to GUPSHUP_SOURCE', example: '919876543210' })
+    @IsOptional()
+    @IsString()
+    gupshupSource?: string;
+
+    @ApiPropertyOptional({ description: 'Gupshup API key; defaults to GUPSHUP_API_KEY' })
+    @IsOptional()
+    @IsString()
+    gupshupApiKey?: string;
+  }
+
   export class RawNotificationDto {
     @ApiPropertyOptional({ description: 'Email notification details' })
     @IsOptional()
@@ -178,6 +205,12 @@ export class RawEmailDto {
     @ValidateNested()
     @Type(() => RawSmsDto)
     sms?: RawSmsDto;
+
+    @ApiPropertyOptional({ description: 'WhatsApp (Gupshup template) notification details' })
+    @IsOptional()
+    @ValidateNested()
+    @Type(() => RawWhatsappDto)
+    whatsapp?: RawWhatsappDto;
   }
 
 
